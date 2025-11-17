@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Giỏ hàng - Fashion Shop</title>
+    <link rel="stylesheet" href="public/css/style.css">
+</head>
+<body>
+    <!-- HEADER -->
+    <header class="header">
+        <div class="header-top">
+            <div class="container">
+                <div class="header-top-content">
+                    <div class="contact-info">
+                        <span>📞 0123 456 789</span>
+                        <span>📧 info@fashionshop.com</span>
+                    </div>
+                    <div class="user-menu">
+                        <a href="admin.html">👤 Admin</a>
+                        <a href="#login">Đăng nhập</a>
+                        <a href="#register">Đăng ký</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="header-main">
+            <div class="container">
+                <div class="header-content">
+                    <div class="logo">
+                        <h1>👗 FASHION SHOP</h1>
+                    </div>
+                    <form class="search-box" method="GET">
+                        <input type="text" placeholder="Tìm kiếm sản phẩm...">
+                        <button type="submit">🔍 Tìm</button>
+                    </form>
+                    <div class="header-actions">
+                        <a href="cart.html" class="cart-link active">
+                            🛒 Giỏ hàng
+                            <span class="cart-count" id="cartCount">0</span>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <nav class="navbar">
+            <div class="container">
+                <ul class="nav-menu">
+                    <li><a href="index.html">Trang chủ</a></li>
+                    <li><a href="index.html">Tất cả</a></li>
+                    <li><a href="index.html">Áo thun</a></li>
+                    <li><a href="index.html">Áo sơ mi</a></li>
+                    <li><a href="index.html">Quần</a></li>
+                    <li><a href="index.html">Váy</a></li>
+                    <li><a href="index.html">Giày dép</a></li>
+                    <li><a href="index.html">Phụ kiện</a></li>
+                </ul>
+            </div>
+        </nav>
+    </header>
+
+    <!-- BREADCRUMB -->
+    <div class="breadcrumb">
+        <div class="container">
+            <a href="index.html">Trang chủ</a> / 
+            <span>Giỏ hàng</span>
+        </div>
+    </div>
+
+    <!-- CART CONTENT -->
+    <main class="container" style="margin: 30px auto;">
+        <h2>🛒 Giỏ hàng của bạn</h2>
+
+        <div class="cart-container" id="cartContainer">
+            <!-- Giỏ hàng sẽ được load từ JavaScript -->
+        </div>
+    </main>
+
+    <!-- FOOTER -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-section">
+                    <h4>Về chúng tôi</h4>
+                    <p>Fashion Shop là cửa hàng thời trang uy tín, cung cấp các sản phẩm chất lượng cao với giá cả phải chăng.</p>
+                </div>
+                <div class="footer-section">
+                    <h4>Liên kết nhanh</h4>
+                    <ul>
+                        <li><a href="#">Trang chủ</a></li>
+                        <li><a href="#">Sản phẩm</a></li>
+                        <li><a href="#">Giới thiệu</a></li>
+                        <li><a href="#">Liên hệ</a></li>
+                    </ul>
+                </div>
+                <div class="footer-section">
+                    <h4>Hỗ trợ khách hàng</h4>
+                    <ul>
+                        <li><a href="#">Chính sách bảo hành</a></li>
+                        <li><a href="#">Chính sách đổi trả</a></li>
+                        <li><a href="#">Hướng dẫn mua hàng</a></li>
+                        <li><a href="#">Câu hỏi thường gặp</a></li>
+                    </ul>
+                </div>
+                <div class="footer-section">
+                    <h4>Kết nối với chúng tôi</h4>
+                    <div class="social-links">
+                        <a href="#">Facebook</a>
+                        <a href="#">Instagram</a>
+                        <a href="#">Twitter</a>
+                        <a href="#">YouTube</a>
+                    </div>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2024 Fashion Shop. Tất cả quyền được bảo lưu.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script src="public/js/data.js"></script>
+    <script src="public/js/cart.js"></script>
+</body>
+</html>
