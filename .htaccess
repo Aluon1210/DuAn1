@@ -1,9 +1,8 @@
 # File: .htaccess
+# Rewrite engine để xử lý URL routing
 RewriteEngine On
 
-# Điều kiện: nếu không phải là file hoặc thư mục có thật
+# Nếu file hoặc thư mục không tồn tại, chuyển hướng đến index.php
 RewriteCond %{REQUEST_FILENAME} !-f
 RewriteCond %{REQUEST_FILENAME} !-d
-
-# Chuyển hướng tất cả về index.php?url=...
-RewriteRule ^(.*)$ index.php?url=$1 [L,QSA]
+RewriteRule ^(.*)$ index.php?url=$1 [QSA,L]
