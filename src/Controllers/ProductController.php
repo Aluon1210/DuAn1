@@ -25,7 +25,8 @@ class ProductController extends Controller {
             'categories' => $categories
         ];
         
-        $this->loadView('product/list', $data);
+        // Render view đầy đủ HTML, không dùng layout
+        $this->renderView('product/list_full', $data);
     }
     
     /**
@@ -53,7 +54,8 @@ class ProductController extends Controller {
             'currentCategory' => $category
         ];
         
-        $this->loadView('product/category', $data);
+        // Render view đầy đủ HTML, không dùng layout
+        $this->renderView('product/category_full', $data);
     }
     
     /**
@@ -79,7 +81,8 @@ class ProductController extends Controller {
             'categories' => $categories
         ];
         
-        $this->loadView('product/detail', $data);
+        // Render view đầy đủ HTML, không dùng layout
+        $this->renderView('product/detail_full', $data);
     }
     
     /**
@@ -108,7 +111,8 @@ class ProductController extends Controller {
             'keyword' => $keyword
         ];
         
-        $this->loadView('product/search', $data);
+        // Render view đầy đủ HTML, không dùng layout
+        $this->renderView('product/search_full', $data);
     }
 }
 ?>

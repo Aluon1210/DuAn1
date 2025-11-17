@@ -23,22 +23,42 @@ class Controller {
         // 1. Đường dẫn đến file view con (đã bỏ 'client/')
         $viewFile = ROOT_PATH . '/src/Views/' . $view . '.php';
         
-        if (file_exists($viewFile)) {
-            // $content chính là đường dẫn đến file view con
-            $content = $viewFile; 
-            
-            // 2. Tải layout chung dựa trên thuộc tính $layout
-            $layoutFile = ROOT_PATH . '/src/Views/layouts/' . $this->layout . '.php';
-            
-            if (file_exists($layoutFile)) {
-                // Tải file layout
-                require_once $layoutFile;
-            } else {
-                die("Không tìm thấy layout: " . $layoutFile);
-            }
-        } else {
+        if (!file_exists($viewFile)) {
             die("Không tìm thấy View: " . $viewFile);
         }
+        
+        // $content chính là đường dẫn đến file view con
+        $content = $viewFile; 
+        
+        // 2. Tải layout chung dựa trên thuộc tính $layout
+        $layoutFile = ROOT_PATH . '/src/Views/layouts/' . $this->layout . '.php';
+        
+        if (!file_exists($layoutFile)) {
+            die("Không tìm thấy layout: " . $layoutFile);
+        }
+        
+        // Tải file layout (layout sẽ require $content)
+        require_once $layoutFile;
+    }
+
+    /**
+     * Render view không dùng layout (trang đầy đủ HTML)
+     * @param string $view Tên file view (ví dụ: 'home', 'products/detail')
+     * @param array $data Dữ liệu truyền cho view
+     */
+    public function renderView($view, $data = []) {
+        // Biến mảng $data thành các biến riêng lẻ
+        extract($data);
+        
+        // Đường dẫn đến file view
+        $viewFile = ROOT_PATH . '/src/Views/' . $view . '.php';
+        
+        if (!file_exists($viewFile)) {
+            die("Không tìm thấy View: " . $viewFile);
+        }
+        
+        // Tải view trực tiếp (view phải có HTML đầy đủ)
+        require_once $viewFile;
     }
 }
 ?>

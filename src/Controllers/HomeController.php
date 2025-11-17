@@ -14,16 +14,19 @@ class HomeController extends Controller {
             'title' => 'Trang chủ FashionStore'
         ];
         
-        // Tải view 'home.php' (không cần 'client/' nữa)
-        $this->loadView('home', $data); 
+        // Render view đầy đủ HTML, không dùng layout
+        $this->renderView('home_full', $data); 
     }
     
     /**
      * Tương ứng với URL: /home/about hoặc /about
      */
     public function about() {
-         // Tải view 'about.php'
-         $this->loadView('about', ['title' => 'Giới thiệu']);
+         // Render view đầy đủ HTML, không dùng layout
+         $data = [
+             'title' => 'Giới thiệu - Luxury Fashion Store'
+         ];
+         $this->renderView('about_full', $data);
     }
 }
 ?>

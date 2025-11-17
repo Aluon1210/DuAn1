@@ -14,27 +14,69 @@ class App {
         // 1. Xử lý Controller
         // Kiểm tra xem controller có tồn tại không
         // ví dụ: /duan1/products -> $url[0] = 'products'
-        if (isset($url[0])) {
-            $controllerName = ucfirst($url[0]) . 'Controller'; // 'Products' . 'Controller'
-            $controllerFile = ROOT_PATH . '/src/Controllers/' . $controllerName . '.php';
+        // ví dụ: /duan1/home/about -> $url[0] = 'home', $url[1] = 'about'
+        // ví dụ: /duan1/login -> $url[0] = 'login' -> AuthController
+        // ví dụ: /duan1/register -> $url[0] = 'register' -> AuthController
+        if (isset($url[0]) && !empty($url[0])) {
+            // Map các route đặc biệt
+            $routeMap = [
+                'login' => 'AuthController',
+                'register' => 'AuthController',
+                'logout' => 'AuthController'
+            ];
             
-            if (file_exists($controllerFile)) {
-                $this->controller = $controllerName;
+            if (isset($routeMap[$url[0]])) {
+                // Route đặc biệt: login, register, logout -> AuthController
+                $this->controller = $routeMap[$url[0]];
+                $route = $url[0];
                 unset($url[0]);
+                $url = array_values($url);
+                
+                // Nếu không có method tiếp theo, set method mặc định
+                // Nếu có method (ví dụ: process), sẽ được xử lý ở phần 2
+                if (empty($url[0])) {
+                    if ($route === 'login') {
+                        $this->method = 'index';
+                    } elseif ($route === 'register') {
+                        $this->method = 'register';
+                    } elseif ($route === 'logout') {
+                        $this->method = 'logout';
+                    }
+                }
+            } else {
+                // Route thông thường
+                $controllerName = ucfirst(strtolower($url[0])) . 'Controller';
+                $controllerFile = ROOT_PATH . '/src/Controllers/' . $controllerName . '.php';
+                
+                if (file_exists($controllerFile)) {
+                    $this->controller = $controllerName;
+                    unset($url[0]);
+                    // Reindex mảng sau khi unset
+                    $url = array_values($url);
+                }
             }
         }
         
         // Thêm namespace đầy đủ cho controller
-        $this->controller = 'Controllers\\' . $this->controller;
+        $fullControllerName = 'Controllers\\' . $this->controller;
+        
+        // Kiểm tra xem class có tồn tại không
+        if (!class_exists($fullControllerName)) {
+            die("Controller không tồn tại: " . $fullControllerName);
+        }
         
         // Khởi tạo controller: new Controllers\HomeController()
-        $controllerInstance = new $this->controller; 
+        $controllerInstance = new $fullControllerName; 
 
         // 2. Xử lý Method
-        if (isset($url[1])) {
-            if (method_exists($controllerInstance, $url[1])) {
-                $this->method = $url[1];
-                unset($url[1]);
+        // Nếu method chưa được set từ route đặc biệt và còn phần tử trong $url
+        if (isset($url[0]) && !empty($url[0])) {
+            // Kiểm tra method có tồn tại không
+            if (method_exists($controllerInstance, $url[0])) {
+                $this->method = $url[0];
+                unset($url[0]);
+                // Reindex lại
+                $url = array_values($url);
             }
         }
 
@@ -42,6 +84,10 @@ class App {
         $this->params = $url ? array_values($url) : [];
 
         // Gọi hàm của controller với các tham số
+        if (!method_exists($controllerInstance, $this->method)) {
+            die("Method không tồn tại: " . $this->method . " trong " . $fullControllerName);
+        }
+        
         call_user_func_array([$controllerInstance, $this->method], $this->params);
     }
 
@@ -51,7 +97,13 @@ class App {
      */
     public function parseUrl() {
         if (isset($_GET['url'])) {
-            return explode('/', filter_var(rtrim($_GET['url'], '/'), FILTER_SANITIZE_URL));
+            $url = filter_var(rtrim($_GET['url'], '/'), FILTER_SANITIZE_URL);
+            $url = explode('/', $url);
+            // Loại bỏ các phần tử rỗng
+            $url = array_filter($url, function($value) {
+                return !empty($value);
+            });
+            return array_values($url);
         }
         return [];
     }

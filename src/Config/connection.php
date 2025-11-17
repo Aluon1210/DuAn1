@@ -2,12 +2,9 @@
 // File: src/Config/connection.php
 // Không sử dụng namespace ở đây để dễ dàng include và sử dụng biến $conn
 
-use PDO;
-use PDOException;
-
 $host = "localhost";
 $user = "root";
-$database = "du_an_1"; // Sửa tên database theo database.sql
+$database = "duan1"; // Sửa tên database theo database.sql
 $pass = "";
 $port = "3306";
 

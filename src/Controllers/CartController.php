@@ -53,7 +53,8 @@ class CartController extends Controller {
             'total' => $total
         ];
         
-        $this->loadView('cart/index', $data);
+        // Render view đầy đủ HTML, không dùng layout
+        $this->renderView('cart/index_full', $data);
     }
     
     /**

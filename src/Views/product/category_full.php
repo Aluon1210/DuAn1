@@ -1,6 +1,5 @@
-<?php
-// File: src/Views/product/category.php
-?>
+<?php require_once ROOT_PATH . '/src/Views/includes/header.php'; ?>
+
 <style>
     .product-quantity-input {
         flex: 1;
@@ -45,6 +44,156 @@
         margin-bottom: 30px;
         padding-bottom: 20px;
         border-bottom: 3px solid var(--primary-gold-light);
+    }
+
+    .sidebar {
+        background: white;
+        padding: 30px;
+        border-radius: 12px;
+        box-shadow: var(--shadow-soft);
+        height: fit-content;
+    }
+
+    .sidebar h3 {
+        font-family: 'Playfair Display', serif;
+        font-size: 24px;
+        font-weight: 600;
+        margin-bottom: 20px;
+        color: var(--primary-black);
+        padding-bottom: 15px;
+        border-bottom: 2px solid var(--primary-gold-light);
+    }
+
+    .category-list {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .category-list a {
+        padding: 14px 18px;
+        border-radius: 8px;
+        text-decoration: none;
+        color: var(--text-dark);
+        font-size: 15px;
+        font-weight: 500;
+        transition: var(--transition-smooth);
+        border: 2px solid transparent;
+        background: var(--accent-gray);
+    }
+
+    .category-list a:hover,
+    .category-list a.active {
+        background: linear-gradient(135deg, var(--primary-gold-light) 0%, #f4e4bc 100%);
+        border-color: var(--primary-gold);
+        color: var(--primary-black);
+        transform: translateX(5px);
+    }
+
+    .product-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+        gap: 30px;
+        margin-bottom: 40px;
+    }
+
+    .product-card {
+        background: white;
+        border-radius: 12px;
+        overflow: hidden;
+        box-shadow: var(--shadow-soft);
+        transition: var(--transition-smooth);
+        display: flex;
+        flex-direction: column;
+    }
+
+    .product-card:hover {
+        transform: translateY(-5px);
+        box-shadow: var(--shadow-hover);
+    }
+
+    .product-image {
+        width: 100%;
+        height: 280px;
+        overflow: hidden;
+        background: linear-gradient(135deg, var(--accent-gray) 0%, #f0f0f0 100%);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .product-image img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        transition: var(--transition-smooth);
+    }
+
+    .product-card:hover .product-image img {
+        transform: scale(1.05);
+    }
+
+    .product-info {
+        padding: 24px;
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .product-name {
+        font-family: 'Playfair Display', serif;
+        font-size: 20px;
+        font-weight: 600;
+        margin-bottom: 12px;
+        color: var(--primary-black);
+        line-height: 1.3;
+    }
+
+    .product-price {
+        font-family: 'Playfair Display', serif;
+        font-size: 24px;
+        font-weight: 700;
+        color: var(--primary-gold);
+        margin-bottom: 12px;
+    }
+
+    .product-price::after {
+        content: ' ₫';
+        font-size: 18px;
+    }
+
+    .product-description {
+        font-size: 14px;
+        color: var(--text-light);
+        line-height: 1.6;
+        margin-bottom: 12px;
+        flex: 1;
+    }
+
+    .product-stock {
+        font-size: 13px;
+        color: var(--text-light);
+        margin-bottom: 16px;
+    }
+
+    .product-stock strong {
+        color: var(--primary-black);
+        font-weight: 600;
+    }
+
+    @media (max-width: 768px) {
+        .product-grid {
+            grid-template-columns: 1fr;
+        }
+
+        div[style*="grid-template-columns: 280px 1fr"] {
+            grid-template-columns: 1fr !important;
+        }
+
+        .sidebar {
+            position: static !important;
+            margin-bottom: 30px;
+        }
     }
 </style>
 
@@ -117,3 +266,6 @@
         <?php endif; ?>
     </div>
 </div>
+
+<?php require_once ROOT_PATH . '/src/Views/includes/footer.php'; ?>
+

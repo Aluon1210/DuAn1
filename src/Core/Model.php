@@ -101,16 +101,25 @@ class Model {
      * @return int|false ID của record mới hoặc false nếu lỗi
      */
     public function create($data) {
-        $columns = implode(", ", array_keys($data));
-        $values = ":" . implode(", :", array_keys($data));
-        
-        $sql = "INSERT INTO {$this->table} ({$columns}) VALUES ({$values})";
-        $stmt = $this->db->prepare($sql);
-        
-        if ($stmt->execute($data)) {
-            return $this->db->lastInsertId();
+        try {
+            $columns = implode(", ", array_keys($data));
+            $values = ":" . implode(", :", array_keys($data));
+            
+            $sql = "INSERT INTO {$this->table} ({$columns}) VALUES ({$values})";
+            $stmt = $this->db->prepare($sql);
+            
+            if ($stmt->execute($data)) {
+                // Với bảng users, lastInsertId() có thể không hoạt động vì primary key là string
+                // Trả về true nếu insert thành công
+                return true;
+            }
+            return false;
+        } catch (\PDOException $e) {
+            error_log("SQL Insert Error in {$this->table}: " . $e->getMessage());
+            error_log("SQL: INSERT INTO {$this->table} ({$columns}) VALUES ({$values})");
+            error_log("Data: " . print_r($data, true));
+            throw $e; // Re-throw để catch ở level cao hơn
         }
-        return false;
     }
     
     /**
@@ -151,9 +160,17 @@ class Model {
      * @return array
      */
     public function query($sql, $params = []) {
-        $stmt = $this->db->prepare($sql);
-        $stmt->execute($params);
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        try {
+            $stmt = $this->db->prepare($sql);
+            $stmt->execute($params);
+            $results = $stmt->fetchAll(\PDO::FETCH_ASSOC);
+            return $results !== false ? $results : [];
+        } catch (\PDOException $e) {
+            error_log("SQL Query Error: " . $e->getMessage());
+            error_log("SQL: " . $sql);
+            error_log("Params: " . print_r($params, true));
+            throw $e; // Re-throw để catch ở level cao hơn
+        }
     }
     
     /**

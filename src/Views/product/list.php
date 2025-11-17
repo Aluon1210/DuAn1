@@ -1,14 +1,56 @@
 <?php
 // File: src/Views/product/list.php
 ?>
-<div style="display: grid; grid-template-columns: 250px 1fr; gap: 20px;">
+<style>
+    .product-quantity-input {
+        flex: 1;
+        padding: 12px 16px;
+        border: 2px solid var(--border-light);
+        border-radius: 30px;
+        font-size: 14px;
+        font-weight: 500;
+        text-align: center;
+        transition: var(--transition-smooth);
+        background: white;
+        color: var(--text-dark);
+    }
+
+    .product-quantity-input:focus {
+        outline: none;
+        border-color: var(--primary-gold);
+        box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.1);
+    }
+
+    .empty-state {
+        text-align: center;
+        padding: 80px 20px;
+        background: white;
+        border-radius: 12px;
+        box-shadow: var(--shadow-soft);
+    }
+
+    .empty-state-icon {
+        font-size: 80px;
+        margin-bottom: 24px;
+        opacity: 0.5;
+    }
+
+    .empty-state-text {
+        font-size: 18px;
+        color: var(--text-light);
+        font-weight: 500;
+    }
+</style>
+
+<div style="display: grid; grid-template-columns: 280px 1fr; gap: 40px;">
     <!-- Sidebar -->
-    <div class="sidebar">
+    <div class="sidebar" style="position: sticky; top: 100px; height: fit-content;">
         <h3>Danh Mục</h3>
         <div class="category-list">
-            <a href="<?php echo ROOT_URL; ?>product">Tất cả sản phẩm</a>
+            <a href="<?php echo ROOT_URL; ?>product" class="<?php echo !isset($currentCategory) ? 'active' : ''; ?>">Tất cả sản phẩm</a>
             <?php foreach ($categories as $category): ?>
-                <a href="<?php echo ROOT_URL; ?>product/category/<?php echo $category['id']; ?>">
+                <a href="<?php echo ROOT_URL; ?>product/category/<?php echo $category['id']; ?>" 
+                   class="<?php echo (isset($currentCategory) && $currentCategory['id'] == $category['id']) ? 'active' : ''; ?>">
                     <?php echo htmlspecialchars($category['name']); ?>
                 </a>
             <?php endforeach; ?>
@@ -17,7 +59,15 @@
 
     <!-- Products -->
     <div>
-        <h2 style="color: #2c3e50; margin-bottom: 20px;">Sản Phẩm</h2>
+        <div style="margin-bottom: 30px;">
+            <h2 style="font-family: 'Playfair Display', serif; font-size: 36px; font-weight: 600; margin-bottom: 8px; letter-spacing: 1px;">
+                Bộ Sưu Tập Cao Cấp
+            </h2>
+            <p style="color: var(--text-light); font-size: 16px;">
+                <?php echo !empty($products) ? count($products) . ' sản phẩm được tìm thấy' : 'Không có sản phẩm'; ?>
+            </p>
+        </div>
+
         <?php if (!empty($products)): ?>
             <div class="product-grid">
                 <?php foreach ($products as $product): ?>
@@ -26,28 +76,34 @@
                             <?php if (!empty($product['image'])): ?>
                                 <img src="<?php echo ROOT_URL; ?>public/images/<?php echo htmlspecialchars($product['image']); ?>" alt="<?php echo htmlspecialchars($product['name']); ?>">
                             <?php else: ?>
-                                <div style="font-size: 50px;">👕</div>
+                                <div style="font-size: 80px; opacity: 0.3;">✨</div>
                             <?php endif; ?>
                         </div>
                         <div class="product-info">
                             <div class="product-name"><?php echo htmlspecialchars($product['name']); ?></div>
-                            <div class="product-price"><?php echo number_format($product['price'], 0, ',', '.'); ?> ₫</div>
-                            <div class="product-description"><?php echo substr(htmlspecialchars($product['description']), 0, 50); ?>...</div>
-                            <div style="margin-bottom: 10px; font-size: 12px; color: #7f8c8d;">
-                                Kho: <strong><?php echo $product['quantity']; ?></strong>
+                            <div class="product-price"><?php echo number_format($product['price'], 0, ',', '.'); ?></div>
+                            <div class="product-description"><?php echo substr(htmlspecialchars($product['description']), 0, 60); ?>...</div>
+                            <div class="product-stock">
+                                Kho: <strong><?php echo $product['quantity']; ?></strong> sản phẩm
                             </div>
-                            <a href="<?php echo ROOT_URL; ?>product/detail/<?php echo $product['id']; ?>" class="btn btn-primary" style="width: 100%; margin-bottom: 5px;">Xem chi tiết</a>
-                            <form method="POST" action="<?php echo ROOT_URL; ?>cart/add/<?php echo $product['id']; ?>" style="display: flex; gap: 5px;">
-                                <input type="number" name="quantity" value="1" min="1" max="<?php echo $product['quantity']; ?>" style="flex: 1; padding: 8px; border: 1px solid #bdc3c7; border-radius: 4px;">
-                                <button type="submit" class="btn btn-success" style="flex: 1;">Thêm giỏ</button>
+                            <a href="<?php echo ROOT_URL; ?>product/detail/<?php echo $product['id']; ?>" class="btn btn-primary" style="width: 100%; margin-bottom: 12px;">
+                                Xem Chi Tiết
+                            </a>
+                            <form method="POST" action="<?php echo ROOT_URL; ?>cart/add/<?php echo $product['id']; ?>" style="display: flex; gap: 8px;">
+                                <input type="number" name="quantity" value="1" min="1" max="<?php echo $product['quantity']; ?>" class="product-quantity-input">
+                                <button type="submit" class="btn btn-success" style="flex: 1;">
+                                    🛒 Thêm
+                                </button>
                             </form>
                         </div>
                     </div>
                 <?php endforeach; ?>
             </div>
         <?php else: ?>
-            <p style="text-align: center; color: #7f8c8d; padding: 40px;">Không có sản phẩm nào</p>
+            <div class="empty-state">
+                <div class="empty-state-icon">👗</div>
+                <div class="empty-state-text">Không có sản phẩm nào</div>
+            </div>
         <?php endif; ?>
     </div>
 </div>
-

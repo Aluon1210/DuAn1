@@ -1,6 +1,5 @@
-<?php
-// File: src/Views/about.php
-?>
+<?php require_once ROOT_PATH . '/src/Views/includes/header.php'; ?>
+
 <style>
     .about-hero {
         background: linear-gradient(135deg, var(--primary-black) 0%, #2c2c2c 100%);
@@ -237,3 +236,6 @@
         🛍️ Khám Phá Bộ Sưu Tập
     </a>
 </div>
+
+<?php require_once ROOT_PATH . '/src/Views/includes/footer.php'; ?>
+

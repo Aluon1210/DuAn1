@@ -14,19 +14,63 @@ class User extends Model {
      * @return array|false
      */
     public function getByEmail($email) {
-        return $this->getOne(['email' => $email]);
+        $user = $this->getOne(['Email' => $email]);
+        return $user ? $this->normalizeUser($user) : false;
+    }
+    
+    /**
+     * Lấy user theo username
+     * @param string $username
+     * @return array|false
+     */
+    public function getByUsername($username) {
+        $user = $this->getOne(['_UserName_Id' => $username]);
+        return $user ? $this->normalizeUser($user) : false;
+    }
+    
+    /**
+     * Override getById để dùng _UserName_Id
+     */
+    public function getById($id) {
+        $user = $this->getOne(['_UserName_Id' => $id]);
+        return $user ? $this->normalizeUser($user) : false;
     }
     
     /**
      * Tạo user mới với password đã hash
      * @param array $data
-     * @return int|false
+     * @return string|false Username hoặc false nếu lỗi
      */
     public function createUser($data) {
-        if (isset($data['password'])) {
-            $data['password'] = password_hash($data['password'], PASSWORD_DEFAULT);
+        try {
+            // Map dữ liệu từ code sang database
+            $dbData = [
+                '_UserName_Id' => $data['username'] ?? $data['_UserName_Id'] ?? uniqid('user_'),
+                'Email' => $data['email'] ?? $data['Email'] ?? '',
+                'FullName' => $data['name'] ?? $data['full_name'] ?? $data['FullName'] ?? '',
+                '__PassWord' => isset($data['password']) ? password_hash($data['password'], PASSWORD_DEFAULT) : '',
+                'Phone' => $data['phone'] ?? $data['Phone'] ?? '',
+                'Role' => $data['role'] ?? $data['Role'] ?? 'user',
+                'Address' => $data['address'] ?? $data['Address'] ?? ''
+            ];
+            
+            // Validate dữ liệu bắt buộc
+            if (empty($dbData['_UserName_Id']) || empty($dbData['Email']) || empty($dbData['__PassWord'])) {
+                error_log("User creation failed: Missing required fields");
+                return false;
+            }
+            
+            if ($this->create($dbData)) {
+                return $dbData['_UserName_Id'];
+            }
+            return false;
+        } catch (\PDOException $e) {
+            error_log("User creation SQL Error: " . $e->getMessage());
+            throw $e;
+        } catch (\Exception $e) {
+            error_log("User creation Error: " . $e->getMessage());
+            return false;
         }
-        return $this->create($data);
     }
     
     /**
@@ -36,12 +80,36 @@ class User extends Model {
      * @return array|false
      */
     public function authenticate($email, $password) {
-        $user = $this->getByEmail($email);
-        if ($user && password_verify($password, $user['password'])) {
-            unset($user['password']); // Không trả về password
-            return $user;
+        $user = $this->getOne(['Email' => $email]);
+        
+        if ($user && isset($user['__PassWord']) && password_verify($password, $user['__PassWord'])) {
+            $normalized = $this->normalizeUser($user);
+            unset($normalized['password']); // Không trả về password
+            return $normalized;
         }
         return false;
+    }
+    
+    /**
+     * Chuẩn hóa dữ liệu user từ DB sang format code
+     */
+    private function normalizeUser($user) {
+        // Nếu đã normalize rồi thì return luôn
+        if (isset($user['id']) || isset($user['username'])) {
+            return $user;
+        }
+        
+        return [
+            'id' => $user['_UserName_Id'] ?? '',
+            'username' => $user['_UserName_Id'] ?? '',
+            'email' => $user['Email'] ?? '',
+            'name' => $user['FullName'] ?? '',
+            'full_name' => $user['FullName'] ?? '',
+            'phone' => $user['Phone'] ?? '',
+            'role' => $user['Role'] ?? 'user',
+            'address' => $user['Address'] ?? '',
+            'password' => $user['__PassWord'] ?? '' // Chỉ dùng khi authenticate
+        ];
     }
 }
 ?>
