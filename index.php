@@ -1,4 +1,4 @@
-<<<<<<< HEAD
+
 
 <?php
 // File: index.php (Thư mục gốc)

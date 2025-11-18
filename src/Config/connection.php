@@ -1,5 +1,5 @@
 <?php
-<<<<<<< HEAD
+
 $hot = "localhost";
 $user = "root";
 $database = "DuAn1";
@@ -13,7 +13,7 @@ try {
     }
 } catch (PDOException $e) {
     echo "Kết nối thất bại: " . $e->getMessage();
-=======
+}
 // File: src/Config/connection.php
 // Không sử dụng namespace ở đây để dễ dàng include và sử dụng biến $conn
 
@@ -30,5 +30,4 @@ try {
     // Không echo để tránh làm hỏng output
 } catch (PDOException $e) {
     die("Kết nối thất bại: " . $e->getMessage());
->>>>>>> cong
 }
