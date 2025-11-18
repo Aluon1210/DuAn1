@@ -3,7 +3,6 @@
 namespace Models;
 
 use Core\Model;
-use Core\IdGenerator;
 
 class User extends Model {
     
@@ -44,24 +43,20 @@ class User extends Model {
      */
     public function createUser($data) {
         try {
-            // Generate username theo format kh+0000000001
-            $username = IdGenerator::generate('kh+', $this->table, '_UserName_Id', 10);
-            
             // Map dữ liệu từ code sang database
             $dbData = [
-                '_UserName_Id' => $username,
-                'Email' => trim($data['email'] ?? $data['Email'] ?? ''),
-                'FullName' => trim($data['name'] ?? $data['full_name'] ?? $data['FullName'] ?? ''),
+                '_UserName_Id' => $data['username'] ?? $data['_UserName_Id'] ?? uniqid('user_'),
+                'Email' => $data['email'] ?? $data['Email'] ?? '',
+                'FullName' => $data['name'] ?? $data['full_name'] ?? $data['FullName'] ?? '',
                 '__PassWord' => isset($data['password']) ? password_hash($data['password'], PASSWORD_DEFAULT) : '',
-                'Phone' => trim($data['phone'] ?? $data['Phone'] ?? ''),
-                'Role' => trim($data['role'] ?? $data['Role'] ?? 'user'),
-                'Address' => trim($data['address'] ?? $data['Address'] ?? '')
+                'Phone' => $data['phone'] ?? $data['Phone'] ?? '',
+                'Role' => $data['role'] ?? $data['Role'] ?? 'user',
+                'Address' => $data['address'] ?? $data['Address'] ?? ''
             ];
             
             // Validate dữ liệu bắt buộc
-            if (empty($dbData['_UserName_Id']) || empty($dbData['Email']) || empty($dbData['__PassWord']) || empty($dbData['FullName'])) {
+            if (empty($dbData['_UserName_Id']) || empty($dbData['Email']) || empty($dbData['__PassWord'])) {
                 error_log("User creation failed: Missing required fields");
-                error_log("User Data: " . print_r($dbData, true));
                 return false;
             }
             
@@ -71,7 +66,6 @@ class User extends Model {
             return false;
         } catch (\PDOException $e) {
             error_log("User creation SQL Error: " . $e->getMessage());
-            error_log("SQL Data: " . print_r($dbData, true));
             throw $e;
         } catch (\Exception $e) {
             error_log("User creation Error: " . $e->getMessage());
