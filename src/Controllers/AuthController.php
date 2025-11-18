@@ -131,13 +131,9 @@ class AuthController extends Controller {
             exit;
         }
         
-        // Tạo username từ email (lấy phần trước @)
-        $username = explode('@', $email)[0] . '_' . time();
-        
         try {
-            // Tạo user mới
+            // Tạo user mới (username sẽ được tự động generate theo format KH + 000000001)
             $usernameCreated = $userModel->createUser([
-                'username' => $username,
                 'name' => $name,
                 'email' => $email,
                 'password' => $password,

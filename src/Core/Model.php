@@ -98,19 +98,32 @@ class Model {
     /**
      * Thêm record mới
      * @param array $data
-     * @return int|false ID của record mới hoặc false nếu lỗi
+     * @return string|int|true ID của record mới (hoặc true nếu không có ID) hoặc false nếu lỗi
      */
     public function create($data) {
         try {
-            $columns = implode(", ", array_keys($data));
+            // Escape tên cột với backtick để hỗ trợ tên cột có ký tự đặc biệt
+            $columns = array_map(function($col) {
+                return "`{$col}`";
+            }, array_keys($data));
+            $columnsStr = implode(", ", $columns);
             $values = ":" . implode(", :", array_keys($data));
             
-            $sql = "INSERT INTO {$this->table} ({$columns}) VALUES ({$values})";
+            $sql = "INSERT INTO `{$this->table}` ({$columnsStr}) VALUES ({$values})";
             $stmt = $this->db->prepare($sql);
             
             if ($stmt->execute($data)) {
-                // Với bảng users, lastInsertId() có thể không hoạt động vì primary key là string
-                // Trả về true nếu insert thành công
+                // Với bảng có primary key là string (như users), trả về ID từ $data
+                // Với bảng có auto-increment, trả về lastInsertId()
+                $lastId = $this->db->lastInsertId();
+                if ($lastId && $lastId != '0') {
+                    return $lastId;
+                }
+                // Nếu không có auto-increment, trả về ID đầu tiên trong $data (thường là primary key)
+                $firstKey = array_key_first($data);
+                if ($firstKey && isset($data[$firstKey])) {
+                    return $data[$firstKey];
+                }
                 return true;
             }
             return false;

@@ -3,6 +3,7 @@
 namespace Models;
 
 use Core\Model;
+use Core\IdGenerator;
 
 class Product extends Model {
     
@@ -287,6 +288,47 @@ class Product extends Model {
         
         $stmt = $this->db->prepare($sql);
         return $stmt->execute($params);
+    }
+    
+    /**
+     * Tạo sản phẩm mới
+     * @param array $data
+     * @return string|false Product_Id hoặc false nếu lỗi
+     */
+    public function createProduct($data) {
+        try {
+            // Generate Product_Id theo format sp+0000000001
+            $productId = IdGenerator::generate('sp+', $this->table, 'Product_Id', 10);
+            
+            $dbData = [
+                'Product_Id' => $productId,
+                'Name' => $data['name'] ?? $data['Name'] ?? '',
+                'Description' => $data['description'] ?? $data['Description'] ?? '',
+                'Price' => (int)($data['price'] ?? $data['Price'] ?? 0),
+                'Quantity' => (int)($data['quantity'] ?? $data['Quantity'] ?? 0),
+                'Image' => $data['image'] ?? $data['Image'] ?? '',
+                'Category_Id' => $data['category_id'] ?? $data['Category_Id'] ?? '',
+                'Branch_Id' => $data['branch_id'] ?? $data['Branch_Id'] ?? '',
+                'Create_at' => $data['created_at'] ?? $data['Create_at'] ?? date('Y-m-d'),
+                'Product_View' => (int)($data['product_view'] ?? $data['Product_View'] ?? 0)
+            ];
+            
+            if (empty($dbData['Name']) || empty($dbData['Category_Id']) || empty($dbData['Branch_Id'])) {
+                error_log("Product creation failed: Missing required fields");
+                return false;
+            }
+            
+            if ($this->create($dbData)) {
+                return $dbData['Product_Id'];
+            }
+            return false;
+        } catch (\PDOException $e) {
+            error_log("Product creation SQL Error: " . $e->getMessage());
+            throw $e;
+        } catch (\Exception $e) {
+            error_log("Product creation Error: " . $e->getMessage());
+            return false;
+        }
     }
 }
 ?>
