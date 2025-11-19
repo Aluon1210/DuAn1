@@ -451,3 +451,238 @@ table tr:hover {
         padding: 10px;
     }
 }
+/* ========== DARK MODE ========= */
+body {
+    background-color: #000 !important;
+    color: #f5f5f5 !important;
+}
+
+/* Nội dung chính */
+.admin-content {
+    background-color: #111 !important;
+    color: #f5f5f5 !important;
+    padding: 35px !important;
+    border-radius: 10px;
+    box-shadow: 0 0 15px rgba(255, 215, 0, 0.12);
+}
+
+/* Tiêu đề section */
+.admin-section h2 {
+    color: #ffd700 !important;
+    border-bottom: 1px solid #333 !important;
+    padding-bottom: 12px;
+    margin-bottom: 25px;
+    font-size: 26px;
+}
+
+/* ========== SIDEBAR ========== */
+.admin-sidebar {
+    background-color: #000 !important;
+    color: #ffd700 !important;
+    border-right: 1px solid #333;
+    border-radius: 8px;
+    padding: 10px 0;
+}
+
+.menu-item {
+    display: block;
+    padding: 15px 22px;
+    font-size: 16px;
+    font-weight: 500;
+    color: #ffd700 !important;
+    text-decoration: none;
+    border-left: 4px solid transparent;
+    transition: 0.25s;
+}
+
+/* Hover + Active: Thanh vàng bên trái */
+.menu-item:hover {
+    background-color: #111 !important;
+    border-left: 4px solid #ffd700 !important;
+    color: #ffd700 !important;
+}
+
+.menu-item.active {
+    background-color: #111 !important;
+    border-left: 4px solid #ffd700 !important;
+    color: #ffd700 !important;
+}
+
+/* ========== HEADER ========== */
+.admin-header {
+    background-color: #000 !important;
+    border-bottom: 1px solid #333;
+    color: #ffd700 !important;
+}
+
+.admin-header h1 {
+    color: #ffd700 !important;
+}
+
+.btn-back,
+.btn-logout {
+    background-color: #222 !important;
+    color: #ffd700 !important;
+}
+
+.btn-back:hover {
+    background-color: #333 !important;
+}
+
+.btn-logout:hover {
+    background-color: #444 !important;
+}
+
+/* ========== THẺ THỐNG KÊ (CARD) ========== */
+.dashboard-stats {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 25px;
+}
+
+.stat-card {
+    background: linear-gradient(135deg, #5566ee, #764ba2) !important;
+    padding: 30px 25px;
+    border-radius: 12px;
+    text-align: center;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.35);
+}
+
+.stat-card h3 {
+    font-size: 15px;
+    font-weight: 600;
+    color: #ffd700 !important;
+    margin-bottom: 12px;
+}
+
+.stat-number {
+    font-size: 38px;
+    font-weight: bold;
+    color: white !important;
+}
+
+/* ========== FORM ========== */
+.form-group label {
+    color: #ffd700 !important;
+}
+
+.form-group input,
+.form-group select,
+.form-group textarea {
+    background-color: #000 !important;
+    color: #f5f5f5 !important;
+    border: 1px solid #333 !important;
+}
+
+/* ========== BUTTONS ========== */
+.btn-success {
+    background-color: #ffd700 !important;
+    color: #000 !important;
+}
+
+.btn-success:hover {
+    background-color: #e6c200 !important;
+}
+
+.btn-cancel {
+    background-color: #444 !important;
+    color: #f5f5f5 !important;
+}
+
+.btn-cancel:hover {
+    background-color: #666 !important;
+}
+/* ==== FIX NỀN LUXURY ADMIN PANEL THÀNH MÀU ĐEN ==== */
+.admin-header {
+    background: #000 !important;
+    background-image: none !important;
+    color: #ffd700 !important;
+    border-bottom: 1px solid #333 !important;
+}
+
+.header-content h1 {
+    color: #ffd700 !important;
+}
+/* ===== DANH SÁCH BÌNH LUẬN ===== */
+table.comment-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 20px;
+    background-color: #111;
+    color: #f5f5f5;
+    box-shadow: 0 0 10px rgba(255, 215, 0, 0.1);
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+table.comment-table th,
+table.comment-table td {
+    padding: 14px 18px;
+    border: 1px solid #333;
+    text-align: left;
+}
+
+table.comment-table th {
+    background-color: #222;
+    color: #ffd700;
+    font-weight: 600;
+    font-size: 15px;
+}
+
+table.comment-table tr:hover {
+    background-color: #1a1a1a;
+}
+
+/* ===== BADGE TRẠNG THÁI ===== */
+.status-badge {
+    display: inline-block;
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: 600;
+    text-transform: capitalize;
+}
+
+.status-badge.approved {
+    background-color: #27ae60;
+    color: white;
+}
+
+.status-badge.pending {
+    background-color: #f39c12;
+    color: white;
+}
+
+.status-badge.rejected {
+    background-color: #e74c3c;
+    color: white;
+}
+
+/* ===== NÚT HÀNH ĐỘNG ===== */
+.action-buttons a {
+    padding: 6px 12px;
+    font-size: 13px;
+    border-radius: 4px;
+    margin-right: 6px;
+    text-decoration: none;
+    font-weight: 500;
+    transition: 0.3s;
+}
+
+.action-buttons .btn-edit {
+    background-color: #ffd700;
+    color: #000;
+}
+
+.action-buttons .btn-edit:hover {
+    background-color: #e6c200;
+}
+
+.action-buttons .btn-delete {
+    background-color: #444;
+    color: #f5f5f5;
+}
+
+.action-buttons .btn-delete:hover {
+    background-color: #666;
+}
