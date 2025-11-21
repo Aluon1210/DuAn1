@@ -21,4 +21,4 @@ try {
     die("Lỗi: " . $e->getMessage() . "<br>File: " . $e->getFile() . "<br>Line: " . $e->getLine());
 }
 ?>
->>>>>>> cong
+

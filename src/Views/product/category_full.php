@@ -205,7 +205,7 @@
             <a href="<?php echo ROOT_URL; ?>product">Tất cả sản phẩm</a>
             <?php foreach ($categories as $category): ?>
                 <a href="<?php echo ROOT_URL; ?>product/category/<?php echo $category['id']; ?>" 
-                   class="<?php echo (isset($currentCategory) && $currentCategory['id'] == $category['id']) ? 'active' : ''; ?>">
+                   class="<?php echo (isset($name) && $name['id'] == $category['id']) ? 'active' : ''; ?>">
                     <?php echo htmlspecialchars($category['name']); ?>
                 </a>
             <?php endforeach; ?>
@@ -220,7 +220,7 @@
         
         <div class="category-header">
             <h2 style="font-family: 'Playfair Display', serif; font-size: 36px; font-weight: 600; margin-bottom: 8px; letter-spacing: 1px;">
-                <?php echo isset($currentCategory) ? htmlspecialchars($currentCategory['name']) : 'Danh mục'; ?>
+                <?php echo isset($name) ? htmlspecialchars($name['name']) : 'Danh mục'; ?>
             </h2>
             <p style="color: var(--text-light); font-size: 16px;">
                 <?php echo !empty($products) ? count($products) . ' sản phẩm' : 'Không có sản phẩm'; ?>

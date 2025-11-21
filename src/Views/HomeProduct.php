@@ -191,26 +191,41 @@
     }
 </style>
 
+<!-- Hero Section đơn giản trên trang HomeProduct -->
+<div style="background: linear-gradient(135deg, #1a1a1a 0%, #2c2c2c 100%); color: white; padding: 50px 40px; border-radius: 16px; margin-bottom: 40px; position: relative; overflow: hidden; box-shadow: var(--shadow-hover);">
+    <div style="position: absolute; top: -50%; right: -10%; width: 500px; height: 500px; background: radial-gradient(circle, rgba(212,175,55,0.1) 0%, transparent 70%); border-radius: 50%;"></div>
+    <div style="position: relative; z-index: 1;">
+        <h1 style="font-family: 'Playfair Display', serif; font-size: 42px; font-weight: 700; margin-bottom: 16px; letter-spacing: 2px;">
+            Bộ Sưu Tập Sản Phẩm
+        </h1>
+        <p style="font-size: 16px; color: rgba(255,255,255,0.9); max-width: 520px;">
+            Khám phá các sản phẩm thời trang cao cấp được tuyển chọn dành riêng cho bạn.
+        </p>
+    </div>
+</div>
+
 <div style="display: grid; grid-template-columns: 280px 1fr; gap: 40px;">
     <!-- Sidebar -->
     <div class="sidebar" style="position: sticky; top: 100px; height: fit-content;">
         <h3>Danh Mục</h3>
         <div class="category-list">
             <a href="<?php echo ROOT_URL; ?>product" class="<?php echo !isset($currentCategory) ? 'active' : ''; ?>">Tất cả sản phẩm</a>
-            <?php foreach ($categories as $category): ?>
-                <a href="<?php echo ROOT_URL; ?>product/category/<?php echo $category['id']; ?>" 
-                   class="<?php echo (isset($currentCategory) && $currentCategory['id'] == $category['id']) ? 'active' : ''; ?>">
-                    <?php echo htmlspecialchars($category['name']); ?>
-                </a>
-            <?php endforeach; ?>
+            <?php if (!empty($categories)): ?>
+                <?php foreach ($categories as $category): ?>
+                    <a href="<?php echo ROOT_URL; ?>product/category/<?php echo $category['id']; ?>" 
+                       class="<?php echo (isset($currentCategory) && $currentCategory['id'] == $category['id']) ? 'active' : ''; ?>">
+                        <?php echo htmlspecialchars($category['name']); ?>
+                    </a>
+                <?php endforeach; ?>
+            <?php endif; ?>
         </div>
     </div>
 
     <!-- Products -->
     <div>
         <div style="margin-bottom: 30px;">
-            <h2 style="font-family: 'Playfair Display', serif; font-size: 36px; font-weight: 600; margin-bottom: 8px; letter-spacing: 1px;">
-                Bộ Sưu Tập Cao Cấp
+            <h2 style="font-family: 'Playfair Display', serif; font-size: 32px; font-weight: 600; margin-bottom: 8px; letter-spacing: 1px;">
+                Danh sách sản phẩm
             </h2>
             <p style="color: var(--text-light); font-size: 16px;">
                 <?php echo !empty($products) ? count($products) . ' sản phẩm được tìm thấy' : 'Không có sản phẩm'; ?>
@@ -231,7 +246,11 @@
                         <div class="product-info">
                             <div class="product-name"><?php echo htmlspecialchars($product['name']); ?></div>
                             <div class="product-price"><?php echo number_format($product['price'], 0, ',', '.'); ?></div>
-                            <div class="product-description"><?php echo substr(htmlspecialchars($product['description']), 0, 60); ?>...</div>
+                            <div class="product-description">
+                                <?php echo strlen($product['description']) > 60 
+                                    ? substr(htmlspecialchars($product['description']), 0, 60) . '...' 
+                                    : htmlspecialchars($product['description']); ?>
+                            </div>
                             <div class="product-stock">
                                 Kho: <strong><?php echo $product['quantity']; ?></strong> sản phẩm
                             </div>
@@ -258,4 +277,5 @@
 </div>
 
 <?php require_once ROOT_PATH . '/src/Views/includes/footer.php'; ?>
+
 
