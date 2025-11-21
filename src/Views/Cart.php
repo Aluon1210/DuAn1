@@ -1,6 +1,5 @@
-<?php
-// File: src/Views/cart/index.php
-?>
+<?php require_once ROOT_PATH . '/src/Views/includes/header.php'; ?>
+
 <style>
     .cart-header {
         margin-bottom: 40px;
@@ -313,3 +312,7 @@
         </a>
     </div>
 <?php endif; ?>
+
+<?php require_once ROOT_PATH . '/src/Views/includes/footer.php'; ?>
+
+

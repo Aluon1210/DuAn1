@@ -15,18 +15,18 @@ class ProductController extends Controller {
     public function index() {
         $productModel = new Product();
         $categoryModel = new Category();
-        
+
         $products = $productModel->getAllWithCategory();
         $categories = $categoryModel->getAll();
-        
+
         $data = [
-            'title' => 'Sản Phẩm',
+            'title' => 'Sản phẩm',
             'products' => $products,
             'categories' => $categories
         ];
-        
-        // Render view đầy đủ HTML, không dùng layout
-        $this->renderView('product/list_full', $data);
+
+        // Dùng chung HomeProduct cho danh sách sản phẩm
+        $this->renderView('HomeProduct', $data);
     }
     
     /**
@@ -65,24 +65,24 @@ class ProductController extends Controller {
     public function detail($id) {
         $productModel = new Product();
         $categoryModel = new Category();
-        
+
         $product = $productModel->getByIdWithCategory($id);
         if (!$product) {
             $_SESSION['error'] = 'Sản phẩm không tồn tại';
             header('Location: ' . ROOT_URL . 'product');
             exit;
         }
-        
+
         $categories = $categoryModel->getAll();
-        
+
         $data = [
             'title' => $product['name'],
             'product' => $product,
             'categories' => $categories
         ];
-        
-        // Render view đầy đủ HTML, không dùng layout
-        $this->renderView('product/detail_full', $data);
+
+        // Dùng view ProductDetail duy nhất cho chi tiết sản phẩm
+        $this->renderView('ProductDetail', $data);
     }
     
     /**

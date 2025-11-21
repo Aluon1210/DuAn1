@@ -22,39 +22,39 @@ class CartController extends Controller {
      */
     public function index() {
         $this->initCart();
-        
+
         $productModel = new Product();
         $cartItems = [];
         $total = 0;
-        
+
         foreach ($_SESSION['cart'] as $productId => $quantity) {
             $product = $productModel->getById($productId);
             if ($product) {
                 // Đảm bảo không vượt quá số lượng tồn kho
                 $quantity = min($quantity, $product['quantity']);
                 $subtotal = $product['price'] * $quantity;
-                
+
                 $cartItems[] = [
                     'product' => $product,
                     'quantity' => $quantity,
                     'subtotal' => $subtotal
                 ];
-                
+
                 $total += $subtotal;
             } else {
                 // Xóa sản phẩm không tồn tại khỏi giỏ hàng
                 unset($_SESSION['cart'][$productId]);
             }
         }
-        
+
         $data = [
             'title' => 'Giỏ Hàng',
             'cartItems' => $cartItems,
             'total' => $total
         ];
-        
-        // Render view đầy đủ HTML, không dùng layout
-        $this->renderView('cart/index_full', $data);
+
+        // Dùng view Cart duy nhất cho giỏ hàng
+        $this->renderView('Cart', $data);
     }
     
     /**
