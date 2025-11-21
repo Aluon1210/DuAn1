@@ -18,6 +18,7 @@ class ProductController extends Controller {
 
         $products = $productModel->getAllWithCategory();
         $categories = $categoryModel->getAll();
+        $name = isset($_GET['name']) ? trim($_GET['name']) : '';
 
         $data = [
             'title' => 'Sản phẩm',
