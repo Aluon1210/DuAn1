@@ -49,41 +49,40 @@
         </div>
 
         <!-- BẢNG ĐƠN HÀNG -->
-        <table class="lux-table">
-          <thead>
-            <tr>
-              <th>Mã đơn</th>
-              <th>Khách hàng</th>
-              <th>Ngày đặt</th>
-              <th>Trạng thái</th>
-              <th>Thao tác</th>
-            </tr>
-          </thead>
+        <table class="order-table">
+  <thead>
+    <tr>
+      <th>Mã đơn</th>
+      <th>Khách hàng</th>
+      <th>Ngày đặt</th>
+      <th>Trạng thái</th>
+      <th>Hành động</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>#DH001</td>
+      <td>Nguyễn Văn A</td>
+      <td>18/11/2025</td>
+      <td><span class="order-status completed">Hoàn tất</span></td>
+      <td class="order-actions">
+        <a href="/admin/order/view/DH001" class="btn-view">Xem</a>
+        <a href="/admin/order/delete/DH001" class="btn-delete" onclick="return confirm('Bạn có chắc muốn xóa đơn này?')">Xóa</a>
+      </td>
+    </tr>
+    <tr>
+      <td>#DH002</td>
+      <td>Trần Thị B</td>
+      <td>17/11/2025</td>
+      <td><span class="order-status processing">Đang xử lý</span></td>
+      <td class="order-actions">
+        <a href="/admin/order/view/DH002" class="btn-view">Xem</a>
+        <a href="/admin/order/delete/DH002" class="btn-delete" onclick="return confirm('Bạn có chắc muốn xóa đơn này?')">Xóa</a>
+      </td>
+    </tr>
+  </tbody>
+</table>
 
-          <tbody>
-            <tr>
-              <td>#DH001</td>
-              <td>Nguyễn Văn A</td>
-              <td>18/11/2025</td>
-              <td><span class="status-badge completed">Hoàn tất</span></td>
-              <td>
-                <button class="btn btn-info btn-small">Xem</button>
-                <button class="btn btn-danger btn-small">Xóa</button>
-              </td>
-            </tr>
-
-            <tr>
-              <td>#DH002</td>
-              <td>Trần Thị B</td>
-              <td>17/11/2025</td>
-              <td><span class="status-badge pending">Đang xử lý</span></td>
-              <td>
-                <button class="btn btn-info btn-small">Xem</button>
-                <button class="btn btn-danger btn-small">Xóa</button>
-              </td>
-            </tr>
-          </tbody>
-        </table>
 
       </section>
     </main>
