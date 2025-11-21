@@ -49,7 +49,7 @@ class ProductController extends Controller {
         $categories = $categoryModel->getAll();
         
         $data = [
-            'title' => 'Danh mục: ' . $category['name'],
+            'title' => $category['name'],
             'products' => $products,
             'categories' => $categories,
             'currentCategory' => $category

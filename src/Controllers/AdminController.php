@@ -9,6 +9,33 @@ use Models\Branch;
 
 class AdminController extends Controller {
 
+    // Trong AdminController
+
+public function users() {
+    // load view: quản lý user
+    $this->renderView('admin/user');
+}
+
+public function orders() {
+    $this->renderView('admin/order');
+}
+
+public function categories() {
+    $this->renderView('admin/category');
+}
+
+public function comments() {
+    $this->renderView('admin/comment');
+}
+
+public function stats() {
+    $this->renderView('admin/stat');
+}
+
+public function dashboard() {
+    $this->renderView('admin/dashboard');
+}
+
     /**
      * Mặc định chuyển vào quản lý sản phẩm
      * URL: /admin hoặc /admin/index
