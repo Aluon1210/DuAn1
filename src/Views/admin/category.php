@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <title>Quản lý danh mục</title>
-    <link rel="stylesheet" href="/DUAN1/asset/css/admin.css">
+    <link rel="stylesheet" href="/DuAn1/asset/css/admin.css">
 </head>
 
 <body>
