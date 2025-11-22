@@ -43,6 +43,7 @@ class User extends Model {
      * @return string|false Username hoặc false nếu lỗi
      */
     public function createUser($data) {
+        $dbData = []; // Khai báo trước để dùng trong catch
         try {
             // Generate username theo format kh+0000000001
             $username = IdGenerator::generate('kh+', $this->table, '_UserName_Id', 10);

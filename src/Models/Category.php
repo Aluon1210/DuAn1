@@ -1,13 +1,10 @@
 <?php
-// File: src/Models/Category.php
 namespace Models;
-
 use Core\Model;
 
 class Category extends Model {
     
     protected $table = 'catogory'; // Sửa tên bảng theo duan1.sql
-    
     /**
      * Lấy danh mục kèm số lượng sản phẩm
      * @return array
@@ -20,13 +17,14 @@ class Category extends Model {
                 ORDER BY c.Name ASC";
         return $this->query($sql);
     }
-    
     /**
      * Lấy danh mục theo tên
      * @param string $name
      * @return array|false
      */
     public function getByName($name) {
+        $stmt = $this->db->prepare("SELECT Category_Id as id, Name as name, Description as description FROM {$this->table} WHERE Name = :name");
+        $stmt->execute([':name' => $name]); 
         return $this->getOne(['Name' => $name]);
     }
     
@@ -39,7 +37,6 @@ class Category extends Model {
         $stmt->execute([':id' => $id]);
         return $stmt->fetch(\PDO::FETCH_ASSOC);
     }
-    
     /**
      * Override getAll để trả về dữ liệu với alias
      */
@@ -75,6 +72,67 @@ class Category extends Model {
             'description' => 'Description'
         ];
         return $map[$key] ?? ucfirst($key);
+    }
+
+    /**
+     * Tạo danh mục mới
+     * @param array $data ['name' => '...', 'description' => '...']
+     * @return string|false Trả về Category_Id hoặc false
+     */
+    public function createCategory($data) {
+        try {
+            $dbData = [
+                'Name' => trim($data['name'] ?? ''),
+                'Description' => trim($data['description'] ?? '')
+            ];
+            
+            if (empty($dbData['Name'])) {
+                error_log("Category creation failed: Name is required");
+                return false;
+            }
+            
+            return $this->create($dbData);
+        } catch (\PDOException $e) {
+            error_log("Category creation SQL Error: " . $e->getMessage());
+            throw $e;
+        }
+    }
+
+    /**
+     * Cập nhật danh mục
+     * @param string $id Category_Id
+     * @param array $data ['name' => '...', 'description' => '...']
+     * @return bool
+     */
+    public function updateCategory($id, $data) {
+        try {
+            $sql = "UPDATE {$this->table} SET Name = :name, Description = :description WHERE Category_Id = :id";
+            $stmt = $this->db->prepare($sql);
+            return $stmt->execute([
+                ':name' => trim($data['name'] ?? ''),
+                ':description' => trim($data['description'] ?? ''),
+                ':id' => $id
+            ]);
+        } catch (\PDOException $e) {
+            error_log("Category update SQL Error: " . $e->getMessage());
+            throw $e;
+        }
+    }
+
+    /**
+     * Xóa danh mục
+     * @param string $id Category_Id
+     * @return bool
+     */
+    public function deleteCategory($id) {
+        try {
+            $sql = "DELETE FROM {$this->table} WHERE Category_Id = :id";
+            $stmt = $this->db->prepare($sql);
+            return $stmt->execute([':id' => $id]);
+        } catch (\PDOException $e) {
+            error_log("Category delete SQL Error: " . $e->getMessage());
+            throw $e;
+        }
     }
 }
 ?>

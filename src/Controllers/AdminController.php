@@ -6,6 +6,7 @@ use Core\Controller;
 use Models\Product;
 use Models\Category;
 use Models\Branch;
+use Models\User;
 
 class AdminController extends Controller {
 
@@ -20,8 +21,120 @@ public function orders() {
     $this->renderView('admin/order');
 }
 
+public function branch(){
+    $this->renderView('admin/branch');
+}
+
 public function categories() {
-    $this->renderView('admin/category');
+    $categoryModel = new Category();
+    $categories = $categoryModel->getAll();
+    
+    $data = [
+        'title' => 'Quản lý danh mục',
+        'categories' => $categories,
+        'totalCategories' => count($categories),
+        'editing' => false
+    ];
+    
+    $this->renderView('admin/category', $data);
+}
+
+/**
+ * Hiển thị form sửa danh mục
+ * URL: /admin/editCategory/{id}
+ */
+public function editCategory($id) {
+    $categoryModel = new Category();
+    $category = $categoryModel->getById($id);
+    
+    if (!$category) {
+        $_SESSION['error'] = 'Danh mục không tồn tại';
+        header('Location: ' . ROOT_URL . 'admin/categories');
+        exit;
+    }
+    
+    $categories = $categoryModel->getAll();
+    
+    $data = [
+        'title' => 'Sửa danh mục',
+        'category' => $category,
+        'categories' => $categories,
+        'totalCategories' => count($categories),
+        'editing' => true
+    ];
+    
+    $this->renderView('admin/category', $data);
+}
+
+/**
+ * Xử lý thêm / cập nhật danh mục
+ * URL: /admin/saveCategory (POST)
+ */
+public function saveCategory() {
+    if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+        header('Location: ' . ROOT_URL . 'admin/categories');
+        exit;
+    }
+    
+    $categoryModel = new Category();
+    
+    $id = isset($_POST['id']) ? trim($_POST['id']) : '';
+    $name = isset($_POST['name']) ? trim($_POST['name']) : '';
+    $description = isset($_POST['description']) ? trim($_POST['description']) : '';
+    
+    if ($name === '') {
+        $_SESSION['error'] = 'Tên danh mục không được để trống';
+        header('Location: ' . ROOT_URL . 'admin/categories');
+        exit;
+    }
+    
+    try {
+        if ($id) {
+            // Cập nhật
+            $success = $categoryModel->updateCategory($id, [
+                'name' => $name,
+                'description' => $description
+            ]);
+            $_SESSION['message'] = $success ? 'Cập nhật danh mục thành công' : 'Không thể cập nhật danh mục';
+        } else {
+            // Thêm mới
+            $newId = $categoryModel->createCategory([
+                'name' => $name,
+                'description' => $description
+            ]);
+            $_SESSION['message'] = $newId ? 'Thêm danh mục thành công' : 'Không thể thêm danh mục';
+        }
+    } catch (\Exception $e) {
+        $_SESSION['error'] = 'Lỗi xử lý danh mục: ' . $e->getMessage();
+    }
+    
+    header('Location: ' . ROOT_URL . 'admin/categories');
+    exit;
+}
+
+/**
+ * Xóa danh mục
+ * URL: /admin/deleteCategory/{id}
+ */
+public function deleteCategory($id) {
+    $categoryModel = new Category();
+    
+    $category = $categoryModel->getById($id);
+    if (!$category) {
+        $_SESSION['error'] = 'Danh mục không tồn tại';
+        header('Location: ' . ROOT_URL . 'admin/categories');
+        exit;
+    }
+    
+    try {
+        $success = $categoryModel->deleteCategory($id);
+        $_SESSION['message'] = $success ? 'Đã xóa danh mục' : 'Không thể xóa danh mục';
+    } catch (\Exception $e) {
+        $_SESSION['error'] = 'Lỗi khi xóa danh mục: ' . $e->getMessage();
+    }
+    
+    header('Location: ' . ROOT_URL . 'admin/categories');
+    exit;
 }
 
 public function comments() {
@@ -52,6 +165,7 @@ public function dashboard() {
         $productModel = new Product();
         $categoryModel = new Category();
         $branchModel = new Branch();
+        $UserModel = new \Models\User();
 
         $products = $productModel->getAllWithCategory();
         $categories = $categoryModel->getAll();
