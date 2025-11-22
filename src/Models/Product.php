@@ -17,6 +17,7 @@ class Product extends Model {
         try {
             $sql = "SELECT p.*, 
                            c.Name as category_name,
+                           b.Name as branch_name,
                            p.Product_Id as id,
                            p.Name as name,
                            p.Description as description,
@@ -29,6 +30,7 @@ class Product extends Model {
                            p.Product_View as product_view
                     FROM {$this->table} p 
                     LEFT JOIN catogory c ON p.Category_Id = c.Category_Id 
+                    LEFT JOIN branch b ON p.Branch_Id = b.Branch_Id 
                     ORDER BY p.Create_at DESC";
             $results = $this->query($sql);
             // Query đã có alias, không cần normalize lại
@@ -58,6 +60,7 @@ class Product extends Model {
         try {
             $sql = "SELECT p.*, 
                            c.Name as category_name,
+                           b.Name as branch_name,
                            p.Product_Id as id,
                            p.Name as name,
                            p.Description as description,
@@ -70,6 +73,7 @@ class Product extends Model {
                            p.Product_View as product_view
                     FROM {$this->table} p 
                     LEFT JOIN catogory c ON p.Category_Id = c.Category_Id 
+                    LEFT JOIN branch b ON p.Branch_Id = b.Branch_Id 
                     WHERE p.Category_Id = :category_id 
                     ORDER BY p.Create_at DESC";
             $results = $this->query($sql, ['category_id' => $categoryId]);
@@ -90,6 +94,7 @@ class Product extends Model {
         try {
             $sql = "SELECT p.*, 
                            c.Name as category_name,
+                           b.Name as branch_name,
                            p.Product_Id as id,
                            p.Name as name,
                            p.Description as description,
@@ -102,6 +107,7 @@ class Product extends Model {
                            p.Product_View as product_view
                     FROM {$this->table} p 
                     LEFT JOIN catogory c ON p.Category_Id = c.Category_Id 
+                    LEFT JOIN branch b ON p.Branch_Id = b.Branch_Id 
                     WHERE p.Name LIKE :keyword 
                        OR p.Description LIKE :keyword 
                     ORDER BY p.Create_at DESC";
@@ -124,6 +130,7 @@ class Product extends Model {
         try {
             $sql = "SELECT p.*, 
                            c.Name as category_name,
+                           b.Name as branch_name,
                            p.Product_Id as id,
                            p.Name as name,
                            p.Description as description,
@@ -136,6 +143,7 @@ class Product extends Model {
                            p.Product_View as product_view
                     FROM {$this->table} p 
                     LEFT JOIN catogory c ON p.Category_Id = c.Category_Id 
+                    LEFT JOIN branch b ON p.Branch_Id = b.Branch_Id 
                     WHERE p.Product_Id = :id 
                     LIMIT 1";
             $result = $this->query($sql, ['id' => $id]);
@@ -221,7 +229,8 @@ class Product extends Model {
             'branch_id' => $product['branch_id'] ?? $product['Branch_Id'] ?? '',
             'created_at' => $product['created_at'] ?? $product['Create_at'] ?? '',
             'product_view' => (int)($product['product_view'] ?? $product['Product_View'] ?? 0),
-            'category_name' => $product['category_name'] ?? ''
+            'category_name' => $product['category_name'] ?? '',
+            'branch_name' => $product['branch_name'] ?? ''
         ];
     }
     
@@ -288,6 +297,17 @@ class Product extends Model {
         
         $stmt = $this->db->prepare($sql);
         return $stmt->execute($params);
+    }
+
+    /**
+     * Xóa sản phẩm theo Product_Id
+     * @param string $id
+     * @return bool
+     */
+    public function deleteById($id) {
+        $sql = "DELETE FROM {$this->table} WHERE Product_Id = :id";
+        $stmt = $this->db->prepare($sql);
+        return $stmt->execute(['id' => $id]);
     }
     
     /**

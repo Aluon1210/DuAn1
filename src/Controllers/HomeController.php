@@ -10,12 +10,21 @@ class HomeController extends Controller {
      * Tương ứng với URL: /duan1/
      */
     public function index() {
+        // Trang chủ hiển thị danh sách sản phẩm (HomeProduct)
+        $productModel = new \Models\Product();
+        $categoryModel = new \Models\Category();
+
+        $products = $productModel->getAllWithCategory();
+        $categories = $categoryModel->getAll();
+
         $data = [
-            'title' => 'Trang chủ FashionStore'
+            'title' => 'Trang chủ - Danh sách sản phẩm',
+            'products' => $products,
+            'categories' => $categories
         ];
-        
-        // Render view đầy đủ HTML, không dùng layout
-        $this->renderView('home_full', $data); 
+
+        // Sử dụng view HomeProduct duy nhất cho danh sách sản phẩm
+        $this->renderView('HomeProduct', $data);
     }
     
     /**

@@ -34,7 +34,10 @@ class Category extends Model {
      * Override getById để dùng Category_Id
      */
     public function getById($id) {
-        return $this->getOne(['Category_Id' => $id]);
+        $sql = "SELECT Category_Id as id, Name as name, Description as description FROM {$this->table} WHERE Category_Id = :id";
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([':id' => $id]);
+        return $stmt->fetch(\PDO::FETCH_ASSOC);
     }
     
     /**
