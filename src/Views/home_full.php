@@ -349,28 +349,37 @@
             <?php unset($_SESSION['error']); ?>
         <?php endif; ?>
 
-        <!-- Hero Section -->
-        <div style="background: linear-gradient(135deg, #1a1a1a 0%, #2c2c2c 100%); color: white; padding: 80px 40px; border-radius: 16px; text-align: center; margin-bottom: 40px; position: relative; overflow: hidden; box-shadow: var(--shadow-hover);">
-            <div style="position: absolute; top: -50%; right: -10%; width: 500px; height: 500px; background: radial-gradient(circle, rgba(212,175,55,0.1) 0%, transparent 70%); border-radius: 50%;"></div>
-            <div style="position: relative; z-index: 1;">
-                <h1 style="font-family: 'Playfair Display', serif; font-size: 56px; font-weight: 700; margin-bottom: 24px; letter-spacing: 3px; text-shadow: 0 4px 20px rgba(0,0,0,0.3);">
-                    Luxury Fashion Store
-                </h1>
+        <div id="heroBanner" style="position: relative; border-radius: 16px; overflow: hidden; margin-bottom: 40px; box-shadow: var(--shadow-hover);">
+            <img id="bannerImage" src="<?php echo ROOT_URL; ?>src/assets/vf000.webp" alt="Banner" style="width: 100%; height: 460px; object-fit: cover; display: block; filter: brightness(0.45);">
+            <div style="position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; flex-direction: column; color: white; text-align: center; padding: 40px;">
+                <h1 style="font-family: 'Playfair Display', serif; font-size: 56px; font-weight: 700; margin-bottom: 24px; letter-spacing: 3px; text-shadow: 0 4px 20px rgba(0,0,0,0.3);">Luxury Fashion Store</h1>
                 <div style="width: 100px; height: 4px; background: linear-gradient(90deg, var(--primary-gold) 0%, #b8941f 100%); margin: 0 auto 30px; border-radius: 2px;"></div>
-                <p style="font-size: 20px; color: rgba(255,255,255,0.9); margin-bottom: 40px; line-height: 1.8; max-width: 600px; margin-left: auto; margin-right: auto;">
-                    Khám phá bộ sưu tập thời trang cao cấp với thiết kế tinh tế và chất liệu sang trọng
-                </p>
-                
-                <div style="display: flex; gap: 20px; justify-content: center; margin-top: 50px; flex-wrap: wrap;">
-                    <a href="<?php echo ROOT_URL; ?>product" class="btn btn-success" style="padding: 18px 40px; font-size: 16px;">
-                        🛍️ Khám Phá Bộ Sưu Tập
-                    </a>
-                    <a href="<?php echo ROOT_URL; ?>home/about" class="btn btn-primary" style="padding: 18px 40px; font-size: 16px;">
-                        ℹ️ Về Chúng Tôi
-                    </a>
+                <p style="font-size: 20px; color: rgba(255,255,255,0.9); margin-bottom: 30px; line-height: 1.8; max-width: 720px; margin-left: auto; margin-right: auto;">Khám phá bộ sưu tập thời trang cao cấp với thiết kế tinh tế và chất liệu sang trọng</p>
+                <div style="display: flex; gap: 20px; justify-content: center; flex-wrap: wrap;">
+                    <a href="<?php echo ROOT_URL; ?>product" class="btn btn-success" style="padding: 18px 40px; font-size: 16px;">🛍️ Khám Phá Bộ Sưu Tập</a>
+                    <a href="<?php echo ROOT_URL; ?>home/about" class="btn btn-primary" style="padding: 18px 40px; font-size: 16px;">ℹ️ Về Chúng Tôi</a>
                 </div>
             </div>
+            <button id="prevBanner" style="position: absolute; top: 50%; left: 16px; transform: translateY(-50%); background: rgba(0,0,0,0.4); color: var(--primary-gold); border: 2px solid var(--primary-gold); width: 44px; height: 44px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 22px;">‹</button>
+            <button id="nextBanner" style="position: absolute; top: 50%; right: 16px; transform: translateY(-50%); background: rgba(0,0,0,0.4); color: var(--primary-gold); border: 2px solid var(--primary-gold); width: 44px; height: 44px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 22px;">›</button>
         </div>
+        <script>
+        (function(){
+            var images = [
+                '<?php echo ROOT_URL; ?>asset/img/maudenvf.webp',
+                '<?php echo ROOT_URL; ?>asset/img/mautrangvf.jpg',
+                '<?php echo ROOT_URL; ?>asset/img/vf000.webp'
+            ];
+            var idx = 0;
+            var img = document.getElementById('bannerImage');
+            var prev = document.getElementById('prevBanner');
+            var next = document.getElementById('nextBanner');
+            function show(i){ idx = (i + images.length) % images.length; img.src = images[idx]; }
+            prev.addEventListener('click', function(){ show(idx - 1); });
+            next.addEventListener('click', function(){ show(idx + 1); });
+            setInterval(function(){ show(idx + 1); }, 2000);
+        })();
+        </script>
 
         <!-- Features Section -->
         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 30px; margin-bottom: 60px;">
