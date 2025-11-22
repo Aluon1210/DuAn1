@@ -21,8 +21,109 @@ public function orders() {
     $this->renderView('admin/order');
 }
 
-public function branch(){
-    $this->renderView('admin/branch');
+public function branch() {
+    $branchModel = new Branch();
+    $branches = $branchModel->getAll();
+    
+    $data = [
+        'title' => 'Quản lý hãng',
+        'branches' => $branches,
+        'totalBranches' => count($branches),
+        'editing' => false
+    ];
+    
+    $this->renderView('admin/branch', $data);
+}
+
+/**
+ * Hiển thị form sửa hãng
+ * URL: /admin/editBranch/{id}
+ */
+public function editBranch($id) {
+    $branchModel = new Branch();
+    $branch = $branchModel->getById($id);
+    
+    if (!$branch) {
+        $_SESSION['error'] = 'Hãng không tồn tại';
+        header('Location: ' . ROOT_URL . 'admin/branch');
+        exit;
+    }
+    
+    $branches = $branchModel->getAll();
+    
+    $data = [
+        'title' => 'Sửa hãng',
+        'branch' => $branch,
+        'branches' => $branches,
+        'totalBranches' => count($branches),
+        'editing' => true
+    ];
+    
+    $this->renderView('admin/branch', $data);
+}
+
+/**
+ * Xử lý thêm / cập nhật hãng
+ * URL: /admin/saveBranch (POST)
+ */
+public function saveBranch() {
+    if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+        header('Location: ' . ROOT_URL . 'admin/branch');
+        exit;
+    }
+    
+    $branchModel = new Branch();
+    
+    $id = isset($_POST['id']) ? trim($_POST['id']) : '';
+    $name = isset($_POST['name']) ? trim($_POST['name']) : '';
+    
+    if ($name === '') {
+        $_SESSION['error'] = 'Tên hãng không được để trống';
+        header('Location: ' . ROOT_URL . 'admin/branch');
+        exit;
+    }
+    
+    try {
+        if ($id) {
+            // Cập nhật
+            $success = $branchModel->updateBranch($id, ['name' => $name]);
+            $_SESSION['message'] = $success ? 'Cập nhật hãng thành công' : 'Không thể cập nhật hãng';
+        } else {
+            // Thêm mới
+            $newId = $branchModel->createBranch(['name' => $name]);
+            $_SESSION['message'] = $newId ? 'Thêm hãng thành công' : 'Không thể thêm hãng';
+        }
+    } catch (\Exception $e) {
+        $_SESSION['error'] = 'Lỗi xử lý hãng: ' . $e->getMessage();
+    }
+    
+    header('Location: ' . ROOT_URL . 'admin/branch');
+    exit;
+}
+
+/**
+ * Xóa hãng
+ * URL: /admin/deleteBranch/{id}
+ */
+public function deleteBranch($id) {
+    $branchModel = new Branch();
+    
+    $branch = $branchModel->getById($id);
+    if (!$branch) {
+        $_SESSION['error'] = 'Hãng không tồn tại';
+        header('Location: ' . ROOT_URL . 'admin/branch');
+        exit;
+    }
+    
+    try {
+        $success = $branchModel->deleteBranch($id);
+        $_SESSION['message'] = $success ? 'Đã xóa hãng' : 'Không thể xóa hãng';
+    } catch (\Exception $e) {
+        $_SESSION['error'] = 'Lỗi khi xóa hãng: ' . $e->getMessage();
+    }
+    
+    header('Location: ' . ROOT_URL . 'admin/branch');
+    exit;
 }
 
 public function categories() {

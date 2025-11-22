@@ -3,7 +3,7 @@
 
 <head>
     <meta charset="UTF-8">
-    <title><?php echo htmlspecialchars($data['title'] ?? 'Quản lý danh mục'); ?></title>
+    <title><?php echo htmlspecialchars($data['title'] ?? 'Quản lý hãng'); ?></title>
     <link rel="stylesheet" href="/DuAn1/asset/css/admin.css">
     <style>
         .admin-content {
@@ -33,7 +33,7 @@
         }
         
         .stats-box {
-            background: yellow;
+            background: #f0f0f0;
             padding: 15px;
             border-radius: 4px;
             margin-bottom: 20px;
@@ -46,7 +46,7 @@
         }
         
         .table-container {
-            background: black;
+            background: white;
             border-radius: 4px;
             overflow: hidden;
             box-shadow: 0 1px 3px rgba(0,0,0,0.1);
@@ -109,7 +109,7 @@
         }
         
         .form-section {
-            background: #f4e4bc;
+            background: white;
             padding: 20px;
             border-radius: 4px;
             box-shadow: 0 1px 3px rgba(0,0,0,0.1);
@@ -128,8 +128,7 @@
             color: #333;
         }
         
-        .form-group input,
-        .form-group textarea {
+        .form-group input {
             width: 100%;
             padding: 8px;
             border: 1px solid #ddd;
@@ -139,13 +138,7 @@
             box-sizing: border-box;
         }
         
-        .form-group textarea {
-            resize: vertical;
-            min-height: 100px;
-        }
-        
-        .form-group input:focus,
-        .form-group textarea:focus {
+        .form-group input:focus {
             outline: none;
             border-color: #007bff;
             box-shadow: 0 0 5px rgba(0, 123, 255, 0.3);
@@ -225,7 +218,7 @@
     <div class="admin-container">
 
         <!-- SIDEBAR -->
-        <?php include __DIR__ . '/aside.php'; ?>
+        <?php include __DIR__ .'/aside.php'; ?>
 
         <!-- MAIN CONTENT -->
         <main class="admin-content">
@@ -242,78 +235,67 @@
                 </div>
             <?php endif; ?>
 
-            <!-- FORM THÊM / SỬA DANH MỤC -->
+            <!-- FORM THÊM / SỬA HÃng -->
             <div class="form-section">
-                <h2><?php echo $data['editing'] ? 'Sửa danh mục' : 'Thêm danh mục mới'; ?></h2>
+                <h2><?php echo $data['editing'] ? 'Sửa hãng' : 'Thêm hãng mới'; ?></h2>
                 
-                <form method="POST" action="/DuAn1/admin/saveCategory">
-                    <?php if ($data['editing'] && isset($data['category'])): ?>
-                        <input type="hidden" name="id" value="<?php echo htmlspecialchars($data['category']['id']); ?>">
+                <form method="POST" action="/DuAn1/admin/saveBranch">
+                    <?php if ($data['editing'] && isset($data['branch'])): ?>
+                        <input type="hidden" name="id" value="<?php echo htmlspecialchars($data['branch']['id']); ?>">
                     <?php endif; ?>
 
                     <div class="form-group">
-                        <label for="name">Tên danh mục *</label>
+                        <label for="name">Tên hãng *</label>
                         <input 
                             type="text" 
                             id="name"
                             name="name" 
-                            value="<?php echo htmlspecialchars($data['editing'] && isset($data['category']) ? $data['category']['name'] : ''); ?>"
+                            value="<?php echo htmlspecialchars($data['editing'] && isset($data['branch']) ? $data['branch']['name'] : ''); ?>"
                             required
-                            placeholder="Nhập tên danh mục"
+                            placeholder="Nhập tên hãng"
                         >
-                    </div>
-
-                    <div class="form-group">
-                        <label for="description">Mô tả</label>
-                        <textarea 
-                            id="description"
-                            name="description" 
-                            placeholder="Nhập mô tả danh mục"
-                        ><?php echo htmlspecialchars($data['editing'] && isset($data['category']) ? $data['category']['description'] : ''); ?></textarea>
                     </div>
 
                     <div class="form-actions">
                         <button type="submit" class="btn btn-success">
                             <?php echo $data['editing'] ? 'Cập nhật' : 'Lưu'; ?>
                         </button>
-                        <a href="/DuAn1/admin/categories" class="btn btn-cancel">Hủy</a>
+                        <a href="/DuAn1/admin/branch" class="btn btn-cancel">Hủy</a>
                     </div>
                 </form>
             </div>
 
-            <!-- DANH SÁCH DANH MỤC -->
+            <!-- DANH SÁCH HÃng -->
             <section>
                 <div class="content-header">
-                    <h2>Danh sách danh mục</h2>
-                    <a href="/DuAn1/admin/categories" class="btn-add">+ Thêm danh mục</a>
+                    <h2>Danh sách hãng</h2>
+                    <a href="/DuAn1/admin/branch" class="btn-add">+ Thêm hãng</a>
                 </div>
 
                 <!-- THỐNG KÊ -->
                 <div class="stats-box">
-                    <p><strong>Tổng danh mục:</strong> <?php echo $data['totalCategories']; ?></p>
+                    <p><strong>Tổng hãng:</strong> <?php echo $data['totalBranches']; ?></p>
                 </div>
 
                 <!-- BẢNG DANH SÁCH -->
                 <div class="table-container">
-                    <?php if ($data['totalCategories'] > 0): ?>
+                    <?php if ($data['totalBranches'] > 0): ?>
                         <table>
                             <thead>
                                 <tr>
-                                    <th width="10%">ID</th>
-                                    <th width="35%">Tên</th>
-                                    <th width="45%">Mô tả</th>
-                                    <th width="10%">Hành động</th>
+                                    <th width="20%">ID</th>
+                                    <th width="60%">Tên</th>
+                                    <th width="20%">Hành động</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                <?php foreach ($data['categories'] as $category): ?>
+                                <?php foreach ($data['branches'] as $branch): ?>
                                     <tr>
-                                        <td><?php echo htmlspecialchars($category['id']); ?></td>
-                                        <td><?php echo htmlspecialchars($category['name']); ?></td>
-                                        <td><?php echo htmlspecialchars(substr($category['description'] ?? '', 0, 60)) . (strlen($category['description'] ?? '') > 60 ? '...' : ''); ?></td>
+                                        <td><?php echo htmlspecialchars($branch['id']); ?></td>
+                                        <td><?php echo htmlspecialchars($branch['name']); ?></td>
                                         <td>
-                                            <a href="/DuAn1/admin/editCategory/<?php echo urlencode($category['id']); ?>" class="btn-small btn-edit">Sửa</a>
-                                            <a href="/DuAn1/admin/deleteCategory/<?php echo urlencode($category['id']); ?>" class="btn-small btn-delete" onclick="return confirm('Bạn chắc chắn muốn xóa danh mục này?')">Xóa</a>
+                                            <a href="/DuAn1/admin/editBranch/<?php echo urlencode($branch['id']); ?>" class="btn-small btn-edit">Sửa</a>
+                                            <a href="/DuAn1/admin/deleteBranch/<?php echo urlencode($branch['id']); ?>" class="btn-small btn-delete" onclick="return confirm('Bạn chắc chắn muốn xóa hãng này?')">Xóa</a>
                                         </td>
                                     </tr>
                                 <?php endforeach; ?>
@@ -321,7 +303,7 @@
                         </table>
                     <?php else: ?>
                         <div class="empty-message">
-                            Chưa có danh mục nào. <a href="/DuAn1/admin/categories">Thêm danh mục mới</a>
+                            Chưa có hãng nào. <a href="/DuAn1/admin/branch">Thêm hãng mới</a>
                         </div>
                     <?php endif; ?>
                 </div>

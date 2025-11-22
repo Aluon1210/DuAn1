@@ -22,19 +22,7 @@
   <!-- Layout: Sidebar + Content -->
   <div class="admin-container">
     <!-- Sidebar -->
-    <aside class="admin-sidebar">
-      <nav class="admin-menu">
-        <ul>
-          <li><a href="<?php echo ROOT_URL; ?>admin/dashboard" class="menu-item">Tổng quan</a></li>
-          <li><a href="<?php echo ROOT_URL; ?>admin/users" class="menu-item">Người dùng</a></li>
-          <li><a href="<?php echo ROOT_URL; ?>admin/products" class="menu-item">Sản phẩm</a></li>
-          <li><a href="<?php echo ROOT_URL; ?>admin/orders" class="menu-item">Đơn hàng</a></li>
-          <li><a href="<?php echo ROOT_URL; ?>admin/categories" class="menu-item">Danh mục</a></li>
-          <li><a href="<?php echo ROOT_URL; ?>admin/comments" class="menu-item">Bình luận</a></li>
-          <li><a href="<?php echo ROOT_URL; ?>admin/stats" class="menu-item">Thống kê</a></li>
-        </ul>
-      </nav>
-    </aside>
+    <?php include __DIR__ . '/aside.php'; ?>
 
     <!-- Content -->
     <main class="admin-content">
