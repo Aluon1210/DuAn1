@@ -83,7 +83,7 @@ class User extends Model {
     /**
      * Xác thực user
      * @param string $email
-     * @param string $password
+     * @param string $passwordGI
      * @return array|false
      */
     public function authenticate($email, $password) {
