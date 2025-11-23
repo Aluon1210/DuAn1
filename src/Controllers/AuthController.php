@@ -52,9 +52,16 @@ class AuthController extends Controller {
         $user = $userModel->authenticate($email, $password);
         
         if ($user) {
+            // If account is blocked (forbident), show blocked page and do not create session
+            if (isset($user['role']) && $user['role'] === 'forbident') {
+                $data = ['message' => 'Tài khoản của bạn đã bị chặn và không thể đăng nhập vào hệ thống. Vui lòng liên hệ quản trị.'];
+                $this->renderView('auth/forbidden', $data);
+                exit;
+            }
+
             $_SESSION['user'] = $user;
             $_SESSION['message'] = 'Đăng nhập thành công!';
-            
+
             // Redirect theo role
             if ($user['role'] === 'admin') {
                 header('Location: ' . ROOT_URL . 'admin/dashboard');

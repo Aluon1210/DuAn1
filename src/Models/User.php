@@ -125,7 +125,8 @@ class User extends Model {
      */
     public function getAllUsers() {
         try {
-            $sql = "SELECT _UserName_Id as id, Email as email, FullName as name, Phone as phone, Role as role, Address as address FROM {$this->table} ORDER BY _UserName_Id DESC";
+            // Exclude users with role 'forbident' from admin listings
+            $sql = "SELECT _UserName_Id as id, Email as email, FullName as name, Phone as phone, Role as role, Address as address FROM {$this->table} WHERE Role != 'forbident' ORDER BY _UserName_Id DESC";
             $stmt = $this->db->prepare($sql);
             $stmt->execute();
             return $stmt->fetchAll(\PDO::FETCH_ASSOC);

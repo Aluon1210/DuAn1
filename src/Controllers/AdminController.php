@@ -16,14 +16,27 @@ public function users() {
     $this->requireAdmin();
     $userModel = new User();
     $users = $userModel->getAllUsers();
-    
     $data = [
         'title' => 'Quản lý người dùng',
         'users' => $users,
         'totalUsers' => count($users),
         'editing' => false
     ];
-    
+
+    // Nếu có tham số ?edit=ID thì load user đó để điền vào form
+    if (isset($_GET['edit']) && $_GET['edit'] !== '') {
+        $editId = trim($_GET['edit']);
+        $user = $userModel->getById($editId);
+        if ($user) {
+            $data['editing'] = true;
+            $data['user'] = $user;
+            $data['title'] = 'Sửa người dùng';
+        } else {
+            $_SESSION['error'] = 'Người dùng không tồn tại';
+            // giữ nguyên danh sách, không dừng
+        }
+    }
+
     $this->renderView('admin/user', $data);
 }
 

@@ -331,6 +331,7 @@
                             <select id="role" name="role">
                                 <option value="user" <?php echo ($data['editing'] && isset($data['user']) && $data['user']['role'] === 'user') ? 'selected' : ''; ?>>Người dùng</option>
                                 <option value="admin" <?php echo ($data['editing'] && isset($data['user']) && $data['user']['role'] === 'admin') ? 'selected' : ''; ?>>Quản trị viên</option>
+                                <option value="forbident" <?php echo ($data['editing'] && isset($data['user']) && $data['user']['role'] === 'forbident') ? 'selected' : ''; ?>>Bị chặn</option>
                             </select>
                         </div>
                     </div>
@@ -407,7 +408,7 @@
                                             </span>
                                         </td>
                                         <td>
-                                            <a href="/DuAn1/admin/editUser/<?php echo urlencode($user['id']); ?>" class="btn-small btn-edit">Sửa</a>
+                                            <a href="/DuAn1/admin/users?edit=<?php echo urlencode($user['id']); ?>" class="btn-small btn-edit">Sửa</a>
                                             <a href="/DuAn1/admin/deleteUser/<?php echo urlencode($user['id']); ?>" class="btn-small btn-delete" onclick="return confirm('Bạn chắc chắn muốn xóa người dùng này?')">Xóa</a>
                                         </td>
                                     </tr>

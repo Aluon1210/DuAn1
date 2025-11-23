@@ -85,6 +85,15 @@ class Controller {
             header('Location: ' . ROOT_URL . 'login');
             exit;
         }
+        // If the logged-in account has role 'forbident', show blocked page and destroy session
+        if (isset($_SESSION['user']['role']) && $_SESSION['user']['role'] === 'forbident') {
+            // clear session user
+            unset($_SESSION['user']);
+            $data = ['message' => 'Tài khoản của bạn đã bị chặn và không thể truy cập hệ thống. Vui lòng liên hệ quản trị.'];
+            // Render a simple forbidden view
+            $this->renderView('auth/forbidden', $data);
+            exit;
+        }
     }
 }
 ?>
