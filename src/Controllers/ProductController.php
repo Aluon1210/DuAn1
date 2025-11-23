@@ -5,6 +5,7 @@ namespace Controllers;
 use Core\Controller;
 use Models\Product;
 use Models\Category;
+use Models\Comment;
 
 class ProductController extends Controller {
     
@@ -66,6 +67,7 @@ class ProductController extends Controller {
     public function detail($id) {
         $productModel = new Product();
         $categoryModel = new Category();
+        $commentModel = new Comment();
 
         $product = $productModel->getByIdWithCategory($id);
         if (!$product) {
@@ -75,15 +77,71 @@ class ProductController extends Controller {
         }
 
         $categories = $categoryModel->getAll();
+        $comments = $commentModel->getByProductId($id);
 
         $data = [
             'title' => $product['name'],
             'product' => $product,
-            'categories' => $categories
+            'categories' => $categories,
+            'comments' => $comments
         ];
 
         // Dùng view ProductDetail duy nhất cho chi tiết sản phẩm
         $this->renderView('ProductDetail', $data);
+    }
+    
+    /**
+     * Xử lý post comment
+     * URL: /product/postComment/{productId} (POST)
+     */
+    public function postComment($productId) {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            header('Location: ' . ROOT_URL . 'product/detail/' . $productId);
+            exit;
+        }
+        
+        // Kiểm tra user đã đăng nhập
+        if (!isset($_SESSION['user'])) {
+            $_SESSION['error'] = 'Vui lòng đăng nhập để bình luận';
+            header('Location: ' . ROOT_URL . 'login');
+            exit;
+        }
+        
+        $content = isset($_POST['content']) ? trim($_POST['content']) : '';
+        
+        if (empty($content)) {
+            $_SESSION['error'] = 'Nội dung bình luận không được để trống';
+            header('Location: ' . ROOT_URL . 'product/detail/' . $productId);
+            exit;
+        }
+        
+        $productModel = new Product();
+        $product = $productModel->getById($productId);
+        if (!$product) {
+            $_SESSION['error'] = 'Sản phẩm không tồn tại';
+            header('Location: ' . ROOT_URL . 'product');
+            exit;
+        }
+        
+        try {
+            $commentModel = new Comment();
+            $commentId = $commentModel->createComment([
+                'content' => $content,
+                'user_id' => $_SESSION['user']['id'],
+                'product_id' => $productId
+            ]);
+            
+            if ($commentId) {
+                $_SESSION['message'] = 'Bình luận của bạn đã được đăng';
+            } else {
+                $_SESSION['error'] = 'Không thể đăng bình luận';
+            }
+        } catch (\Exception $e) {
+            $_SESSION['error'] = 'Lỗi khi đăng bình luận: ' . $e->getMessage();
+        }
+        
+        header('Location: ' . ROOT_URL . 'product/detail/' . $productId);
+        exit;
     }
     
     /**

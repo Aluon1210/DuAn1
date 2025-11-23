@@ -149,6 +149,174 @@
         background: linear-gradient(135deg, #f8d7da 0%, #f5c6cb 100%);
         color: #721c24;
     }
+
+    /* Comments Section */
+    .comments-section {
+        margin-top: 60px;
+        padding-top: 40px;
+        border-top: 2px solid var(--border-light);
+    }
+
+    .comments-section h3 {
+        font-family: 'Playfair Display', serif;
+        font-size: 28px;
+        margin-bottom: 30px;
+        color: var(--primary-black);
+        padding-bottom: 15px;
+        border-bottom: 2px solid var(--primary-gold-light);
+    }
+
+    .comment-form {
+        background: linear-gradient(135deg, var(--accent-gray) 0%, #f5f5f5 100%);
+        padding: 30px;
+        border-radius: 12px;
+        margin-bottom: 40px;
+        border-left: 4px solid var(--primary-gold);
+    }
+
+    .comment-form textarea {
+        width: 100%;
+        min-height: 120px;
+        padding: 16px;
+        border: 2px solid var(--border-light);
+        border-radius: 8px;
+        font-family: Arial, sans-serif;
+        font-size: 14px;
+        resize: vertical;
+        box-sizing: border-box;
+        margin-bottom: 16px;
+    }
+
+    .comment-form textarea:focus {
+        outline: none;
+        border-color: var(--primary-gold);
+        box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.1);
+    }
+
+    .comment-form button {
+        padding: 12px 32px;
+        background: var(--primary-gold);
+        color: white;
+        border: none;
+        border-radius: 8px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: var(--transition-smooth);
+        font-size: 14px;
+    }
+
+    .comment-form button:hover {
+        background: #d4a844;
+        transform: translateY(-2px);
+    }
+
+    .login-prompt {
+        background: linear-gradient(135deg, #e7f3ff 0%, #f0f8ff 100%);
+        padding: 24px;
+        border-radius: 12px;
+        text-align: center;
+        border-left: 4px solid #007bff;
+        margin-bottom: 40px;
+    }
+
+    .login-prompt p {
+        color: #004085;
+        font-size: 16px;
+        margin-bottom: 12px;
+    }
+
+    .login-prompt a {
+        display: inline-block;
+        padding: 10px 24px;
+        background: #007bff;
+        color: white;
+        text-decoration: none;
+        border-radius: 8px;
+        font-weight: 600;
+        transition: var(--transition-smooth);
+    }
+
+    .login-prompt a:hover {
+        background: #0056b3;
+    }
+
+    .comments-list {
+        display: flex;
+        flex-direction: column;
+        gap: 24px;
+    }
+
+    .comment-item {
+        padding: 24px;
+        background: white;
+        border: 2px solid var(--border-light);
+        border-radius: 12px;
+        transition: var(--transition-smooth);
+    }
+
+    .comment-item:hover {
+        border-color: var(--primary-gold);
+        box-shadow: 0 4px 12px rgba(212, 175, 55, 0.1);
+    }
+
+    .comment-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 12px;
+        flex-wrap: wrap;
+        gap: 12px;
+    }
+
+    .comment-author {
+        font-weight: 600;
+        color: var(--primary-black);
+        font-size: 15px;
+    }
+
+    .comment-date {
+        font-size: 13px;
+        color: var(--text-light);
+    }
+
+    .comment-content {
+        color: var(--text-dark);
+        line-height: 1.6;
+        font-size: 14px;
+        white-space: pre-wrap;
+        word-break: break-word;
+    }
+
+    .empty-comments {
+        text-align: center;
+        padding: 40px 20px;
+        color: var(--text-light);
+    }
+
+    .empty-comments p {
+        font-size: 16px;
+    }
+
+    .alert {
+        padding: 16px;
+        border-radius: 8px;
+        margin-bottom: 20px;
+        font-size: 14px;
+        font-weight: 500;
+    }
+
+    .alert-success {
+        background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
+        color: #155724;
+        border: 1px solid #c3e6cb;
+    }
+
+    .alert-error {
+        background: linear-gradient(135deg, #f8d7da 0%, #f5c6cb 100%);
+        color: #721c24;
+        border: 1px solid #f5c6cb;
+    }
+
 </style>
 
 <?php if ($product): ?>
@@ -223,6 +391,75 @@
                         <div style="font-size: 48px; margin-bottom: 16px;">⏳</div>
                         <div style="color: #721c24; font-weight: 600; font-size: 18px;">Sản phẩm hiện đang hết hàng</div>
                         <p style="color: #721c24; margin-top: 8px; font-size: 14px;">Vui lòng quay lại sau hoặc liên hệ với chúng tôi</p>
+                    </div>
+                <?php endif; ?>
+            </div>
+        </div>
+    </div>
+
+    <!-- COMMENTS SECTION -->
+    <div class="product-detail-container" style="margin-top: 40px;">
+        <div class="comments-section">
+            <h3>📝 Bình luận sản phẩm</h3>
+
+            <?php if (isset($_SESSION['message'])): ?>
+                <div class="alert alert-success">
+                    <?php echo htmlspecialchars($_SESSION['message']); unset($_SESSION['message']); ?>
+                </div>
+            <?php endif; ?>
+
+            <?php if (isset($_SESSION['error'])): ?>
+                <div class="alert alert-error">
+                    <?php echo htmlspecialchars($_SESSION['error']); unset($_SESSION['error']); ?>
+                </div>
+            <?php endif; ?>
+
+            <!-- FORM COMMENT (chỉ hiển thị nếu đã đăng nhập) -->
+            <?php if (isset($_SESSION['user'])): ?>
+                <div class="comment-form">
+                    <h4 style="margin-top: 0; margin-bottom: 16px; color: var(--primary-black);">
+                        Chia sẻ ý kiến của bạn
+                    </h4>
+                    <form method="POST" action="<?php echo ROOT_URL; ?>product/postComment/<?php echo htmlspecialchars($product['id']); ?>">
+                        <textarea 
+                            name="content" 
+                            placeholder="Nhập bình luận của bạn..."
+                            required
+                        ></textarea>
+                        <button type="submit">Đăng bình luận</button>
+                    </form>
+                </div>
+            <?php else: ?>
+                <div class="login-prompt">
+                    <p>👤 Vui lòng đăng nhập để bình luận sản phẩm này</p>
+                    <a href="<?php echo ROOT_URL; ?>login">Đăng nhập ngay</a>
+                </div>
+            <?php endif; ?>
+
+            <!-- DANH SÁCH BÌNH LUẬN -->
+            <div style="margin-top: 30px;">
+                <?php if (!empty($comments)): ?>
+                    <div class="comments-list">
+                        <?php foreach ($comments as $comment): ?>
+                            <div class="comment-item">
+                                <div class="comment-header">
+                                    <span class="comment-author">
+                                        👤 <?php echo htmlspecialchars($comment['user_name'] ?? 'Ẩn danh'); ?>
+                                    </span>
+                                    <span class="comment-date">
+                                        <?php echo htmlspecialchars($comment['Create_at'] ?? date('d/m/Y')); ?>
+                                    </span>
+                                </div>
+                                <div class="comment-content">
+                                    <?php echo htmlspecialchars($comment['Content']); ?>
+                                </div>
+                            </div>
+                        <?php endforeach; ?>
+                    </div>
+                <?php else: ?>
+                    <div class="empty-comments">
+                        <div style="font-size: 48px; margin-bottom: 12px;">💭</div>
+                        <p>Chưa có bình luận nào. Hãy là người đầu tiên bình luận!</p>
                     </div>
                 <?php endif; ?>
             </div>

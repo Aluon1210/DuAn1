@@ -13,8 +13,150 @@ class AdminController extends Controller {
     // Trong AdminController
 
 public function users() {
-    // load view: quản lý user
-    $this->renderView('admin/user');
+    $userModel = new User();
+    $users = $userModel->getAllUsers();
+    
+    $data = [
+        'title' => 'Quản lý người dùng',
+        'users' => $users,
+        'totalUsers' => count($users),
+        'editing' => false
+    ];
+    
+    $this->renderView('admin/user', $data);
+}
+
+/**
+ * Hiển thị form sửa user
+ * URL: /admin/editUser/{id}
+ */
+public function editUser($id) {
+    $userModel = new User();
+    $user = $userModel->getById($id);
+    
+    if (!$user) {
+        $_SESSION['error'] = 'Người dùng không tồn tại';
+        header('Location: ' . ROOT_URL . 'admin/users');
+        exit;
+    }
+    
+    $users = $userModel->getAllUsers();
+    
+    $data = [
+        'title' => 'Sửa người dùng',
+        'user' => $user,
+        'users' => $users,
+        'totalUsers' => count($users),
+        'editing' => true
+    ];
+    
+    $this->renderView('admin/user', $data);
+}
+
+/**
+ * Xử lý thêm / cập nhật user
+ * URL: /admin/saveUser (POST)
+ */
+public function saveUser() {
+    if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+        header('Location: ' . ROOT_URL . 'admin/users');
+        exit;
+    }
+    
+    $userModel = new User();
+    
+    $id = isset($_POST['id']) ? trim($_POST['id']) : '';
+    $email = isset($_POST['email']) ? trim($_POST['email']) : '';
+    $name = isset($_POST['name']) ? trim($_POST['name']) : '';
+    $phone = isset($_POST['phone']) ? trim($_POST['phone']) : '';
+    $role = isset($_POST['role']) ? trim($_POST['role']) : 'user';
+    $address = isset($_POST['address']) ? trim($_POST['address']) : '';
+    $password = isset($_POST['password']) ? trim($_POST['password']) : '';
+    
+    // Validation
+    if ($email === '' || $name === '') {
+        $_SESSION['error'] = 'Email và Họ tên không được để trống';
+        header('Location: ' . ROOT_URL . 'admin/users');
+        exit;
+    }
+    
+    if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        $_SESSION['error'] = 'Email không hợp lệ';
+        header('Location: ' . ROOT_URL . 'admin/users');
+        exit;
+    }
+    
+    try {
+        if ($id) {
+            // Cập nhật
+            $updateData = [
+                'email' => $email,
+                'name' => $name,
+                'phone' => $phone,
+                'role' => $role,
+                'address' => $address
+            ];
+            if ($password !== '') {
+                $updateData['password'] = $password;
+            }
+            $success = $userModel->updateUser($id, $updateData);
+            $_SESSION['message'] = $success ? 'Cập nhật người dùng thành công' : 'Không thể cập nhật người dùng';
+        } else {
+            // Thêm mới
+            if ($password === '') {
+                $_SESSION['error'] = 'Mật khẩu không được để trống khi thêm người dùng mới';
+                header('Location: ' . ROOT_URL . 'admin/users');
+                exit;
+            }
+            
+            if (strlen($password) < 6) {
+                $_SESSION['error'] = 'Mật khẩu phải có ít nhất 6 ký tự';
+                header('Location: ' . ROOT_URL . 'admin/users');
+                exit;
+            }
+            
+            $createData = [
+                'email' => $email,
+                'name' => $name,
+                'phone' => $phone,
+                'role' => $role,
+                'address' => $address,
+                'password' => $password
+            ];
+            $newId = $userModel->createUser($createData);
+            $_SESSION['message'] = $newId ? 'Thêm người dùng thành công' : 'Không thể thêm người dùng';
+        }
+    } catch (\Exception $e) {
+        $_SESSION['error'] = 'Lỗi xử lý người dùng: ' . $e->getMessage();
+    }
+    
+    header('Location: ' . ROOT_URL . 'admin/users');
+    exit;
+}
+
+/**
+ * Xóa user
+ * URL: /admin/deleteUser/{id}
+ */
+public function deleteUser($id) {
+    $userModel = new User();
+    
+    $user = $userModel->getById($id);
+    if (!$user) {
+        $_SESSION['error'] = 'Người dùng không tồn tại';
+        header('Location: ' . ROOT_URL . 'admin/users');
+        exit;
+    }
+    
+    try {
+        $success = $userModel->deleteUser($id);
+        $_SESSION['message'] = $success ? 'Đã xóa người dùng' : 'Không thể xóa người dùng';
+    } catch (\Exception $e) {
+        $_SESSION['error'] = 'Lỗi khi xóa người dùng: ' . $e->getMessage();
+    }
+    
+    header('Location: ' . ROOT_URL . 'admin/users');
+    exit;
 }
 
 public function orders() {
