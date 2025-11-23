@@ -13,6 +13,7 @@ class AdminController extends Controller {
     // Trong AdminController
 
 public function users() {
+    $this->requireAdmin();
     $userModel = new User();
     $users = $userModel->getAllUsers();
     
@@ -164,6 +165,7 @@ public function orders() {
 }
 
 public function branch() {
+    $this->requireAdmin();
     $branchModel = new Branch();
     $branches = $branchModel->getAll();
     
@@ -269,6 +271,7 @@ public function deleteBranch($id) {
 }
 
 public function categories() {
+    $this->requireAdmin();
     $categoryModel = new Category();
     $categories = $categoryModel->getAll();
     
@@ -389,6 +392,7 @@ public function stats() {
 }
 
 public function dashboard() {
+    $this->requireAdmin();
     $this->renderView('admin/dashboard');
 }
 
@@ -397,6 +401,7 @@ public function dashboard() {
      * URL: /admin hoặc /admin/index
      */
     public function index() {
+        $this->requireAdmin();
         $this->products();
     }
 
@@ -405,6 +410,7 @@ public function dashboard() {
      * URL: /admin/products
      */
     public function products() {
+        $this->requireAdmin();
         $productModel = new Product();
         $categoryModel = new Category();
         $branchModel = new Branch();
