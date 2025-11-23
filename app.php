@@ -3,7 +3,11 @@
 
 // 1. Định nghĩa các hằng số
 // URL gốc của website (rất quan trọng cho link CSS, JS)
-define('ROOT_URL', '/DuAn1/'); // Thay đổi theo tên thư mục thực tế của bạn
+// Tự động xác định theo thư mục hiện tại để tránh sai khi đổi tên project
+$scriptName = isset($_SERVER['SCRIPT_NAME']) ? $_SERVER['SCRIPT_NAME'] : '';
+$baseDir = rtrim(str_replace('\\', '/', dirname($scriptName)), '/');
+$rootUrl = ($baseDir === '/' || $baseDir === '.') ? '/' : ($baseDir . '/');
+define('ROOT_URL', $rootUrl);
 define('ROOT_PATH', __DIR__); // Đường dẫn thư mục gốc
 
 // 2. Autoloader đơn giản cho cấu trúc /src
