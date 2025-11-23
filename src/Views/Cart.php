@@ -219,10 +219,11 @@
 
 <?php if (!empty($cartItems)): ?>
     <div class="cart-table-container">
-        <form method="POST" action="<?php echo ROOT_URL; ?>cart/update">
+        <form method="POST" action="<?php echo ROOT_URL; ?>cart/update" id="cartForm">
             <table class="cart-table">
                 <thead>
                     <tr>
+                        <th style="width:40px; text-align:center;">Chọn</th>
                         <th>Sản phẩm</th>
                         <th>Giá</th>
                         <th>Số lượng</th>
@@ -232,7 +233,10 @@
                 </thead>
                 <tbody>
                     <?php foreach ($cartItems as $item): ?>
-                        <tr>
+                        <tr <?php echo $item['product']['quantity'] <= 0 ? 'style="opacity:0.5;"' : ''; ?> >
+                            <td style="text-align:center;">
+                                <input type="checkbox" name="selected[]" value="<?php echo $item['product']['id']; ?>" <?php echo $item['product']['quantity'] <= 0 ? 'disabled' : ''; ?> class="cart-select">
+                            </td>
                             <td>
                                 <div style="display: flex; align-items: center;">
                                     <div class="cart-item-image">
@@ -247,6 +251,9 @@
                                         <a href="<?php echo ROOT_URL; ?>product/detail/<?php echo $item['product']['id']; ?>" class="cart-item-link">
                                             Xem chi tiết →
                                         </a>
+                                        <?php if ($item['product']['quantity'] <= 0): ?>
+                                            <div style="margin-top:8px; color:#e74c3c; font-weight:600;">Hết hàng</div>
+                                        <?php endif; ?>
                                     </div>
                                 </div>
                             </td>
@@ -254,16 +261,23 @@
                                 <div class="cart-price"><?php echo number_format($item['product']['price'], 0, ',', '.'); ?> ₫</div>
                             </td>
                             <td style="text-align: center;">
-                                <input type="number" 
-                                       name="quantity[<?php echo $item['product']['id']; ?>]" 
-                                       value="<?php echo $item['quantity']; ?>" 
-                                       min="1" 
-                                       max="<?php echo $item['product']['quantity']; ?>" 
-                                       class="cart-quantity-input" 
-                                       required>
+                                <div style="display:inline-flex; align-items:center; gap:8px; justify-content:center;">
+                                    <button type="button" class="btn btn-primary qty-minus" data-id="<?php echo $item['product']['id']; ?>" <?php echo $item['product']['quantity'] <= 0 ? 'disabled' : ''; ?>>-</button>
+                                    <input type="number" 
+                                           name="quantity[<?php echo $item['product']['id']; ?>]" 
+                                           value="<?php echo $item['quantity']; ?>" 
+                                           min="1" 
+                                           max="<?php echo $item['product']['quantity']; ?>" 
+                                           class="cart-quantity-input" 
+                                           data-price="<?php echo $item['product']['price']; ?>"
+                                           data-id="<?php echo $item['product']['id']; ?>"
+                                           <?php echo $item['product']['quantity'] <= 0 ? 'disabled' : ''; ?>
+                                           required>
+                                    <button type="button" class="btn btn-primary qty-plus" data-id="<?php echo $item['product']['id']; ?>" <?php echo $item['product']['quantity'] <= 0 ? 'disabled' : ''; ?>>+</button>
+                                </div>
                             </td>
                             <td style="text-align: right;">
-                                <div class="cart-subtotal"><?php echo number_format($item['subtotal'], 0, ',', '.'); ?> ₫</div>
+                                <div class="cart-subtotal" data-id="<?php echo $item['product']['id']; ?>"><?php echo number_format($item['subtotal'], 0, ',', '.'); ?> ₫</div>
                             </td>
                             <td style="text-align: center;">
                                 <a href="<?php echo ROOT_URL; ?>cart/remove/<?php echo $item['product']['id']; ?>" 
@@ -290,16 +304,17 @@
                     </a>
                 </div>
                 <div class="cart-total">
-                    <div class="cart-total-label">Tổng cộng</div>
-                    <div class="cart-total-amount"><?php echo number_format($total, 0, ',', '.'); ?></div>
+                    <div class="cart-total-label">Tổng tiền hàng đã chọn</div>
+                    <div class="cart-total-amount" id="selectedTotal">0</div>
+                    <div style="margin-top:8px; color: var(--text-light);">Đã chọn: <span id="selectedCount">0</span> sản phẩm</div>
                 </div>
             </div>
         </form>
 
-        <div style="margin-top: 30px; padding-top: 30px; border-top: 2px solid var(--border-light); text-align: center;">
-            <a href="#" class="btn btn-success" style="padding: 18px 60px; font-size: 18px; text-transform: uppercase; letter-spacing: 1.5px;">
-                ✓ Tiến hành thanh toán
-            </a>
+        <div style="margin-top: 30px; padding-top: 30px; border-top: 2px solid var(--border-light); display:flex; justify-content:center;">
+            <button type="submit" form="cartForm" formaction="<?php echo ROOT_URL; ?>cart/confirm" class="btn btn-success" style="padding: 18px 60px; font-size: 18px; text-transform: uppercase; letter-spacing: 1.5px;">
+                ✓ Thanh toán
+            </button>
         </div>
     </div>
 <?php else: ?>
@@ -314,5 +329,69 @@
 <?php endif; ?>
 
 <?php require_once ROOT_PATH . '/src/Views/includes/footer.php'; ?>
+
+<script>
+const fmt = v => new Intl.NumberFormat('vi-VN').format(v);
+function recalc() {
+  let total = 0; let count = 0;
+  document.querySelectorAll('.cart-select').forEach(chk => {
+    if (chk.checked && !chk.disabled) {
+      const id = chk.value;
+      const qtyInput = document.querySelector(`input[data-id="${id}"]`);
+      const price = parseInt(qtyInput.getAttribute('data-price')) || 0;
+      const qty = parseInt(qtyInput.value) || 0;
+      total += price * qty; count += 1;
+    }
+  });
+  document.getElementById('selectedTotal').textContent = fmt(total);
+  document.getElementById('selectedCount').textContent = count;
+}
+function clamp(input) {
+  const min = parseInt(input.min) || 1;
+  const max = parseInt(input.max) || 1;
+  let val = parseInt(input.value) || min;
+  if (val < min) val = min;
+  if (val > max) val = max;
+  input.value = val;
+}
+document.querySelectorAll('.qty-minus').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const id = btn.getAttribute('data-id');
+    const input = document.querySelector(`input[data-id="${id}"]`);
+    input.value = Math.max((parseInt(input.value)||1)-1, parseInt(input.min)||1);
+    clamp(input);
+    const price = parseInt(input.getAttribute('data-price'))||0;
+    const subtotal = document.querySelector(`.cart-subtotal[data-id="${id}"]`);
+    subtotal.textContent = fmt(price * parseInt(input.value)) + ' ₫';
+    recalc();
+  });
+});
+document.querySelectorAll('.qty-plus').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const id = btn.getAttribute('data-id');
+    const input = document.querySelector(`input[data-id="${id}"]`);
+    input.value = (parseInt(input.value)||1)+1;
+    clamp(input);
+    const price = parseInt(input.getAttribute('data-price'))||0;
+    const subtotal = document.querySelector(`.cart-subtotal[data-id="${id}"]`);
+    subtotal.textContent = fmt(price * parseInt(input.value)) + ' ₫';
+    recalc();
+  });
+});
+document.querySelectorAll('.cart-quantity-input').forEach(inp => {
+  inp.addEventListener('input', () => {
+    clamp(inp);
+    const id = inp.getAttribute('data-id');
+    const price = parseInt(inp.getAttribute('data-price'))||0;
+    const subtotal = document.querySelector(`.cart-subtotal[data-id="${id}"]`);
+    subtotal.textContent = fmt(price * parseInt(inp.value)) + ' ₫';
+    recalc();
+  });
+});
+document.querySelectorAll('.cart-select').forEach(chk => {
+  chk.addEventListener('change', recalc);
+});
+recalc();
+</script>
 
 

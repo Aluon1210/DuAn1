@@ -52,7 +52,7 @@ class AuthController extends Controller {
             $_SESSION['message'] = 'Đăng nhập thành công!';
             
             // Chuyển về trang trước đó hoặc trang chủ
-            $redirect = $_GET['redirect'] ?? ROOT_URL;
+            $redirect = $_GET['redirect'] ?? ($_POST['redirect'] ?? ROOT_URL);
             header('Location: ' . $redirect);
             exit;
         } else {

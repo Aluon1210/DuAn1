@@ -6,7 +6,7 @@ use Core\Model;
 
 class OrderDetail extends Model {
     
-    protected $table = 'order_details';
+    protected $table = 'order_detail';
     
     /**
      * Lấy chi tiết đơn hàng kèm thông tin sản phẩm

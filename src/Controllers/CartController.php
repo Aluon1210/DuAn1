@@ -185,6 +185,229 @@ class CartController extends Controller {
         header('Location: ' . ROOT_URL . 'cart');
         exit;
     }
+    
+    /**
+     * Xác nhận thanh toán (bước 1 giống Shopee)
+     * URL: /cart/confirm (POST)
+     */
+    public function confirm() {
+        $this->initCart();
+
+        if (!isset($_SESSION['user'])) {
+            $redirect = ROOT_URL . 'cart';
+            header('Location: ' . ROOT_URL . 'login?redirect=' . urlencode($redirect));
+            exit;
+        }
+
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            header('Location: ' . ROOT_URL . 'cart');
+            exit;
+        }
+
+        $selected = isset($_POST['selected']) ? (array)$_POST['selected'] : [];
+        $quantities = isset($_POST['quantity']) ? (array)$_POST['quantity'] : [];
+
+        if (empty($selected)) {
+            $_SESSION['error'] = 'Vui lòng chọn sản phẩm để thanh toán';
+            header('Location: ' . ROOT_URL . 'cart');
+            exit;
+        }
+
+        $productModel = new \Models\Product();
+        $items = [];
+        $total = 0;
+
+        foreach ($selected as $productId) {
+            $productId = (string)$productId;
+            $product = $productModel->getById($productId);
+            if (!$product) {
+                $_SESSION['error'] = 'Sản phẩm không tồn tại';
+                header('Location: ' . ROOT_URL . 'cart');
+                exit;
+            }
+            $qty = isset($quantities[$productId]) ? (int)$quantities[$productId] : 0;
+            if ($qty <= 0) {
+                $_SESSION['error'] = 'Số lượng không hợp lệ';
+                header('Location: ' . ROOT_URL . 'cart');
+                exit;
+            }
+            if ($product['quantity'] < $qty) {
+                $qty = $product['quantity'];
+                if ($qty <= 0) {
+                    $_SESSION['error'] = 'Sản phẩm ' . $product['name'] . ' đã hết hàng';
+                    header('Location: ' . ROOT_URL . 'cart');
+                    exit;
+                }
+                $_SESSION['error'] = 'Một số sản phẩm đã điều chỉnh theo tồn kho hiện tại';
+            }
+            $items[] = [
+                'product' => $product,
+                'quantity' => $qty,
+                'subtotal' => $product['price'] * $qty
+            ];
+            $total += $product['price'] * $qty;
+        }
+
+        $data = [
+            'title' => 'Xác nhận thanh toán',
+            'items' => $items,
+            'total' => $total,
+            'user' => $_SESSION['user']
+        ];
+
+        $this->renderView('CheckoutConfirm', $data);
+    }
+    
+    /**
+     * Thanh toán các sản phẩm đã chọn
+     * URL: /cart/checkout
+     */
+    public function checkout() {
+        $this->initCart();
+
+        if (!isset($_SESSION['user'])) {
+            $redirect = ROOT_URL . 'cart';
+            header('Location: ' . ROOT_URL . 'login?redirect=' . urlencode($redirect));
+            exit;
+        }
+
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            header('Location: ' . ROOT_URL . 'cart');
+            exit;
+        }
+
+        $selected = isset($_POST['selected']) ? (array)$_POST['selected'] : [];
+        $quantities = isset($_POST['quantity']) ? (array)$_POST['quantity'] : [];
+
+        if (empty($selected)) {
+            $_SESSION['error'] = 'Vui lòng chọn sản phẩm để thanh toán';
+            header('Location: ' . ROOT_URL . 'cart');
+            exit;
+        }
+
+        $productModel = new \Models\Product();
+        $orderDetails = [];
+        $totalAmount = 0;
+
+        foreach ($selected as $productId) {
+            $productId = (string)$productId;
+            $product = $productModel->getById($productId);
+            if (!$product) {
+                $_SESSION['error'] = 'Sản phẩm không tồn tại';
+                header('Location: ' . ROOT_URL . 'cart');
+                exit;
+            }
+
+            $qty = isset($quantities[$productId]) ? (int)$quantities[$productId] : 0;
+            if ($qty <= 0) {
+                $_SESSION['error'] = 'Số lượng không hợp lệ cho sản phẩm đã chọn';
+                header('Location: ' . ROOT_URL . 'cart');
+                exit;
+            }
+
+            if ($product['quantity'] < $qty) {
+                $_SESSION['error'] = 'Sản phẩm ' . $product['name'] . ' không đủ tồn kho';
+                header('Location: ' . ROOT_URL . 'cart');
+                exit;
+            }
+
+            $orderDetails[] = [
+                'Product_Id' => $productId,
+                'quantity' => $qty
+            ];
+            $totalAmount += $product['price'] * $qty;
+        }
+
+        $user = $_SESSION['user'];
+        $orderModel = new \Models\Order();
+
+        $orderId = $orderModel->createWithDetails([
+            'user_id' => $user['id'] ?? $user['username'] ?? '',
+            'address' => $user['address'] ?? '',
+            'note' => 'Thanh toán giỏ hàng',
+            'status' => 'completed'
+        ], $orderDetails);
+
+        if ($orderId) {
+            foreach ($selected as $pid) {
+                unset($_SESSION['cart'][$pid]);
+            }
+            $_SESSION['message'] = 'Thanh toán thành công. Mã đơn: ' . $orderId . '. Tổng tiền: ' . number_format($totalAmount, 0, ',', '.') . ' ₫';
+            header('Location: ' . ROOT_URL . 'cart');
+            exit;
+        } else {
+            $_SESSION['error'] = 'Thanh toán thất bại. Vui lòng thử lại';
+            header('Location: ' . ROOT_URL . 'cart');
+            exit;
+        }
+    }
+    
+    /**
+     * Đặt hàng (bước 2 xác nhận cuối)
+     * URL: /cart/placeOrder (POST)
+     */
+    public function placeOrder() {
+        $this->initCart();
+        if (!isset($_SESSION['user'])) {
+            $redirect = ROOT_URL . 'cart';
+            header('Location: ' . ROOT_URL . 'login?redirect=' . urlencode($redirect));
+            exit;
+        }
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            header('Location: ' . ROOT_URL . 'cart');
+            exit;
+        }
+
+        $selected = isset($_POST['selected']) ? (array)$_POST['selected'] : [];
+        $quantities = isset($_POST['quantity']) ? (array)$_POST['quantity'] : [];
+        if (empty($selected)) {
+            $_SESSION['error'] = 'Vui lòng chọn sản phẩm để đặt hàng';
+            header('Location: ' . ROOT_URL . 'cart');
+            exit;
+        }
+
+        $productModel = new \Models\Product();
+        $orderDetails = [];
+        $totalAmount = 0;
+
+        foreach ($selected as $productId) {
+            $productId = (string)$productId;
+            $product = $productModel->getById($productId);
+            if (!$product) {
+                $_SESSION['error'] = 'Sản phẩm không tồn tại';
+                header('Location: ' . ROOT_URL . 'cart');
+                exit;
+            }
+            $qty = isset($quantities[$productId]) ? (int)$quantities[$productId] : 0;
+            if ($qty <= 0 || $product['quantity'] < $qty) {
+                $_SESSION['error'] = 'Tồn kho thay đổi. Vui lòng kiểm tra lại';
+                header('Location: ' . ROOT_URL . 'cart');
+                exit;
+            }
+            $orderDetails[] = ['Product_Id' => $productId, 'quantity' => $qty];
+            $totalAmount += $product['price'] * $qty;
+        }
+
+        $user = $_SESSION['user'];
+        $orderModel = new \Models\Order();
+        $orderId = $orderModel->createWithDetails([
+            'user_id' => $user['id'] ?? $user['username'] ?? '',
+            'address' => $_POST['address'] ?? ($user['address'] ?? ''),
+            'note' => $_POST['note'] ?? 'Đặt hàng',
+            'status' => 'completed'
+        ], $orderDetails);
+
+        if ($orderId) {
+            foreach ($selected as $pid) { unset($_SESSION['cart'][$pid]); }
+            $_SESSION['message'] = 'Đặt hàng thành công. Mã đơn: ' . $orderId . '. Tổng tiền: ' . number_format($totalAmount, 0, ',', '.') . ' ₫';
+            header('Location: ' . ROOT_URL . 'cart');
+            exit;
+        } else {
+            $_SESSION['error'] = 'Đặt hàng thất bại. Vui lòng thử lại';
+            header('Location: ' . ROOT_URL . 'cart');
+            exit;
+        }
+    }
 }
 ?>
 
