@@ -61,7 +61,6 @@ class AuthController extends Controller {
 
             $_SESSION['user'] = $user;
             $_SESSION['message'] = 'Đăng nhập thành công!';
-<<<<<<< HEAD
 
             // Redirect theo role
             if ($user['role'] === 'admin') {
@@ -69,12 +68,6 @@ class AuthController extends Controller {
             } else {
                 header('Location: ' . ROOT_URL);
             }
-=======
-            
-            // Chuyển về trang trước đó hoặc trang chủ
-            $redirect = $_GET['redirect'] ?? ($_POST['redirect'] ?? ROOT_URL);
-            header('Location: ' . $redirect);
->>>>>>> 18ce6da9b3c61c5e969cc4d774ef24d156e49295
             exit;
         } else {
             $_SESSION['error'] = 'Email hoặc mật khẩu không đúng';
