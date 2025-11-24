@@ -388,6 +388,33 @@ public function saveCategory() {
     exit;
 }
 
+
+/**
+ * Xóa danh mục
+ * URL: /admin/deleteCategory/{id}
+ */
+public function deleteCategory($id) {
+    $categoryModel = new Category();
+    
+    $category = $categoryModel->getById($id);
+    if (!$category) {
+        $_SESSION['error'] = 'Danh mục không tồn tại';
+        header('Location: ' . ROOT_URL . 'admin/categories');
+        exit;
+    }
+    
+    try {
+        $success = $categoryModel->deleteCategory($id);
+        $_SESSION['message'] = $success ? 'Đã xóa danh mục' : 'Không thể xóa danh mục';
+    } catch (\Exception $e) {
+        $_SESSION['error'] = 'Lỗi khi xóa danh mục: ' . $e->getMessage();
+    }
+    
+    header('Location: ' . ROOT_URL . 'admin/categories');
+    exit;
+}
+
+
     /**
      * Trang quản lý màu sắc.
      */
@@ -759,10 +786,6 @@ public function saveCategory() {
         header('Location: ' . ROOT_URL . 'admin/productVariants');
         exit;
     }
-
-
-
-
 
 public function comments() {
     $this->renderView('admin/comment');
