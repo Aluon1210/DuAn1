@@ -1,23 +1,217 @@
 
 <!DOCTYPE html>
 <html lang="vi">
-<head>
-  <meta charset="UTF-8">
-  <title>Quản lý sản phẩm</title>
-  <!-- Link đúng tới file CSS tone đen xám vàng -->
-  <link rel="stylesheet" href="/DuAn1/asset/css/admin.css">
-</head>
+<?php include __DIR__ . '/head.php'; ?>
+<style>
+  :root {
+  --black: #0f0f10;
+  --white: #ffffff;
+  --text: #222;
+  --muted: #666;
+  --gold: #d4af37;
+  --border: #e8e8e8;
+  --bg: #f9f9f9;
+  --success: #28a745;
+  --danger: #dc3545;
+  --warning: #ffc107;
+}
+
+body {
+  font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial;
+  background: var(--bg);
+  color: var(--text);
+  margin: 0;
+  line-height: 1.5;
+}
+
+.admin-container {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+.admin-content {
+  max-width: 1200px;
+  margin: 32px auto;
+  padding: 0 20px;
+}
+
+.admin-section h2 {
+  font-size: 24px;
+  font-weight: 700;
+  margin-bottom: 24px;
+}
+
+/* Thống kê */
+.dashboard-stats {
+  display: flex;
+  gap: 20px;
+  margin-bottom: 30px;
+}
+
+.stat-card {
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 20px 25px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+  flex: 1;
+}
+
+.stat-card h3 {
+  font-size: 18px;
+  color: var(--gold);
+  margin-bottom: 10px;
+}
+
+.stat-number {
+  font-size: 30px;
+  font-weight: 700;
+  color: var(--black);
+}
+
+/* Form */
+.admin-form {
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 25px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+}
+
+.form-row {
+  display: flex;
+  gap: 20px;
+  margin-bottom: 20px;
+}
+
+.form-group {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.form-group label {
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 6px;
+  color: var(--muted);
+}
+
+.form-group input,
+.form-group select,
+.form-group textarea {
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 14px;
+  transition: border-color 0.2s ease;
+}
+
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus {
+  border-color: var(--gold);
+  outline: none;
+}
+
+/* Nút */
+.form-actions {
+  margin-top: 20px;
+  display: flex;
+  gap: 12px;
+}
+
+.btn {
+  padding: 10px 18px;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  transition: all 0.2s ease;
+  text-decoration: none;
+  display: inline-block;
+}
+
+.btn-success {
+  background: var(--success);
+  color: #fff;
+}
+.btn-success:hover {
+  background: #218838;
+}
+
+.btn-cancel {
+  background: var(--danger);
+  color: #fff;
+}
+.btn-cancel:hover {
+  background: #c82333;
+}
+
+.btn-warning {
+  background: var(--warning);
+  color: #111;
+}
+.btn-warning:hover {
+  background: #e0a800;
+}
+
+.btn-danger {
+  background: var(--danger);
+  color: #fff;
+}
+.btn-danger:hover {
+  background: #bd2130;
+}
+
+.btn-small {
+  padding: 6px 10px;
+  font-size: 13px;
+  border-radius: 4px;
+}
+
+/* Bảng sản phẩm */
+table {
+  width: 100%;
+  border-collapse: collapse;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+}
+
+table th,
+table td {
+  padding: 12px 14px;
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+}
+
+table th {
+  background: var(--black);
+  color: #fff;
+  font-weight: 600;
+}
+
+table tr:hover td {
+  background: #f1f1f1;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .form-row {
+    flex-direction: column;
+  }
+  .dashboard-stats {
+    flex-direction: column;
+  }
+}
+
+</style>
 <body>
-  <!-- Header -->
-  <header class="admin-header">
-    <div class="header-content">
-      <h1>Luxury Admin Panel</h1>
-      <div class="admin-actions">
-        <a href="/DuAn1/" class="btn-back">Trang chủ</a>
-        <a href="<?php echo ROOT_URL; ?>logout" class="btn-logout">Đăng xuất</a>
-      </div>
-    </div>
-  </header>
 
   <!-- Layout: Sidebar + Content -->
   <div class="admin-container">
