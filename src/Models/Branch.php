@@ -3,6 +3,7 @@
 namespace Models;
 
 use Core\Model;
+use Core\IdGenerator;
 
 class Branch extends Model {
 
@@ -60,6 +61,7 @@ class Branch extends Model {
     public function createBranch($data) {
         try {
             $dbData = [
+                'Branch_Id' => IdGenerator::generate('BR+', $this->table, 'Branch_Id', 5),
                 'Name' => trim($data['name'] ?? '')
             ];
             

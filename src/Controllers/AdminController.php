@@ -262,7 +262,14 @@ public function saveBranch() {
  * Xóa hãng
  * URL: /admin/deleteBranch/{id}
  */
-public function deleteBranch($id) {
+public function deleteBranch($id = null) {
+    // Nếu không có id được truyền, trả về lỗi thân thiện
+    if (!$id) {
+        $_SESSION['error'] = 'ID hãng không được bỏ trống';
+        header('Location: ' . ROOT_URL . 'admin/branch');
+        exit;
+    }
+
     $branchModel = new Branch();
     
     $branch = $branchModel->getById($id);
@@ -302,7 +309,14 @@ public function categories() {
  * Hiển thị form sửa danh mục
  * URL: /admin/editCategory/{id}
  */
-public function editCategory($id) {
+public function editCategory($id = null) {
+    // Guard: nếu không có id truyền vào, trả về lỗi thân thiện
+    if (!$id) {
+        $_SESSION['error'] = 'ID danh mục không được bỏ trống';
+        header('Location: ' . ROOT_URL . 'admin/categories');
+        exit;
+    }
+
     $categoryModel = new Category();
     $category = $categoryModel->getById($id);
     
@@ -375,23 +389,45 @@ public function saveCategory() {
  * Xóa danh mục
  * URL: /admin/deleteCategory/{id}
  */
-public function deleteCategory($id) {
+public function deleteCategory($id = null) {
+    // Guard: nếu không có id được truyền, trả về lỗi thân thiện
+    if (!$id) {
+        $_SESSION['error'] = 'ID danh mục không được bỏ trống';
+        header('Location: ' . ROOT_URL . 'admin/categories');
+        exit;
+    }
+
     $categoryModel = new Category();
-    
+    $productModel = new Product();
+
     $category = $categoryModel->getById($id);
     if (!$category) {
         $_SESSION['error'] = 'Danh mục không tồn tại';
         header('Location: ' . ROOT_URL . 'admin/categories');
         exit;
     }
-    
+
+    // Kiểm tra xem có sản phẩm thuộc danh mục này không
+    try {
+        $count = $productModel->countByCategory($id);
+    } catch (\Exception $e) {
+        $count = 0;
+    }
+
+    if ($count > 0) {
+        $_SESSION['error'] = 'Không thể xóa danh mục vì vẫn còn ' . $count . ' sản phẩm thuộc danh mục này.';
+        header('Location: ' . ROOT_URL . 'admin/categories');
+        exit;
+    }
+
+    // Nếu không có sản phẩm, tiến hành xóa
     try {
         $success = $categoryModel->deleteCategory($id);
         $_SESSION['message'] = $success ? 'Đã xóa danh mục' : 'Không thể xóa danh mục';
     } catch (\Exception $e) {
         $_SESSION['error'] = 'Lỗi khi xóa danh mục: ' . $e->getMessage();
     }
-    
+
     header('Location: ' . ROOT_URL . 'admin/categories');
     exit;
 }
