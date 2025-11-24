@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Máy chủ: 127.0.0.1
--- Thời gian đã tạo: Th10 24, 2025 lúc 03:49 PM
+-- Thời gian đã tạo: Th10 24, 2025 lúc 08:03 PM
 -- Phiên bản máy phục vụ: 10.4.32-MariaDB
 -- Phiên bản PHP: 8.2.12
 
@@ -63,7 +63,7 @@ CREATE TABLE `cart` (
   `_Cart_Id` char(15) NOT NULL,
   `Update_at` date NOT NULL,
   `Quantity` int(11) NOT NULL,
-  `Product_Id` varchar(15) NOT NULL,
+  `Variant_Id` int(11) NOT NULL,
   `_UserName_Id` varchar(30) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
@@ -84,7 +84,6 @@ CREATE TABLE `catogory` (
 --
 
 INSERT INTO `catogory` (`Category_Id`, `Name`, `Description`) VALUES
-('', 'abc', 'abc'),
 ('LFC_AO_KHOAC', 'Áo Khoác Couture', 'Các mẫu áo khoác được thiết kế và may đo thủ công.'),
 ('LFC_DAM_DA_HOI', 'Đầm Dạ Hội Cao Cấp', 'Váy và đầm lộng lẫy dùng cho các sự kiện thảm đỏ.'),
 ('LFC_DONG_HO', 'Đồng Hồ Phiên Bản Giới Hạn', 'Đồng hồ cơ Thụy Sĩ/Đức với số lượng sản xuất rất ít.'),
@@ -107,6 +106,16 @@ CREATE TABLE `colors` (
   `Name` varchar(50) NOT NULL,
   `Hex_Code` char(7) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Đang đổ dữ liệu cho bảng `colors`
+--
+
+INSERT INTO `colors` (`Color_Id`, `Name`, `Hex_Code`) VALUES
+(1, 'Đen Cổ Điển', '#000000'),
+(2, 'Trắng Ngà', '#F0EAD6'),
+(3, 'Đỏ Ruby', '#E0115F'),
+(4, 'Xanh Navy', '#000080');
 
 -- --------------------------------------------------------
 
@@ -146,7 +155,8 @@ CREATE TABLE `orders` (
 CREATE TABLE `order_detail` (
   `quantity` int(11) NOT NULL,
   `Order_Id` char(15) NOT NULL,
-  `Product_Id` varchar(15) NOT NULL
+  `Variant_Id` int(11) NOT NULL,
+  `Price` int(11) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
@@ -210,6 +220,37 @@ CREATE TABLE `product_variants` (
   `SKU` varchar(50) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
+--
+-- Đang đổ dữ liệu cho bảng `product_variants`
+--
+
+INSERT INTO `product_variants` (`Variant_Id`, `Product_Id`, `Color_Id`, `Size_Id`, `Quantity_In_Stock`, `Price`, `SKU`) VALUES
+(29, 'P002', 3, NULL, 10, 15000, 'P002-RB'),
+(30, 'P002', 1, NULL, 15, 15000, 'P002-BL'),
+(31, 'P003', 3, 1, 5, 35000, 'P003-RB-S'),
+(32, 'P003', 3, 2, 6, 35000, 'P003-RB-M'),
+(33, 'P003', 2, 1, 4, 36000, 'P003-WH-S'),
+(34, 'P004', 2, NULL, 50, 150, 'P004-EDP'),
+(35, 'P007', 1, 9, 20, 550, 'P007-B-80'),
+(36, 'P007', 1, 10, 18, 550, 'P007-B-90'),
+(37, 'P008', 4, 2, 10, 2500, 'P008-N-M'),
+(38, 'P008', 4, 3, 8, 2500, 'P008-N-L'),
+(39, 'P009', 1, 5, 15, 850, 'P009-B-37'),
+(40, 'P009', 1, 6, 12, 850, 'P009-B-38'),
+(41, 'P010', 1, 7, 25, 450, 'P010-S-40'),
+(42, 'P010', 1, 8, 20, 450, 'P010-S-50'),
+(43, 'P011', NULL, NULL, 5, 11000, 'P011-STD'),
+(44, 'P012', NULL, NULL, 8, 3800, 'P012-STD'),
+(45, 'P013', NULL, NULL, 6, 6500, 'P013-STD'),
+(46, 'P014', NULL, NULL, 3, 45000, 'P014-STD'),
+(47, 'P015', NULL, NULL, 7, 6000, 'P015-STD'),
+(48, 'P016', 2, 7, 5, 12000, 'P016-W-40'),
+(49, 'P017', 3, NULL, 15, 5000, 'P017-R'),
+(50, 'P017', 2, NULL, 12, 5000, 'P017-W'),
+(51, 'P018', 1, NULL, 10, 3500, 'P018-B'),
+(52, 'P019', 4, NULL, 10, 4000, 'P019-N'),
+(53, 'P020', 1, 8, 10, 2800, 'P020-B-50');
+
 -- --------------------------------------------------------
 
 --
@@ -221,6 +262,22 @@ CREATE TABLE `sizes` (
   `Name` varchar(20) NOT NULL,
   `Type` varchar(20) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Đang đổ dữ liệu cho bảng `sizes`
+--
+
+INSERT INTO `sizes` (`Size_Id`, `Name`, `Type`) VALUES
+(1, 'S', 'Apparel'),
+(2, 'M', 'Apparel'),
+(3, 'L', 'Apparel'),
+(4, '36', 'Shoes'),
+(5, '37', 'Shoes'),
+(6, '38', 'Shoes'),
+(7, '40', 'Ring'),
+(8, '50', 'Ring'),
+(9, '80cm', 'Belt'),
+(10, '90cm', 'Belt');
 
 -- --------------------------------------------------------
 
@@ -261,7 +318,7 @@ ALTER TABLE `branch`
 --
 ALTER TABLE `cart`
   ADD PRIMARY KEY (`_Cart_Id`),
-  ADD UNIQUE KEY `Product_Id` (`Product_Id`,`_UserName_Id`),
+  ADD UNIQUE KEY `unique_cart_item` (`Variant_Id`,`_UserName_Id`),
   ADD KEY `_UserName_Id` (`_UserName_Id`);
 
 --
@@ -295,8 +352,8 @@ ALTER TABLE `orders`
 -- Chỉ mục cho bảng `order_detail`
 --
 ALTER TABLE `order_detail`
-  ADD PRIMARY KEY (`Order_Id`,`Product_Id`),
-  ADD KEY `Product_Id` (`Product_Id`);
+  ADD PRIMARY KEY (`Order_Id`,`Variant_Id`),
+  ADD KEY `order_detail_ibfk_variant` (`Variant_Id`);
 
 --
 -- Chỉ mục cho bảng `products`
@@ -336,19 +393,19 @@ ALTER TABLE `users`
 -- AUTO_INCREMENT cho bảng `colors`
 --
 ALTER TABLE `colors`
-  MODIFY `Color_Id` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `Color_Id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
 
 --
 -- AUTO_INCREMENT cho bảng `product_variants`
 --
 ALTER TABLE `product_variants`
-  MODIFY `Variant_Id` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `Variant_Id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=54;
 
 --
 -- AUTO_INCREMENT cho bảng `sizes`
 --
 ALTER TABLE `sizes`
-  MODIFY `Size_Id` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `Size_Id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=11;
 
 --
 -- Các ràng buộc cho các bảng đã đổ
@@ -358,8 +415,8 @@ ALTER TABLE `sizes`
 -- Các ràng buộc cho bảng `cart`
 --
 ALTER TABLE `cart`
-  ADD CONSTRAINT `cart_ibfk_1` FOREIGN KEY (`Product_Id`) REFERENCES `products` (`Product_Id`),
-  ADD CONSTRAINT `cart_ibfk_2` FOREIGN KEY (`_UserName_Id`) REFERENCES `users` (`_UserName_Id`);
+  ADD CONSTRAINT `cart_ibfk_user` FOREIGN KEY (`_UserName_Id`) REFERENCES `users` (`_UserName_Id`),
+  ADD CONSTRAINT `cart_ibfk_variant` FOREIGN KEY (`Variant_Id`) REFERENCES `product_variants` (`Variant_Id`);
 
 --
 -- Các ràng buộc cho bảng `comments`
@@ -378,8 +435,8 @@ ALTER TABLE `orders`
 -- Các ràng buộc cho bảng `order_detail`
 --
 ALTER TABLE `order_detail`
-  ADD CONSTRAINT `order_detail_ibfk_1` FOREIGN KEY (`Order_Id`) REFERENCES `orders` (`Order_Id`),
-  ADD CONSTRAINT `order_detail_ibfk_2` FOREIGN KEY (`Product_Id`) REFERENCES `products` (`Product_Id`);
+  ADD CONSTRAINT `order_detail_ibfk_order` FOREIGN KEY (`Order_Id`) REFERENCES `orders` (`Order_Id`),
+  ADD CONSTRAINT `order_detail_ibfk_variant` FOREIGN KEY (`Variant_Id`) REFERENCES `product_variants` (`Variant_Id`);
 
 --
 -- Các ràng buộc cho bảng `products`
