@@ -388,7 +388,7 @@ public function saveCategory() {
     exit;
 }
 
-<<<<<<< HEAD
+
 /**
  * Xóa danh mục
  * URL: /admin/deleteCategory/{id}
@@ -415,7 +415,6 @@ public function deleteCategory($id) {
 }
 
 
-=======
     /**
      * Trang quản lý màu sắc.
      */
@@ -787,11 +786,6 @@ public function deleteCategory($id) {
         header('Location: ' . ROOT_URL . 'admin/productVariants');
         exit;
     }
-
-
-
-
->>>>>>> cfa1591cf66e74b6252b2a9eb5030eb62d461e1b
 
 public function comments() {
     $this->renderView('admin/comment');
