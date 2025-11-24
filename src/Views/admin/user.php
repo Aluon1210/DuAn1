@@ -184,6 +184,7 @@ body {
 <div class="admin-container">
 
   <!-- SIDEBAR -->
+
   <?php include __DIR__ . '/aside.php'; ?>
 
   <!-- MAIN CONTENT -->
@@ -255,6 +256,8 @@ body {
         </div>
       </form>
     </section>
+
+    
   </main>
 </div>
 </body>
