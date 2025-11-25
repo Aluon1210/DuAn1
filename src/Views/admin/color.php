@@ -267,12 +267,6 @@
                         </div>
                     </div>
 
-                    <div class="form-group">
-                        <label for="color-description">Mô tả</label>
-                        <textarea id="color-description" name="description" rows="3"
-                                  placeholder="Mô tả cảm hứng hoặc chất liệu của màu sắc"><?php echo htmlspecialchars($data['editing'] && isset($data['color']) ? $data['color']['description'] : ''); ?></textarea>
-                    </div>
-
                     <div class="form-actions">
                         <button type="submit" class="btn btn-success">
                             <?php echo !empty($data['editing']) ? 'Cập nhật' : 'Lưu màu mới'; ?>
