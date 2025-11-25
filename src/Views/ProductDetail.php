@@ -149,6 +149,161 @@
         color: #721c24;
     }
 
+    /* Variant Selection Styles */
+    .variant-selector {
+        margin: 30px 0;
+        padding: 24px;
+        background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
+        border-radius: 12px;
+        border: 2px solid var(--border-light);
+    }
+
+    .variant-selector h4 {
+        font-size: 18px;
+        font-weight: 600;
+        margin-bottom: 16px;
+        color: var(--primary-black);
+    }
+
+    .color-options {
+        display: flex;
+        gap: 12px;
+        flex-wrap: wrap;
+        margin-bottom: 24px;
+    }
+
+    .color-option {
+        width: 50px;
+        height: 50px;
+        border-radius: 50%;
+        cursor: pointer;
+        border: 3px solid transparent;
+        transition: all 0.3s ease;
+        position: relative;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+
+    .color-option:hover {
+        transform: scale(1.1);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+    }
+
+    .color-option.selected {
+        border-color: var(--primary-gold);
+        box-shadow: 0 0 0 2px white, 0 0 0 4px var(--primary-gold);
+        transform: scale(1.15);
+    }
+
+    .color-option.disabled {
+        opacity: 0.3;
+        cursor: not-allowed;
+    }
+
+    .color-option.disabled:hover {
+        transform: none;
+    }
+
+    .color-label {
+        position: absolute;
+        bottom: -25px;
+        left: 50%;
+        transform: translateX(-50%);
+        white-space: nowrap;
+        font-size: 12px;
+        color: var(--text-dark);
+        font-weight: 500;
+    }
+
+    .size-options {
+        display: flex;
+        gap: 12px;
+        flex-wrap: wrap;
+    }
+
+    .size-option {
+        padding: 12px 24px;
+        border: 2px solid var(--border-light);
+        border-radius: 8px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        font-weight: 600;
+        background: white;
+        min-width: 70px;
+        text-align: center;
+    }
+
+    .size-option:hover {
+        border-color: var(--primary-gold);
+        background: var(--primary-gold-light);
+    }
+
+    .size-option.selected {
+        border-color: var(--primary-gold);
+        background: var(--primary-gold);
+        color: white;
+    }
+
+    .size-option.disabled {
+        opacity: 0.3;
+        cursor: not-allowed;
+        background: #f5f5f5;
+    }
+
+    .size-option.disabled:hover {
+        border-color: var(--border-light);
+        background: #f5f5f5;
+    }
+
+    .variant-info {
+        margin-top: 20px;
+        padding: 16px;
+        background: linear-gradient(135deg, #e8f5e9 0%, #f1f8f4 100%);
+        border-radius: 8px;
+        border-left: 4px solid #4caf50;
+    }
+
+    .variant-info p {
+        margin: 8px 0;
+        font-size: 15px;
+        color: var(--text-dark);
+    }
+
+    .variant-info strong {
+        color: var(--primary-black);
+    }
+
+    .alert {
+        padding: 16px;
+        border-radius: 8px;
+        margin-bottom: 20px;
+        font-size: 14px;
+        font-weight: 500;
+    }
+
+    .alert-warning {
+        background: linear-gradient(135deg, #fff3cd 0%, #ffeaa7 100%);
+        color: #856404;
+        border: 1px solid #ffeaa7;
+    }
+
+    .alert-info {
+        background: linear-gradient(135deg, #d1ecf1 0%, #bee5eb 100%);
+        color: #0c5460;
+        border: 1px solid #bee5eb;
+    }
+
+    .alert-success {
+        background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
+        color: #155724;
+        border: 1px solid #c3e6cb;
+    }
+
+    .alert-error {
+        background: linear-gradient(135deg, #f8d7da 0%, #f5c6cb 100%);
+        color: #721c24;
+        border: 1px solid #f5c6cb;
+    }
+
     @media (max-width: 768px) {
         .product-detail-container {
             padding: 20px;
@@ -169,6 +324,157 @@
         }
     }
 </style>
+
+<script>
+// Chuyển dữ liệu PHP sang JavaScript
+const variantsData = <?php echo json_encode($variants ?? []); ?>;
+const productData = <?php echo json_encode($product ?? []); ?>;
+
+let selectedColor = null;
+let selectedSize = null;
+let currentVariant = null;
+
+// Hàm tìm variant theo color và size
+function findVariant(colorId, sizeId) {
+    return variantsData.find(v => {
+        const matchColor = colorId ? v.color_id == colorId : !v.color_id;
+        const matchSize = sizeId ? v.size_id == sizeId : !v.size_id;
+        return matchColor && matchSize;
+    });
+}
+
+// Hàm cập nhật UI khi chọn variant
+function updateVariantUI() {
+    const variant = findVariant(selectedColor, selectedSize);
+    currentVariant = variant;
+    
+    if (variant) {
+        // Cập nhật giá
+        const priceElement = document.getElementById('product-price');
+        if (priceElement && variant.price) {
+            priceElement.textContent = new Intl.NumberFormat('vi-VN').format(variant.price);
+        }
+        
+        // Cập nhật thông tin variant
+        const variantInfo = document.getElementById('variant-info');
+        if (variantInfo) {
+            const stock = variant.stock || 0;
+            const sku = variant.sku || 'N/A';
+            
+            variantInfo.innerHTML = `
+                <p><strong>SKU:</strong> ${sku}</p>
+                <p><strong>Tồn kho:</strong> <span style="color: ${stock > 0 ? '#27ae60' : '#e74c3c'}; font-weight: 600;">${stock} sản phẩm</span></p>
+                <p><strong>Giá:</strong> ${new Intl.NumberFormat('vi-VN').format(variant.price)} ₫</p>
+            `;
+            variantInfo.style.display = 'block';
+        }
+        
+        // Cập nhật input số lượng
+        const quantityInput = document.getElementById('quantity');
+        if (quantityInput) {
+            quantityInput.max = variant.stock;
+            quantityInput.value = Math.min(1, variant.stock);
+        }
+        
+        // Cập nhật variant_id hidden input
+        const variantIdInput = document.getElementById('variant_id');
+        if (variantIdInput) {
+            variantIdInput.value = variant.id;
+        }
+        
+        // Hiển thị/ẩn nút thêm giỏ hàng
+        const addToCartBtn = document.getElementById('add-to-cart-btn');
+        const outOfStockMsg = document.getElementById('out-of-stock-msg');
+        
+        if (variant.stock > 0) {
+            if (addToCartBtn) addToCartBtn.style.display = 'block';
+            if (outOfStockMsg) outOfStockMsg.style.display = 'none';
+        } else {
+            if (addToCartBtn) addToCartBtn.style.display = 'none';
+            if (outOfStockMsg) outOfStockMsg.style.display = 'block';
+        }
+    }
+    
+    // Cập nhật trạng thái available của các options
+    updateAvailableOptions();
+}
+
+// Hàm cập nhật các options có sẵn
+function updateAvailableOptions() {
+    // Cập nhật sizes available dựa trên color đã chọn
+    const sizeOptions = document.querySelectorAll('.size-option');
+    sizeOptions.forEach(option => {
+        const sizeId = option.dataset.sizeId;
+        const variant = findVariant(selectedColor, sizeId);
+        
+        if (variant && variant.stock > 0) {
+            option.classList.remove('disabled');
+        } else {
+            option.classList.add('disabled');
+        }
+    });
+    
+    // Cập nhật colors available dựa trên size đã chọn
+    const colorOptions = document.querySelectorAll('.color-option');
+    colorOptions.forEach(option => {
+        const colorId = option.dataset.colorId;
+        const variant = findVariant(colorId, selectedSize);
+        
+        if (variant && variant.stock > 0) {
+            option.classList.remove('disabled');
+        } else {
+            option.classList.add('disabled');
+        }
+    });
+}
+
+// Hàm chọn màu
+function selectColor(colorId) {
+    selectedColor = colorId;
+    
+    // Cập nhật UI
+    document.querySelectorAll('.color-option').forEach(option => {
+        option.classList.remove('selected');
+    });
+    
+    const selectedOption = document.querySelector(`.color-option[data-color-id="${colorId}"]`);
+    if (selectedOption) {
+        selectedOption.classList.add('selected');
+    }
+    
+    updateVariantUI();
+}
+
+// Hàm chọn size
+function selectSize(sizeId) {
+    selectedSize = sizeId;
+    
+    // Cập nhật UI
+    document.querySelectorAll('.size-option').forEach(option => {
+        option.classList.remove('selected');
+    });
+    
+    const selectedOption = document.querySelector(`.size-option[data-size-id="${sizeId}"]`);
+    if (selectedOption) {
+        selectedOption.classList.add('selected');
+    }
+    
+    updateVariantUI();
+}
+
+// Khởi tạo khi trang load
+document.addEventListener('DOMContentLoaded', function() {
+    // Nếu chỉ có 1 variant, tự động chọn
+    if (variantsData.length === 1) {
+        const variant = variantsData[0];
+        if (variant.color_id) selectColor(variant.color_id);
+        if (variant.size_id) selectSize(variant.size_id);
+    }
+    
+    // Cập nhật trạng thái ban đầu
+    updateAvailableOptions();
+});
+</script>
 
 <?php if (isset($product) && $product): ?>
     <div class="product-detail-container">
@@ -193,7 +499,7 @@
             <div class="product-detail-info">
                 <h1 class="product-detail-title"><?php echo htmlspecialchars($product['name']); ?></h1>
                 
-                <div class="product-detail-price"><?php echo number_format($product['price'], 0, ',', '.'); ?></div>
+                <div class="product-detail-price" id="product-price"><?php echo number_format($product['price'], 0, ',', '.'); ?></div>
 
                 <div class="product-info-box">
                     <p>
@@ -211,18 +517,74 @@
                         }
                         ?>
                     </p>
-                    <p>
-                        <strong>Kho hàng:</strong> 
-                        <span style="color: <?php echo $product['quantity'] > 0 ? '#27ae60' : '#e74c3c'; ?>; font-weight: 600;">
-                            <?php echo $product['quantity']; ?> sản phẩm
-                        </span>
-                        <?php if ($product['quantity'] > 0): ?>
-                            <span class="stock-badge stock-available">Còn hàng</span>
-                        <?php else: ?>
-                            <span class="stock-badge stock-unavailable">Hết hàng</span>
-                        <?php endif; ?>
-                    </p>
                 </div>
+
+                <?php if (!empty($variants)): ?>
+                    <!-- Chọn màu sắc và kích thước -->
+                    <div class="variant-selector">
+                        <?php if (!empty($availableColors)): ?>
+                            <h4>Chọn màu sắc:</h4>
+                            <div class="color-options">
+                                <?php foreach ($availableColors as $color): ?>
+                                    <div class="color-option" 
+                                         data-color-id="<?php echo $color['id']; ?>"
+                                         style="background-color: <?php echo htmlspecialchars($color['hex_code']); ?>;"
+                                         onclick="selectColor(<?php echo $color['id']; ?>)"
+                                         title="<?php echo htmlspecialchars($color['name']); ?>">
+                                        <span class="color-label"><?php echo htmlspecialchars($color['name']); ?></span>
+                                    </div>
+                                <?php endforeach; ?>
+                            </div>
+                        <?php endif; ?>
+
+                        <?php if (!empty($availableSizes)): ?>
+                            <h4>Chọn kích thước:</h4>
+                            <div class="size-options">
+                                <?php foreach ($availableSizes as $size): ?>
+                                    <div class="size-option" 
+                                         data-size-id="<?php echo $size['id']; ?>"
+                                         onclick="selectSize(<?php echo $size['id']; ?>)">
+                                        <?php echo htmlspecialchars($size['value']); ?>
+                                        <?php if (!empty($size['description'])): ?>
+                                            <div style="font-size: 11px; color: #888; margin-top: 2px;">
+                                                <?php echo htmlspecialchars($size['description']); ?>
+                                            </div>
+                                        <?php endif; ?>
+                                    </div>
+                                <?php endforeach; ?>
+                            </div>
+                        <?php endif; ?>
+
+                        <!-- Thông tin variant đã chọn -->
+                        <div id="variant-info" class="variant-info" style="display: none;">
+                            <!-- Sẽ được cập nhật bởi JavaScript -->
+                        </div>
+                    </div>
+
+                    <?php if (empty($availableColors) && empty($availableSizes)): ?>
+                        <div class="alert alert-info">
+                            Sản phẩm này có sẵn với cấu hình tiêu chuẩn.
+                        </div>
+                    <?php else: ?>
+                        <div class="alert alert-warning">
+                            ℹ️ Vui lòng chọn <?php echo !empty($availableColors) ? 'màu sắc' : ''; ?><?php echo !empty($availableColors) && !empty($availableSizes) ? ' và ' : ''; ?><?php echo !empty($availableSizes) ? 'kích thước' : ''; ?> để xem thông tin chi tiết và giá.
+                        </div>
+                    <?php endif; ?>
+                <?php else: ?>
+                    <div class="product-info-box">
+                        <p>
+                            <strong>Kho hàng:</strong> 
+                            <span style="color: <?php echo $product['quantity'] > 0 ? '#27ae60' : '#e74c3c'; ?>; font-weight: 600;">
+                                <?php echo $product['quantity']; ?> sản phẩm
+                            </span>
+                            <?php if ($product['quantity'] > 0): ?>
+                                <span class="stock-badge stock-available">Còn hàng</span>
+                            <?php else: ?>
+                                <span class="stock-badge stock-unavailable">Hết hàng</span>
+                            <?php endif; ?>
+                        </p>
+                    </div>
+                <?php endif; ?>
 
                 <div class="product-description-box">
                     <h3>Mô tả sản phẩm</h3>
@@ -231,7 +593,27 @@
                     </p>
                 </div>
 
-                <?php if ($product['quantity'] > 0): ?>
+                <!-- Form thêm vào giỏ hàng -->
+                <?php if (!empty($variants)): ?>
+                    <form method="POST" action="<?php echo ROOT_URL; ?>cart/add/<?php echo $product['id']; ?>" id="add-to-cart-form">
+                        <input type="hidden" name="variant_id" id="variant_id" value="">
+                        
+                        <div class="quantity-selector">
+                            <label for="quantity">Số lượng:</label>
+                            <input type="number" id="quantity" name="quantity" value="1" min="1" max="1" required>
+                        </div>
+                        
+                        <button type="submit" id="add-to-cart-btn" class="btn btn-success" style="padding: 18px 50px; font-size: 18px; width: 100%; text-transform: uppercase; letter-spacing: 1.5px; display: none;">
+                            🛒 Thêm vào giỏ hàng
+                        </button>
+                    </form>
+                    
+                    <div id="out-of-stock-msg" style="padding: 24px; background: linear-gradient(135deg, #f8d7da 0%, #f5c6cb 100%); border-radius: 12px; text-align: center; margin-top: 30px; display: none;">
+                        <div style="font-size: 48px; margin-bottom: 16px;">⏳</div>
+                        <div style="color: #721c24; font-weight: 600; font-size: 18px;">Biến thể này hiện đang hết hàng</div>
+                        <p style="color: #721c24; margin-top: 8px; font-size: 14px;">Vui lòng chọn màu sắc hoặc kích thước khác</p>
+                    </div>
+                <?php elseif ($product['quantity'] > 0): ?>
                     <form method="POST" action="<?php echo ROOT_URL; ?>cart/add/<?php echo $product['id']; ?>">
                         <div class="quantity-selector">
                             <label for="quantity">Số lượng:</label>

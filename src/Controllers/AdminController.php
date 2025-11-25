@@ -181,18 +181,9 @@ public function orders() {
 }
 
 public function branch() {
-    $this->requireAdmin();
-    $branchModel = new Branch();
-    $branches = $branchModel->getAll();
-    
-    $data = [
-        'title' => 'Quản lý hãng',
-        'branches' => $branches,
-        'totalBranches' => count($branches),
-        'editing' => false
-    ];
-    
-    $this->renderView('admin/branch', $data);
+    // delegate to BranchController
+    $bc = new BranchController();
+    return $bc->index();
 }
 
 /**
@@ -200,26 +191,8 @@ public function branch() {
  * URL: /admin/editBranch/{id}
  */
 public function editBranch($id) {
-    $branchModel = new Branch();
-    $branch = $branchModel->getById($id);
-    
-    if (!$branch) {
-        $_SESSION['error'] = 'Hãng không tồn tại';
-        header('Location: ' . ROOT_URL . 'admin/branch');
-        exit;
-    }
-    
-    $branches = $branchModel->getAll();
-    
-    $data = [
-        'title' => 'Sửa hãng',
-        'branch' => $branch,
-        'branches' => $branches,
-        'totalBranches' => count($branches),
-        'editing' => true
-    ];
-    
-    $this->renderView('admin/branch', $data);
+    $bc = new BranchController();
+    return $bc->adminEditBranch($id);
 }
 
 /**
@@ -232,33 +205,8 @@ public function saveBranch() {
         exit;
     }
     
-    $branchModel = new Branch();
-    
-    $id = isset($_POST['id']) ? trim($_POST['id']) : '';
-    $name = isset($_POST['name']) ? trim($_POST['name']) : '';
-    
-    if ($name === '') {
-        $_SESSION['error'] = 'Tên hãng không được để trống';
-        header('Location: ' . ROOT_URL . 'admin/branch');
-        exit;
-    }
-    
-    try {
-        if ($id) {
-            // Cập nhật
-            $success = $branchModel->updateBranch($id, ['name' => $name]);
-            $_SESSION['message'] = $success ? 'Cập nhật hãng thành công' : 'Không thể cập nhật hãng';
-        } else {
-            // Thêm mới
-            $newId = $branchModel->createBranch(['name' => $name]);
-            $_SESSION['message'] = $newId ? 'Thêm hãng thành công' : 'Không thể thêm hãng';
-        }
-    } catch (\Exception $e) {
-        $_SESSION['error'] = 'Lỗi xử lý hãng: ' . $e->getMessage();
-    }
-    
-    header('Location: ' . ROOT_URL . 'admin/branch');
-    exit;
+    $bc = new BranchController();
+    return $bc->adminSaveBranch();
 }
 
 /**
@@ -266,46 +214,14 @@ public function saveBranch() {
  * URL: /admin/deleteBranch/{id}
  */
 public function deleteBranch($id = null) {
-    // Nếu không có id được truyền, trả về lỗi thân thiện
-    if (!$id) {
-        $_SESSION['error'] = 'ID hãng không được bỏ trống';
-        header('Location: ' . ROOT_URL . 'admin/branch');
-        exit;
-    }
-
-    $branchModel = new Branch();
-    
-    $branch = $branchModel->getById($id);
-    if (!$branch) {
-        $_SESSION['error'] = 'Hãng không tồn tại';
-        header('Location: ' . ROOT_URL . 'admin/branch');
-        exit;
-    }
-    
-    try {
-        $success = $branchModel->deleteBranch($id);
-        $_SESSION['message'] = $success ? 'Đã xóa hãng' : 'Không thể xóa hãng';
-    } catch (\Exception $e) {
-        $_SESSION['error'] = 'Lỗi khi xóa hãng: ' . $e->getMessage();
-    }
-    
-    header('Location: ' . ROOT_URL . 'admin/branch');
-    exit;
+    $bc = new BranchController();
+    return $bc->adminDeleteBranch($id);
 }
 
 public function categories() {
     $this->requireAdmin();
-    $categoryModel = new Category();
-    $categories = $categoryModel->getAll();
-    
-    $data = [
-        'title' => 'Quản lý danh mục',
-        'categories' => $categories,
-        'totalCategories' => count($categories),
-        'editing' => false
-    ];
-    
-    $this->renderView('admin/category', $data);
+    $cc = new CategoryController();
+    return $cc->index();
 }
 
 /**
@@ -313,33 +229,8 @@ public function categories() {
  * URL: /admin/editCategory/{id}
  */
 public function editCategory($id = null) {
-    // Guard: nếu không có id truyền vào, trả về lỗi thân thiện
-    if (!$id) {
-        $_SESSION['error'] = 'ID danh mục không được bỏ trống';
-        header('Location: ' . ROOT_URL . 'admin/categories');
-        exit;
-    }
-
-    $categoryModel = new Category();
-    $category = $categoryModel->getById($id);
-    
-    if (!$category) {
-        $_SESSION['error'] = 'Danh mục không tồn tại';
-        header('Location: ' . ROOT_URL . 'admin/categories');
-        exit;
-    }
-    
-    $categories = $categoryModel->getAll();
-    
-    $data = [
-        'title' => 'Sửa danh mục',
-        'category' => $category,
-        'categories' => $categories,
-        'totalCategories' => count($categories),
-        'editing' => true
-    ];
-    
-    $this->renderView('admin/category', $data);
+    $cc = new CategoryController();
+    return $cc->adminEditCategory($id);
 }
 
 /**
@@ -347,45 +238,8 @@ public function editCategory($id = null) {
  * URL: /admin/saveCategory (POST)
  */
 public function saveCategory() {
-    if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-        header('Location: ' . ROOT_URL . 'admin/categories');
-        exit;
-    }
-    
-    $categoryModel = new Category();
-    
-    $id = isset($_POST['id']) ? trim($_POST['id']) : '';
-    $name = isset($_POST['name']) ? trim($_POST['name']) : '';
-    $description = isset($_POST['description']) ? trim($_POST['description']) : '';
-    
-    if ($name === '') {
-        $_SESSION['error'] = 'Tên danh mục không được để trống';
-        header('Location: ' . ROOT_URL . 'admin/categories');
-        exit;
-    }
-    
-    try {
-        if ($id) {
-            // Cập nhật
-            $success = $categoryModel->updateCategory($id, [
-                'name' => $name,
-                'description' => $description
-            ]);
-            $_SESSION['message'] = $success ? 'Cập nhật danh mục thành công' : 'Không thể cập nhật danh mục';
-        } else {
-            // Thêm mới
-            $newId = $categoryModel->createCategory([
-                'name' => $name,
-                'description' => $description
-            ]);
-            $_SESSION['message'] = $newId ? 'Thêm danh mục thành công' : 'Không thể thêm danh mục';
-        }
-    } catch (\Exception $e) {
-        $_SESSION['error'] = 'Lỗi xử lý danh mục: ' . $e->getMessage();
-    }
-    
-    header('Location: ' . ROOT_URL . 'admin/categories');
-    exit;
+    $cc = new CategoryController();
+    return $cc->adminSaveCategory();
 }
 
 
@@ -394,24 +248,8 @@ public function saveCategory() {
  * URL: /admin/deleteCategory/{id}
  */
 public function deleteCategory($id) {
-    $categoryModel = new Category();
-    
-    $category = $categoryModel->getById($id);
-    if (!$category) {
-        $_SESSION['error'] = 'Danh mục không tồn tại';
-        header('Location: ' . ROOT_URL . 'admin/categories');
-        exit;
-    }
-    
-    try {
-        $success = $categoryModel->deleteCategory($id);
-        $_SESSION['message'] = $success ? 'Đã xóa danh mục' : 'Không thể xóa danh mục';
-    } catch (\Exception $e) {
-        $_SESSION['error'] = 'Lỗi khi xóa danh mục: ' . $e->getMessage();
-    }
-    
-    header('Location: ' . ROOT_URL . 'admin/categories');
-    exit;
+    $cc = new CategoryController();
+    return $cc->adminDeleteCategory($id);
 }
 
 
@@ -814,26 +652,9 @@ public function dashboard() {
      * URL: /admin/products
      */
     public function products() {
-        $this->requireAdmin();
-        $productModel = new Product();
-        $categoryModel = new Category();
-        $branchModel = new Branch();
-        $UserModel = new \Models\User();
-
-        $products = $productModel->getAllWithCategory();
-        $categories = $categoryModel->getAll();
-        $branches = $branchModel->getAll();
-
-        $data = [
-            'title' => 'Quản lý sản phẩm',
-            'products' => $products,
-            'categories' => $categories,
-            'branches' => $branches,
-            'totalProducts' => count($products),
-            'editing' => false
-        ];
-
-        $this->renderView('admin/product', $data);
+        // Delegate product admin pages to ProductController
+        $pc = new ProductController();
+        return $pc->adminProducts();
     }
 
     /**
@@ -841,32 +662,8 @@ public function dashboard() {
      * URL: /admin/editProduct/{id}
      */
     public function editProduct($id) {
-        $productModel = new Product();
-        $categoryModel = new Category();
-        $branchModel = new Branch();
-
-        $product = $productModel->getById($id);
-        if (!$product) {
-            $_SESSION['error'] = 'Sản phẩm không tồn tại';
-            header('Location: ' . ROOT_URL . 'admin/products');
-            exit;
-        }
-
-        $products = $productModel->getAllWithCategory();
-        $categories = $categoryModel->getAll();
-        $branches = $branchModel->getAll();
-
-        $data = [
-            'title' => 'Sửa sản phẩm',
-            'product' => $product,
-            'products' => $products,
-            'categories' => $categories,
-            'branches' => $branches,
-            'totalProducts' => count($products),
-            'editing' => true
-        ];
-
-        $this->renderView('admin/product', $data);
+        $pc = new ProductController();
+        return $pc->adminEditProduct($id);
     }
 
     /**
@@ -874,75 +671,8 @@ public function dashboard() {
      * URL: /admin/saveProduct (POST)
      */
     public function saveProduct() {
-        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-            header('Location: ' . ROOT_URL . 'admin/products');
-            exit;
-        }
-
-        $productModel = new Product();
-
-        $id = isset($_POST['id']) ? trim($_POST['id']) : '';
-        $name = isset($_POST['name']) ? trim($_POST['name']) : '';
-        $price = isset($_POST['price']) ? (int)$_POST['price'] : 0;
-        $quantity = isset($_POST['quantity']) ? (int)$_POST['quantity'] : 0;
-        $categoryId = isset($_POST['category_id']) ? trim($_POST['category_id']) : '';
-        $branchId = isset($_POST['branch_id']) ? trim($_POST['branch_id']) : '';
-        $description = isset($_POST['description']) ? trim($_POST['description']) : '';
-
-        if ($name === '' || $price < 0 || $quantity < 0 || $categoryId === '' || $branchId === '') {
-            $_SESSION['error'] = 'Vui lòng nhập đầy đủ thông tin hợp lệ (tên, giá, kho, danh mục, hãng)';
-            header('Location: ' . ROOT_URL . 'admin/products');
-            exit;
-        }
-
-        // Xử lý ảnh upload đơn giản (nếu có)
-        $imageName = '';
-        if (isset($_FILES['image']) && $_FILES['image']['error'] === UPLOAD_ERR_OK) {
-            $uploadDir = ROOT_PATH . '/public/images/';
-            if (!is_dir($uploadDir)) {
-                @mkdir($uploadDir, 0777, true);
-            }
-            $ext = pathinfo($_FILES['image']['name'], PATHINFO_EXTENSION);
-            $imageName = uniqid('prod_') . '.' . $ext;
-            move_uploaded_file($_FILES['image']['tmp_name'], $uploadDir . $imageName);
-        }
-
-        try {
-            if ($id) {
-                // Cập nhật
-                $updateData = [
-                    'name' => $name,
-                    'price' => $price,
-                    'quantity' => $quantity,
-                    'category_id' => $categoryId,
-                    'branch_id' => $branchId,
-                    'description' => $description
-                ];
-                if ($imageName !== '') {
-                    $updateData['image'] = $imageName;
-                }
-                $success = $productModel->update($id, $updateData, 'Product_Id');
-                $_SESSION['message'] = $success ? 'Cập nhật sản phẩm thành công' : 'Không thể cập nhật sản phẩm';
-            } else {
-                // Thêm mới
-                $createData = [
-                    'name' => $name,
-                    'price' => $price,
-                    'quantity' => $quantity,
-                    'category_id' => $categoryId,
-                    'branch_id' => $branchId,
-                    'description' => $description,
-                    'image' => $imageName
-                ];
-                $newId = $productModel->createProduct($createData);
-                $_SESSION['message'] = $newId ? 'Thêm sản phẩm thành công' : 'Không thể thêm sản phẩm';
-            }
-        } catch (\Exception $e) {
-            $_SESSION['error'] = 'Lỗi xử lý sản phẩm: ' . $e->getMessage();
-        }
-
-        header('Location: ' . ROOT_URL . 'admin/products');
-        exit;
+        $pc = new ProductController();
+        return $pc->adminSaveProduct();
     }
 
     /**
@@ -950,24 +680,8 @@ public function dashboard() {
      * URL: /admin/deleteProduct/{id}
      */
     public function deleteProduct($id) {
-        $productModel = new Product();
-
-        $product = $productModel->getById($id);
-        if (!$product) {
-            $_SESSION['error'] = 'Sản phẩm không tồn tại';
-            header('Location: ' . ROOT_URL . 'admin/products');
-            exit;
-        }
-
-        try {
-            $success = $productModel->deleteById($id);
-            $_SESSION['message'] = $success ? 'Đã xóa sản phẩm' : 'Không thể xóa sản phẩm';
-        } catch (\Exception $e) {
-            $_SESSION['error'] = 'Lỗi khi xóa sản phẩm: ' . $e->getMessage();
-        }
-
-        header('Location: ' . ROOT_URL . 'admin/products');
-        exit;
+        $pc = new ProductController();
+        return $pc->adminDeleteProduct($id);
     }
 }
 
