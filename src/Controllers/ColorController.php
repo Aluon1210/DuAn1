@@ -20,8 +20,6 @@ class ColorController extends Controller {
 
 		$this->renderView('admin/color', $data);
 	}
-
-}
 	public function adminEditColor($id = null) {
 		$this->requireAdmin();
 		if (!$id) {
@@ -126,4 +124,6 @@ class ColorController extends Controller {
 		header('Location: ' . ROOT_URL . 'admin/colors');
 		exit;
 	}
+
+}
 
