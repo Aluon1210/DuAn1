@@ -309,6 +309,24 @@ class Product extends Model {
         $stmt = $this->db->prepare($sql);
         return $stmt->execute(['id' => $id]);
     }
+
+    /**
+     * Đếm số sản phẩm thuộc một danh mục
+     * @param string $categoryId
+     * @return int
+     */
+    public function countByCategory($categoryId) {
+        try {
+            $sql = "SELECT COUNT(*) as cnt FROM {$this->table} WHERE Category_Id = :category_id";
+            $stmt = $this->db->prepare($sql);
+            $stmt->execute(['category_id' => $categoryId]);
+            $row = $stmt->fetch(\PDO::FETCH_ASSOC);
+            return $row ? (int)$row['cnt'] : 0;
+        } catch (\Exception $e) {
+            error_log("Error in countByCategory: " . $e->getMessage());
+            return 0;
+        }
+    }
     
     /**
      * Tạo sản phẩm mới

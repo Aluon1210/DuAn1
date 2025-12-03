@@ -190,6 +190,7 @@
             text-decoration: none;
             transition: var(--transition-smooth);
             font-size: 20px;
+            cursor: pointer;
         }
 
         .login-icon:hover,
@@ -198,6 +199,92 @@
             color: var(--primary-black);
             transform: translateY(-2px);
             box-shadow: 0 4px 12px rgba(212, 175, 55, 0.4);
+        }
+
+        .user-dropdown {
+            position: relative;
+        }
+
+        .user-menu {
+            position: absolute;
+            top: 100%;
+            right: 0;
+            background: white;
+            border: 1px solid var(--border-light);
+            border-radius: 8px;
+            box-shadow: var(--shadow-hover);
+            min-width: 250px;
+            margin-top: 10px;
+            display: none;
+            z-index: 999;
+            overflow: hidden;
+        }
+
+        .user-menu.active {
+            display: block;
+            animation: slideDown 0.3s ease-out;
+        }
+
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .user-info {
+            padding: 20px;
+            border-bottom: 1px solid var(--border-light);
+            background: var(--accent-gray);
+        }
+
+        .user-info .name {
+            font-weight: 600;
+            color: var(--text-dark);
+            margin-bottom: 5px;
+        }
+
+        .user-info .email {
+            font-size: 12px;
+            color: var(--text-light);
+        }
+
+        .user-menu-items {
+            list-style: none;
+        }
+
+        .user-menu-items li {
+            border-bottom: 1px solid var(--border-light);
+        }
+
+        .user-menu-items li:last-child {
+            border-bottom: none;
+        }
+
+        .user-menu-items a {
+            display: block;
+            padding: 15px 20px;
+            color: var(--text-dark);
+            text-decoration: none;
+            transition: var(--transition-smooth);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .user-menu-items a:hover {
+            background: var(--accent-gray);
+            color: var(--primary-gold);
+            padding-left: 25px;
+        }
+
+        .user-menu-items a.logout:hover {
+            background: rgba(220, 53, 69, 0.1);
+            color: #dc3545;
         }
 
         .header-bottom {
@@ -350,15 +437,25 @@
                 </a>
                 
                 <?php if (isset($_SESSION['user'])): ?>
-                    <a href="<?php echo ROOT_URL; ?>account" class="user-icon" title="Tài khoản">
-                        <span>👤</span>
-                    </a>
-                    <a href="<?php echo ROOT_URL; ?>logout" class="btn btn-danger" style="padding: 10px 20px; font-size: 13px;" title="Đăng xuất">
-                        Đăng xuất
-                    </a>
+                    <div class="user-dropdown">
+                        <button class="user-icon" onclick="toggleUserMenu()" title="Menu tài khoản" style="border: none; background: rgba(212, 175, 55, 0.1);">
+                            👤
+                        </button>
+                        <div class="user-menu" id="userMenu">
+                            <div class="user-info">
+                                <div class="name"><?php echo htmlspecialchars($_SESSION['user']['name'] ?? 'Người dùng'); ?></div>
+                                <div class="email"><?php echo htmlspecialchars($_SESSION['user']['email'] ?? ''); ?></div>
+                            </div>
+                            <ul class="user-menu-items">
+                                <li><a href="<?php echo ROOT_URL; ?>account">👤 Thông tin cá nhân</a></li>
+                                <li><a href="<?php echo ROOT_URL; ?>account/orders">📦 Lịch sử đơn hàng</a></li>
+                                <li><a href="<?php echo ROOT_URL; ?>logout" class="logout">🚪 Đăng xuất</a></li>
+                            </ul>
+                        </div>
+                    </div>
                 <?php else: ?>
                     <a href="<?php echo ROOT_URL; ?>login" class="login-icon" title="Đăng nhập">
-                        <span>🔐</span>
+                        🔐
                     </a>
                     <a href="<?php echo ROOT_URL; ?>register" class="btn btn-success" style="padding: 10px 20px; font-size: 13px;" title="Đăng ký">
                         Đăng ký
@@ -417,6 +514,21 @@
             </nav>
         </div>
     </header>
+
+    <script>
+        function toggleUserMenu() {
+            const menu = document.getElementById('userMenu');
+            menu.classList.toggle('active');
+        }
+
+        // Đóng menu khi nhấp ra ngoài
+        document.addEventListener('click', function(event) {
+            const dropdown = document.querySelector('.user-dropdown');
+            if (dropdown && !dropdown.contains(event.target)) {
+                document.getElementById('userMenu')?.classList.remove('active');
+            }
+        });
+    </script>
 
     <div class="container">
         <?php if (isset($_SESSION['message'])): ?>

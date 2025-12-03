@@ -12,9 +12,13 @@ class AuthController extends Controller {
      * URL: /login
      */
     public function index() {
-        // Nếu đã đăng nhập, chuyển về trang chủ
+        // Nếu đã đăng nhập, chuyển về trang thích hợp theo role
         if (isset($_SESSION['user'])) {
-            header('Location: ' . ROOT_URL);
+            if ($_SESSION['user']['role'] === 'admin') {
+                header('Location: ' . ROOT_URL . 'admin/dashboard');
+            } else {
+                header('Location: ' . ROOT_URL);
+            }
             exit;
         }
         
@@ -48,12 +52,29 @@ class AuthController extends Controller {
         $user = $userModel->authenticate($email, $password);
         
         if ($user) {
+            // If account is blocked (forbident), show blocked page and do not create session
+            if (isset($user['role']) && $user['role'] === 'forbident') {
+                $data = ['message' => 'Tài khoản của bạn đã bị chặn và không thể đăng nhập vào hệ thống. Vui lòng liên hệ quản trị.'];
+                $this->renderView('auth/forbidden', $data);
+                exit;
+            }
+
             $_SESSION['user'] = $user;
             $_SESSION['message'] = 'Đăng nhập thành công!';
-            
+
+          
             // Chuyển về trang trước đó hoặc trang chủ
             $redirect = $_GET['redirect'] ?? ROOT_URL;
             header('Location: ' . $redirect);
+
+
+            // Redirect theo role
+            if ($user['role'] === 'admin') {
+                header('Location: ' . ROOT_URL . 'admin/dashboard');
+            } else {
+                header('Location: ' . ROOT_URL);
+            }
+
             exit;
         } else {
             $_SESSION['error'] = 'Email hoặc mật khẩu không đúng';

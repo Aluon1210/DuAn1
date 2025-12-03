@@ -60,5 +60,40 @@ class Controller {
         // Tải view trực tiếp (view phải có HTML đầy đủ)
         require_once $viewFile;
     }
+
+    /**
+     * Kiểm tra xem user có phải admin không
+     * Nếu không phải admin, redirect về trang chủ
+     * @return bool|void
+     */
+    protected function requireAdmin() {
+        if (!isset($_SESSION['user']) || $_SESSION['user']['role'] !== 'admin') {
+            $_SESSION['error'] = 'Bạn không có quyền truy cập trang này';
+            header('Location: ' . ROOT_URL);
+            exit;
+        }
+    }
+
+    /**
+     * Kiểm tra xem user đã đăng nhập chưa
+     * Nếu chưa, redirect tới login
+     * @return bool|void
+     */
+    protected function requireLogin() {
+        if (!isset($_SESSION['user'])) {
+            $_SESSION['error'] = 'Vui lòng đăng nhập';
+            header('Location: ' . ROOT_URL . 'login');
+            exit;
+        }
+        // If the logged-in account has role 'forbident', show blocked page and destroy session
+        if (isset($_SESSION['user']['role']) && $_SESSION['user']['role'] === 'forbident') {
+            // clear session user
+            unset($_SESSION['user']);
+            $data = ['message' => 'Tài khoản của bạn đã bị chặn và không thể truy cập hệ thống. Vui lòng liên hệ quản trị.'];
+            // Render a simple forbidden view
+            $this->renderView('auth/forbidden', $data);
+            exit;
+        }
+    }
 }
 ?>

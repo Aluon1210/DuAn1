@@ -43,6 +43,7 @@ class User extends Model {
      * @return string|false Username hoặc false nếu lỗi
      */
     public function createUser($data) {
+        $dbData = []; // Khai báo trước để dùng trong catch
         try {
             // Generate username theo format kh+0000000001
             $username = IdGenerator::generate('kh+', $this->table, '_UserName_Id', 10);
@@ -82,7 +83,7 @@ class User extends Model {
     /**
      * Xác thực user
      * @param string $email
-     * @param string $password
+     * @param string $passwordGI
      * @return array|false
      */
     public function authenticate($email, $password) {
@@ -116,6 +117,72 @@ class User extends Model {
             'address' => $user['Address'] ?? '',
             'password' => $user['__PassWord'] ?? '' // Chỉ dùng khi authenticate
         ];
+    }
+
+    /**
+     * Lấy tất cả user (cho admin)
+     * @return array
+     */
+    public function getAllUsers() {
+        try {
+            // Exclude users with role 'forbident' from admin listings
+            $sql = "SELECT _UserName_Id as id, Email as email, FullName as name, Phone as phone, Role as role, Address as address FROM {$this->table} WHERE Role != 'forbident' ORDER BY _UserName_Id DESC";
+            $stmt = $this->db->prepare($sql);
+            $stmt->execute();
+            return $stmt->fetchAll(\PDO::FETCH_ASSOC);
+        } catch (\PDOException $e) {
+            error_log("Get all users SQL Error: " . $e->getMessage());
+            throw $e;
+        }
+    }
+
+    /**
+     * Cập nhật user (cho admin)
+     * @param string $id Username
+     * @param array $data
+     * @return bool
+     */
+    public function updateUser($id, $data) {
+        try {
+            $sql = "UPDATE {$this->table} SET Email = :email, FullName = :name, Phone = :phone, Role = :role, Address = :address";
+            $params = [
+                ':email' => trim($data['email'] ?? ''),
+                ':name' => trim($data['name'] ?? ''),
+                ':phone' => trim($data['phone'] ?? ''),
+                ':role' => trim($data['role'] ?? 'user'),
+                ':address' => trim($data['address'] ?? ''),
+                ':id' => $id
+            ];
+            
+            // Nếu có password mới, hash và thêm vào
+            if (!empty($data['password'])) {
+                $sql .= ", __PassWord = :password";
+                $params[':password'] = password_hash($data['password'], PASSWORD_DEFAULT);
+            }
+            
+            $sql .= " WHERE _UserName_Id = :id";
+            $stmt = $this->db->prepare($sql);
+            return $stmt->execute($params);
+        } catch (\PDOException $e) {
+            error_log("User update SQL Error: " . $e->getMessage());
+            throw $e;
+        }
+    }
+
+    /**
+     * Xóa user
+     * @param string $id Username
+     * @return bool
+     */
+    public function deleteUser($id) {
+        try {
+            $sql = "DELETE FROM {$this->table} WHERE _UserName_Id = :id";
+            $stmt = $this->db->prepare($sql);
+            return $stmt->execute([':id' => $id]);
+        } catch (\PDOException $e) {
+            error_log("User delete SQL Error: " . $e->getMessage());
+            throw $e;
+        }
     }
 }
 ?>
