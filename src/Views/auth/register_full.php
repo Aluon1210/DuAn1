@@ -145,7 +145,7 @@
         <?php unset($_SESSION['message']); ?>
     <?php endif; ?>
 
-    <form method="POST" action="<?php echo ROOT_URL; ?>register/registerProcess" class="auth-form">
+    <form method="POST" action="<?php echo ROOT_URL; ?>register/process" class="auth-form">
         <div class="form-group">
             <label for="name">Họ và tên</label>
             <input 

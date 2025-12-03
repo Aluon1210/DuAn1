@@ -177,7 +177,6 @@
     <?php endif; ?>
 
     <form method="POST" action="<?php echo ROOT_URL; ?>login/process" class="auth-form">
-        <input type="hidden" name="redirect" value="<?php echo isset($_GET['redirect']) ? htmlspecialchars($_GET['redirect']) : ''; ?>">
         <div class="form-group">
             <label for="email">Email</label>
             <input 
