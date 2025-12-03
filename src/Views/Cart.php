@@ -233,9 +233,9 @@
                 </thead>
                 <tbody>
                     <?php foreach ($cartItems as $item): ?>
-                        <tr <?php echo $item['product']['quantity'] <= 0 ? 'style="opacity:0.5;"' : ''; ?> >
+                        <tr <?php echo ($item['variant'] ? $item['variant']['stock'] : $item['product']['quantity']) <= 0 ? 'style="opacity:0.5;"' : ''; ?> >
                             <td style="text-align:center;">
-                                <input type="checkbox" name="selected[]" value="<?php echo $item['product']['id']; ?>" <?php echo $item['product']['quantity'] <= 0 ? 'disabled' : ''; ?> class="cart-select">
+                                <input type="checkbox" name="selected[]" value="<?php echo htmlspecialchars($item['cart_key']); ?>" <?php echo ($item['variant'] ? $item['variant']['stock'] : $item['product']['quantity']) <= 0 ? 'disabled' : ''; ?> class="cart-select">
                             </td>
                             <td>
                                 <div style="display: flex; align-items: center;">
@@ -248,7 +248,24 @@
                                     </div>
                                     <div class="cart-item-info">
                                         <div class="cart-item-name"><?php echo htmlspecialchars($item['product']['name']); ?></div>
-                                        <a href="<?php echo ROOT_URL; ?>product/detail/<?php echo $item['product']['id']; ?>" class="cart-item-link">
+                                        <?php if ($item['color'] || $item['size']): ?>
+                                            <div style="margin-top: 8px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
+                                                <?php if ($item['color']): ?>
+                                                    <div style="display: flex; align-items: center; gap: 6px;">
+                                                        <span style="font-size: 12px; color: var(--text-light);">Màu:</span>
+                                                        <div style="width: 20px; height: 20px; border-radius: 50%; background-color: <?php echo htmlspecialchars($item['color']['hex_code']); ?>; border: 2px solid #ddd; box-shadow: 0 1px 3px rgba(0,0,0,0.2);" title="<?php echo htmlspecialchars($item['color']['name']); ?>"></div>
+                                                        <span style="font-size: 13px; color: var(--text-dark);"><?php echo htmlspecialchars($item['color']['name']); ?></span>
+                                                    </div>
+                                                <?php endif; ?>
+                                                <?php if ($item['size']): ?>
+                                                    <div style="display: flex; align-items: center; gap: 6px;">
+                                                        <span style="font-size: 12px; color: var(--text-light);">Size:</span>
+                                                        <span style="font-size: 13px; color: var(--text-dark); font-weight: 600;"><?php echo htmlspecialchars($item['size']['value']); ?></span>
+                                                    </div>
+                                                <?php endif; ?>
+                                            </div>
+                                        <?php endif; ?>
+                                        <a href="<?php echo ROOT_URL; ?>product/detail/<?php echo $item['product']['id']; ?>" class="cart-item-link" style="margin-top: 8px; display: inline-block;">
                                             Xem chi tiết →
                                         </a>
                                         <?php if ($item['product']['quantity'] <= 0): ?>
@@ -258,29 +275,29 @@
                                 </div>
                             </td>
                             <td style="text-align: center;">
-                                <div class="cart-price"><?php echo number_format($item['product']['price'], 0, ',', '.'); ?> ₫</div>
+                                <div class="cart-price"><?php echo number_format($item['price'], 0, ',', '.'); ?> ₫</div>
                             </td>
                             <td style="text-align: center;">
                                 <div style="display:inline-flex; align-items:center; gap:8px; justify-content:center;">
-                                    <button type="button" class="btn btn-primary qty-minus" data-id="<?php echo $item['product']['id']; ?>" <?php echo $item['product']['quantity'] <= 0 ? 'disabled' : ''; ?>>-</button>
+                                    <button type="button" class="btn btn-primary qty-minus" data-id="<?php echo htmlspecialchars($item['cart_key']); ?>" <?php echo ($item['variant'] ? $item['variant']['stock'] : $item['product']['quantity']) <= 0 ? 'disabled' : ''; ?>>-</button>
                                     <input type="number" 
-                                           name="quantity[<?php echo $item['product']['id']; ?>]" 
+                                           name="quantity[<?php echo htmlspecialchars($item['cart_key']); ?>]" 
                                            value="<?php echo $item['quantity']; ?>" 
                                            min="1" 
-                                           max="<?php echo $item['product']['quantity']; ?>" 
+                                           max="<?php echo $item['variant'] ? $item['variant']['stock'] : $item['product']['quantity']; ?>" 
                                            class="cart-quantity-input" 
-                                           data-price="<?php echo $item['product']['price']; ?>"
-                                           data-id="<?php echo $item['product']['id']; ?>"
-                                           <?php echo $item['product']['quantity'] <= 0 ? 'disabled' : ''; ?>
+                                           data-price="<?php echo $item['price']; ?>"
+                                           data-id="<?php echo htmlspecialchars($item['cart_key']); ?>"
+                                           <?php echo ($item['variant'] ? $item['variant']['stock'] : $item['product']['quantity']) <= 0 ? 'disabled' : ''; ?>
                                            required>
-                                    <button type="button" class="btn btn-primary qty-plus" data-id="<?php echo $item['product']['id']; ?>" <?php echo $item['product']['quantity'] <= 0 ? 'disabled' : ''; ?>>+</button>
+                                    <button type="button" class="btn btn-primary qty-plus" data-id="<?php echo htmlspecialchars($item['cart_key']); ?>" <?php echo ($item['variant'] ? $item['variant']['stock'] : $item['product']['quantity']) <= 0 ? 'disabled' : ''; ?>>+</button>
                                 </div>
                             </td>
                             <td style="text-align: right;">
-                                <div class="cart-subtotal" data-id="<?php echo $item['product']['id']; ?>"><?php echo number_format($item['subtotal'], 0, ',', '.'); ?> ₫</div>
+                                <div class="cart-subtotal" data-id="<?php echo htmlspecialchars($item['cart_key']); ?>"><?php echo number_format($item['subtotal'], 0, ',', '.'); ?> ₫</div>
                             </td>
                             <td style="text-align: center;">
-                                <a href="<?php echo ROOT_URL; ?>cart/remove/<?php echo $item['product']['id']; ?>" 
+                                <a href="<?php echo ROOT_URL; ?>cart/remove/<?php echo htmlspecialchars($item['cart_key']); ?>" 
                                    class="btn btn-danger" 
                                    style="padding: 10px 20px; font-size: 13px;">
                                     Xóa
