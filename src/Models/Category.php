@@ -10,10 +10,12 @@ class Category extends Model {
      * @return array
      */
     public function getAllWithProductCount() {
-        $sql = "SELECT c.*, COUNT(p.Product_Id) as product_count 
-                FROM {$this->table} c 
-                LEFT JOIN products p ON c.Category_Id = p.Category_Id 
-                GROUP BY c.Category_Id 
+        // return rows aliased to match view expectations (id,name,description)
+        $sql = "SELECT c.Category_Id as id, c.Name as name, c.Description as description, 
+                       COUNT(p.Product_Id) as product_count
+                FROM {$this->table} c
+                LEFT JOIN products p ON c.Category_Id = p.Category_Id
+                GROUP BY c.Category_Id
                 ORDER BY c.Name ASC";
         return $this->query($sql);
     }
