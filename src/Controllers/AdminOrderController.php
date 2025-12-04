@@ -19,33 +19,66 @@ class AdminOrderController extends Controller
             header('Location: ' . ROOT_URL . 'login');
             exit;
         }
-
         $orderModel = new Order();
-        $orderDetailModel = new OrderDetail();
 
-        // Lấy tất cả đơn hàng
-        $allOrders = $orderModel->query("SELECT * FROM orders ORDER BY Order_date DESC");
+        // Params: status, page, perPage, optional search q
+        $status = isset($_GET['status']) ? trim($_GET['status']) : '';
+        $page = max(1, (int)($_GET['page'] ?? 1));
+        $perPage = max(1, min(100, (int)($_GET['perPage'] ?? 20)));
+        $search = isset($_GET['q']) ? trim($_GET['q']) : '';
 
-        // Tính toán tổng tiền cho mỗi đơn
-        if ($allOrders) {
-            foreach ($allOrders as &$order) {
-                $items = $orderDetailModel->getByOrderIdWithProduct($order['Order_Id']);
-                $total = 0;
-                if ($items) {
-                    foreach ($items as $item) {
-                        $qty = (int)($item['quantity'] ?? 0);
-                        $price = (float)($item['Price'] ?? 0);
-                        $total += $qty * $price;
-                    }
-                }
-                $order['total'] = $total;
-                $order['items_count'] = count($items ?? []);
+        $where = '';
+        $params = [];
+        if ($status && $status !== 'all') {
+            $where = 'WHERE o.TrangThai = :status';
+            $params[':status'] = $status;
+        }
+
+        if ($search !== '') {
+            $params[':q'] = '%' . $search . '%';
+            if ($where) {
+                $where .= ' AND (o.Order_Id LIKE :q OR u.FullName LIKE :q OR u.Email LIKE :q)';
+            } else {
+                $where = 'WHERE (o.Order_Id LIKE :q OR u.FullName LIKE :q OR u.Email LIKE :q)';
             }
         }
 
+        // Total count
+        $countSql = "SELECT COUNT(*) as cnt FROM orders o LEFT JOIN users u ON o._UserName_Id = u._UserName_Id " . ($where ? $where : '');
+        $countRes = $orderModel->query($countSql, $params);
+        $totalOrders = (int)($countRes[0]['cnt'] ?? 0);
+
+        $totalPages = (int)max(1, ceil($totalOrders / $perPage));
+        if ($page > $totalPages) $page = $totalPages;
+        $offset = ($page - 1) * $perPage;
+
+        // Main query: include precomputed items_count and total to avoid N+1
+        // NOTE: LIMIT and OFFSET must be literal integers, not bound parameters
+        $sql = "SELECT o.Order_Id, o.Order_date, o.TrangThai, o._UserName_Id,
+                       u.FullName as user_name, u.Email as user_email,
+                       (SELECT COUNT(*) FROM order_detail od WHERE od.Order_Id = o.Order_Id) as items_count,
+                       (SELECT IFNULL(SUM(od.quantity * od.Price),0) FROM order_detail od WHERE od.Order_Id = o.Order_Id) as total
+                FROM orders o
+                LEFT JOIN users u ON o._UserName_Id = u._UserName_Id
+                " . ($where ? $where : '') . "
+                ORDER BY o.Order_date DESC
+                LIMIT " . (int)$perPage . " OFFSET " . (int)$offset;
+
+        $orders = $orderModel->query($sql, $params);
+
         $data = [
             'title' => 'Quản Lý Đơn Hàng - Admin',
-            'orders' => $allOrders ?? []
+            'orders' => $orders ?? [],
+            'pagination' => [
+                'page' => $page,
+                'perPage' => $perPage,
+                'total' => $totalOrders,
+                'totalPages' => $totalPages
+            ],
+            'filter' => [
+                'status' => $status,
+                'q' => $search
+            ]
         ];
 
         $this->renderView('admin/orders', $data);
@@ -86,6 +119,16 @@ class AdminOrderController extends Controller
         $orderModel = new Order();
         $success = $orderModel->updateStatus($orderId, $newStatus);
 
+        // Detect AJAX (X-Requested-With) or Accept header
+        $isAjax = (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest')
+            || (isset($_SERVER['HTTP_ACCEPT']) && strpos($_SERVER['HTTP_ACCEPT'], 'application/json') !== false);
+
+        if ($isAjax) {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => (bool)$success]);
+            exit;
+        }
+
         if ($success) {
             $_SESSION['message'] = 'Cập nhật trạng thái đơn hàng thành công';
             header('Location: ' . ROOT_URL . 'admin/orders');
@@ -93,6 +136,45 @@ class AdminOrderController extends Controller
             $_SESSION['error'] = 'Cập nhật trạng thái thất bại';
             header('Location: ' . ROOT_URL . 'admin/orders');
         }
+        exit;
+    }
+
+    /**
+     * Xóa đơn hàng
+     * URL: /admin/orders/delete (POST)
+     */
+    public function delete()
+    {
+        // Kiểm tra admin
+        if (!isset($_SESSION['user']) || $_SESSION['user']['role'] !== 'admin') {
+            header('HTTP/1.1 403 Forbidden');
+            exit;
+        }
+
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            header('HTTP/1.1 400 Bad Request');
+            exit;
+        }
+
+        $orderId = $_POST['order_id'] ?? '';
+        if (empty($orderId)) {
+            $_SESSION['error'] = 'Order id missing';
+            header('Location: ' . ROOT_URL . 'admin/orders');
+            exit;
+        }
+
+        $orderModel = new Order();
+        try {
+            // Delete order details then order
+            $orderModel->query('DELETE FROM order_detail WHERE Order_Id = :id', [':id' => $orderId]);
+            $orderModel->query('DELETE FROM orders WHERE Order_Id = :id', [':id' => $orderId]);
+            $_SESSION['message'] = 'Xóa đơn hàng thành công';
+        } catch (\Exception $e) {
+            error_log('Failed to delete order ' . $orderId . ': ' . $e->getMessage());
+            $_SESSION['error'] = 'Không thể xóa đơn hàng';
+        }
+
+        header('Location: ' . ROOT_URL . 'admin/orders');
         exit;
     }
 
@@ -136,7 +218,7 @@ class AdminOrderController extends Controller
             'total' => $total
         ];
 
-        $this->renderView('admin/order-detail', $data);
+        $this->renderView('admin/order', $data);
     }
 }
 ?>

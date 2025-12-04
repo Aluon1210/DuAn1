@@ -1,262 +1,330 @@
-<?php require_once ROOT_PATH . '/src/Views/includes/header.php'; ?>
+<!DOCTYPE html>
+<html lang="vi">
 
+<?php include __DIR__ . '/head.php'; ?>
 <style>
+    :root {
+        --black: #0f0f10;
+        --white: #ffffff;
+        --text: #222;
+        --muted: #666;
+        --gold: #d4af37;
+        --border: #e8e8e8;
+        --bg: #f9f9f9;
+        --success: #28a745;
+        --danger: #dc3545;
+        --warning: #ffc107;
+        --primary: #007bff;
+        --info: #17a2b8;
+    }
+
+    body {
+        margin: 0;
+        font-family: 'Inter', sans-serif;
+        background: var(--bg);
+        color: var(--text);
+    }
+
     .admin-container {
+        display: flex;
+        flex-direction: column;
+        min-height: 100vh;
+    }
+
+    .admin-content {
         max-width: 1400px;
-        margin: 0 auto;
-        padding: 40px 20px;
-    }
-
-    .admin-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 40px;
-    }
-
-    .admin-header h1 {
-        font-family: 'Playfair Display', serif;
-        font-size: 36px;
-        font-weight: 700;
-        color: var(--primary-black);
-    }
-
-    .status-tabs {
-        display: flex;
-        gap: 0;
-        margin-bottom: 30px;
-        border-bottom: 2px solid var(--border-light);
-        overflow-x: auto;
-        flex-wrap: wrap;
-    }
-
-    .status-tab {
-        padding: 15px 20px;
-        border: none;
-        background: none;
-        color: var(--text-dark);
-        font-weight: 600;
-        cursor: pointer;
-        border-bottom: 3px solid transparent;
-        transition: all 0.3s;
-        white-space: nowrap;
-    }
-
-    .status-tab:hover {
-        color: var(--primary-gold);
-    }
-
-    .status-tab.active {
-        color: var(--primary-gold);
-        border-bottom-color: var(--primary-gold);
-    }
-
-    .orders-table-container {
-        background: white;
-        border-radius: 12px;
-        box-shadow: var(--shadow-soft);
-        overflow: hidden;
-    }
-
-    .orders-table {
         width: 100%;
-        border-collapse: collapse;
+        margin: 32px auto;
+        padding: 0 20px;
     }
 
-    .orders-table thead {
-        background: linear-gradient(135deg, var(--primary-black) 0%, #2c2c2c 100%);
-        color: white;
+    h2 {
+        font-size: 22px;
+        font-weight: 700;
+        margin-bottom: 20px;
     }
 
-    .orders-table thead th {
-        padding: 16px 20px;
-        text-align: left;
-        font-weight: 600;
-        font-size: 13px;
-        text-transform: uppercase;
-        letter-spacing: 1px;
+    .alert {
+        padding: 12px 16px;
+        border-radius: 6px;
+        margin-bottom: 20px;
+        font-size: 15px;
     }
 
-    .orders-table tbody tr {
-        border-bottom: 1px solid var(--border-light);
-        transition: background 0.3s;
+    .alert-success {
+        background: #d4edda;
+        color: #155724;
+        border: 1px solid #c3e6cb;
     }
 
-    .orders-table tbody tr:hover {
-        background: var(--accent-gray);
+    .alert-error {
+        background: #f8d7da;
+        color: #721c24;
+        border: 1px solid #f5c6cb;
     }
 
-    .orders-table tbody td {
-        padding: 16px 20px;
-        font-size: 14px;
+    .filter-section {
+        background: #fff;
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 20px;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+        margin-bottom: 25px;
     }
 
-    .order-id {
-        font-weight: 600;
-        color: var(--primary-black);
+    .filter-row {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 15px;
+        align-items: flex-end;
     }
 
-    .order-customer {
+    .form-group {
         display: flex;
         flex-direction: column;
     }
 
-    .customer-name {
+    .form-group label {
+        font-size: 14px;
         font-weight: 600;
-        color: var(--text-dark);
+        margin-bottom: 6px;
+        color: var(--muted);
     }
 
-    .customer-email {
-        font-size: 12px;
-        color: var(--text-light);
+    .form-group input,
+    .form-group select {
+        padding: 10px 12px;
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        font-size: 14px;
+        transition: border-color 0.2s ease;
+    }
+
+    .form-group input:focus,
+    .form-group select:focus {
+        border-color: var(--gold);
+        outline: none;
+    }
+
+    .btn {
+        padding: 10px 18px;
+        border-radius: 6px;
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+        border: none;
+        text-decoration: none;
+        transition: all 0.2s ease;
+        display: inline-block;
+    }
+
+    .btn-primary {
+        background: var(--primary);
+        color: #fff;
+    }
+
+    .btn-primary:hover {
+        background: #0056b3;
+    }
+
+    .btn-success {
+        background: var(--success);
+        color: #fff;
+    }
+
+    .btn-success:hover {
+        background: #218838;
+    }
+
+    .btn-danger {
+        background: var(--danger);
+        color: #fff;
+    }
+
+    .btn-danger:hover {
+        background: #c82333;
+    }
+
+    .btn-info {
+        background: var(--info);
+        color: #fff;
+        padding: 6px 12px;
+        font-size: 13px;
+    }
+
+    .btn-info:hover {
+        background: #138496;
+    }
+
+    .btn-small {
+        padding: 6px 12px;
+        font-size: 13px;
+    }
+
+    .stats-box {
+        background: #fff;
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        padding: 18px 20px;
+        margin-bottom: 20px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+
+    .table-container {
+        background: #fff;
+        border-radius: 12px;
+        overflow-x: auto;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+        margin-bottom: 25px;
+    }
+
+    table {
+        width: 100%;
+        border-collapse: collapse;
+        min-width: 1000px;
+    }
+
+    table thead {
+        background-color: #f4f4f4;
+        border-bottom: 2px solid #ddd;
+    }
+
+    table th,
+    table td {
+        padding: 12px;
+        text-align: left;
+        border-bottom: 1px solid #eee;
+    }
+
+    table tbody tr:hover {
+        background-color: #fafafa;
     }
 
     .status-badge {
-        display: inline-block;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
         padding: 6px 12px;
-        border-radius: 20px;
-        font-size: 12px;
+        border-radius: 999px;
+        font-size: 13px;
         font-weight: 600;
-        text-transform: uppercase;
-        white-space: nowrap;
     }
 
     .status-pending {
         background: #fff3cd;
         color: #856404;
+        border: 1px solid #ffeaa7;
     }
 
     .status-confirmed {
-        background: #cce5ff;
-        color: #004085;
+        background: #d1ecf1;
+        color: #0c5460;
+        border: 1px solid #bee5eb;
     }
 
     .status-shipping {
-        background: #d1ecf1;
-        color: #0c5460;
+        background: #cfe2ff;
+        color: #084298;
+        border: 1px solid #b6d4fe;
     }
 
     .status-delivered {
         background: #d4edda;
         color: #155724;
+        border: 1px solid #c3e6cb;
     }
 
     .status-cancelled {
         background: #f8d7da;
         color: #721c24;
+        border: 1px solid #f5c6cb;
     }
 
     .status-return {
-        background: #f5c6cb;
-        color: #721c24;
+        background: #f3b8d9;
+        color: #78284c;
+        border: 1px solid #e9c3dd;
     }
 
-    .order-total {
-        font-weight: 700;
-        color: var(--primary-gold);
-        font-size: 15px;
-    }
-
-    .order-actions {
+    .action-buttons {
         display: flex;
-        gap: 8px;
+        gap: 6px;
         flex-wrap: wrap;
     }
 
-    .order-btn {
-        padding: 8px 16px;
-        border: none;
+    .empty-message {
+        padding: 40px;
+        text-align: center;
+        color: var(--muted);
+        font-size: 16px;
+    }
+
+    .pagination {
+        display: flex;
+        justify-content: center;
+        gap: 6px;
+        margin-top: 25px;
+        flex-wrap: wrap;
+    }
+
+    .pagination a,
+    .pagination span {
+        padding: 8px 12px;
+        border: 1px solid var(--border);
         border-radius: 6px;
-        cursor: pointer;
-        font-size: 12px;
-        font-weight: 600;
-        transition: all 0.3s;
         text-decoration: none;
-        display: inline-block;
+        color: var(--text);
+        font-size: 14px;
+        transition: all 0.2s ease;
     }
 
-    .order-btn-view {
-        background: var(--primary-gold);
-        color: var(--primary-black);
+    .pagination a:hover {
+        background: var(--gold);
+        color: #fff;
     }
 
-    .order-btn-view:hover {
-        background: #b8941f;
-        transform: translateY(-2px);
-    }
-
-    .order-btn-status {
-        background: var(--accent-gray);
-        color: var(--text-dark);
-        border: 1px solid var(--border-light);
-    }
-
-    .order-btn-status:hover {
-        background: var(--border-light);
+    .pagination span.current {
+        background: var(--gold);
+        color: #fff;
+        border-color: var(--gold);
     }
 
     .modal {
         display: none;
         position: fixed;
-        z-index: 1000;
-        left: 0;
         top: 0;
+        left: 0;
         width: 100%;
         height: 100%;
         background: rgba(0, 0, 0, 0.5);
+        align-items: center;
+        justify-content: center;
+        z-index: 1000;
     }
 
     .modal.active {
         display: flex;
-        align-items: center;
-        justify-content: center;
     }
 
     .modal-content {
-        background: white;
+        background: #fff;
         border-radius: 12px;
         padding: 30px;
-        max-width: 500px;
+        max-width: 400px;
         width: 90%;
-        box-shadow: var(--shadow-hover);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
     }
 
-    .modal-header {
-        font-family: 'Playfair Display', serif;
-        font-size: 24px;
-        font-weight: 700;
+    .modal-content h3 {
+        margin-top: 0;
         margin-bottom: 20px;
-        color: var(--primary-black);
+        font-size: 18px;
     }
 
     .modal-body {
-        margin-bottom: 30px;
-    }
-
-    .form-group {
         margin-bottom: 20px;
-    }
-
-    .form-group label {
-        display: block;
-        font-weight: 600;
-        margin-bottom: 8px;
-        color: var(--text-dark);
-    }
-
-    .form-group select {
-        width: 100%;
-        padding: 12px 14px;
-        border: 2px solid var(--border-light);
-        border-radius: 8px;
-        font-size: 14px;
-        cursor: pointer;
-        transition: border 0.3s;
-    }
-
-    .form-group select:focus {
-        outline: none;
-        border-color: var(--primary-gold);
     }
 
     .modal-footer {
@@ -265,234 +333,285 @@
         justify-content: flex-end;
     }
 
-    .btn-modal {
-        padding: 12px 24px;
-        border: none;
-        border-radius: 8px;
-        cursor: pointer;
-        font-weight: 600;
-        transition: all 0.3s;
-        text-decoration: none;
-        display: inline-block;
-    }
-
-    .btn-confirm {
-        background: var(--primary-gold);
-        color: var(--primary-black);
-    }
-
-    .btn-confirm:hover {
-        background: #b8941f;
-    }
-
-    .btn-cancel {
-        background: var(--accent-gray);
-        color: var(--text-dark);
-        border: 1px solid var(--border-light);
-    }
-
-    .btn-cancel:hover {
-        background: var(--border-light);
-    }
-
-    .empty-state {
-        text-align: center;
-        padding: 60px 20px;
-        background: white;
-        border-radius: 12px;
-        box-shadow: var(--shadow-soft);
-    }
-
-    .empty-state-icon {
-        font-size: 64px;
-        margin-bottom: 20px;
-        opacity: 0.3;
-    }
-
-    .empty-state-title {
-        font-size: 20px;
-        font-weight: 600;
-        color: var(--text-dark);
-        margin-bottom: 10px;
-    }
-
-    .empty-state-text {
-        color: var(--text-light);
-    }
-
-    .alert {
-        padding: 16px 20px;
-        margin-bottom: 20px;
-        border-radius: 8px;
-        border-left: 4px solid;
-    }
-
-    .alert-success {
-        background: #d4edda;
-        color: #155724;
-        border-left-color: #28a745;
-    }
-
-    .alert-error {
-        background: #f8d7da;
-        color: #721c24;
-        border-left-color: #dc3545;
+    .modal-footer .btn {
+        margin: 0;
     }
 </style>
 
-<div class="admin-container">
-    <?php if (isset($_SESSION['message'])): ?>
-        <div class="alert alert-success">
-            <?php echo htmlspecialchars($_SESSION['message']); unset($_SESSION['message']); ?>
-        </div>
-    <?php endif; ?>
+<body>
+    <div class="admin-container">
+        <?php include __DIR__ . '/aside.php'; ?>
 
-    <?php if (isset($_SESSION['error'])): ?>
-        <div class="alert alert-error">
-            <?php echo htmlspecialchars($_SESSION['error']); unset($_SESSION['error']); ?>
-        </div>
-    <?php endif; ?>
+        <main class="admin-content">
+            <?php if (isset($_SESSION['message'])): ?>
+                <div class="alert alert-success">
+                    <?php echo htmlspecialchars($_SESSION['message']); unset($_SESSION['message']); ?>
+                </div>
+            <?php endif; ?>
 
-    <div class="admin-header">
-        <h1>📦 Quản Lý Đơn Hàng</h1>
-        <a href="<?php echo ROOT_URL; ?>admin" class="order-btn order-btn-view">← Quay lại Admin</a>
-    </div>
+            <?php if (isset($_SESSION['error'])): ?>
+                <div class="alert alert-error">
+                    <?php echo htmlspecialchars($_SESSION['error']); unset($_SESSION['error']); ?>
+                </div>
+            <?php endif; ?>
 
-    <!-- Status Filter Tabs -->
-    <div class="status-tabs">
-        <button class="status-tab active" onclick="filterByStatus('all')">Tất cả</button>
-        <button class="status-tab" onclick="filterByStatus('pending')">Chờ xác nhận</button>
-        <button class="status-tab" onclick="filterByStatus('confirmed')">Chờ giao hàng</button>
-        <button class="status-tab" onclick="filterByStatus('shipping')">Đang giao</button>
-        <button class="status-tab" onclick="filterByStatus('delivered')">Đã giao</button>
-        <button class="status-tab" onclick="filterByStatus('cancelled')">Đã hủy</button>
-        <button class="status-tab" onclick="filterByStatus('return')">Trả hàng/Hoàn tiền</button>
-    </div>
+            <!-- Filter Section -->
+            <div class="filter-section">
+                <form method="GET" action="<?php echo ROOT_URL; ?>admin/orders">
+                    <div class="filter-row">
+                        <div class="form-group">
+                            <label for="filter-status">Trạng thái</label>
+                            <select id="filter-status" name="status">
+                                <option value="">-- Tất cả --</option>
+                                <option value="pending" <?php echo ($data['filter']['status'] === 'pending') ? 'selected' : ''; ?>>Chờ xác nhận</option>
+                                <option value="confirmed" <?php echo ($data['filter']['status'] === 'confirmed') ? 'selected' : ''; ?>>Đã xác nhận</option>
+                                <option value="shipping" <?php echo ($data['filter']['status'] === 'shipping') ? 'selected' : ''; ?>>Đang giao</option>
+                                <option value="delivered" <?php echo ($data['filter']['status'] === 'delivered') ? 'selected' : ''; ?>>Đã giao</option>
+                                <option value="cancelled" <?php echo ($data['filter']['status'] === 'cancelled') ? 'selected' : ''; ?>>Đã hủy</option>
+                                <option value="return" <?php echo ($data['filter']['status'] === 'return') ? 'selected' : ''; ?>>Hoàn trả</option>
+                            </select>
+                        </div>
 
-    <?php if (!empty($data['orders'])): ?>
-        <div class="orders-table-container">
-            <table class="orders-table">
-                <thead>
-                    <tr>
-                        <th>Mã Đơn</th>
-                        <th>Khách Hàng</th>
-                        <th>Ngày Đặt</th>
-                        <th>Trạng Thái</th>
-                        <th>Số Lượng</th>
-                        <th>Tổng Tiền</th>
-                        <th>Hành Động</th>
-                    </tr>
-                </thead>
-                <tbody id="ordersTableBody">
-                    <?php foreach ($data['orders'] as $order): 
-                        $status = $order['TrangThai'] ?? 'pending';
-                        $statusClass = 'status-' . $status;
-                        $statusText = [
-                            'pending' => 'Chờ xác nhận',
-                            'confirmed' => 'Chờ giao hàng',
-                            'shipping' => 'Đang giao',
-                            'delivered' => 'Đã giao',
-                            'cancelled' => 'Đã hủy',
-                            'return' => 'Trả hàng/Hoàn tiền'
-                        ][$status] ?? 'Chưa rõ';
-                    ?>
-                        <tr class="order-row" data-status="<?php echo $status; ?>">
-                            <td class="order-id"><?php echo htmlspecialchars($order['Order_Id']); ?></td>
-                            <td>
-                                <div class="order-customer">
-                                    <span class="customer-name"><?php echo htmlspecialchars($order['user_name'] ?? 'N/A'); ?></span>
-                                    <span class="customer-email"><?php echo htmlspecialchars($order['user_email'] ?? ''); ?></span>
-                                </div>
-                            </td>
-                            <td><?php echo htmlspecialchars($order['Order_date'] ?? ''); ?></td>
-                            <td>
-                                <span class="status-badge <?php echo $statusClass; ?>"><?php echo $statusText; ?></span>
-                            </td>
-                            <td><?php echo $order['items_count'] ?? 0; ?> sản phẩm</td>
-                            <td class="order-total">₫<?php echo number_format($order['total'] ?? 0, 0, ',', '.'); ?></td>
-                            <td>
-                                <div class="order-actions">
-                                    <a href="<?php echo ROOT_URL; ?>admin/orders/detail/<?php echo urlencode($order['Order_Id']); ?>" class="order-btn order-btn-view">Chi tiết</a>
-                                    <button type="button" class="order-btn order-btn-status" onclick="openStatusModal('<?php echo htmlspecialchars($order['Order_Id']); ?>', '<?php echo $status; ?>')">Trạng thái</button>
-                                </div>
-                            </td>
-                        </tr>
-                    <?php endforeach; ?>
-                </tbody>
-            </table>
-        </div>
-    <?php else: ?>
-        <div class="empty-state">
-            <div class="empty-state-icon">📦</div>
-            <div class="empty-state-title">Không có đơn hàng nào</div>
-            <div class="empty-state-text">Hiện tại chưa có đơn hàng trong hệ thống.</div>
-        </div>
-    <?php endif; ?>
-</div>
+                        <div class="form-group">
+                            <label for="filter-search">Tìm kiếm</label>
+                            <input type="text" id="filter-search" name="q" placeholder="Mã đơn hàng, tên khách..."
+                                   value="<?php echo htmlspecialchars($data['filter']['q'] ?? ''); ?>">
+                        </div>
 
-<!-- Status Modal -->
-<div id="statusModal" class="modal">
-    <div class="modal-content">
-        <div class="modal-header">Cập nhật trạng thái</div>
-        <form method="POST" action="<?php echo ROOT_URL; ?>admin/orders/updateStatus">
-            <div class="modal-body">
-                <input type="hidden" name="order_id" id="orderIdInput" value="">
-                
-                <div class="form-group">
-                    <label for="statusSelect">Trạng thái mới:</label>
-                    <select name="status" id="statusSelect" required>
-                        <option value="">-- Chọn trạng thái --</option>
-                        <option value="pending">Chờ xác nhận</option>
-                        <option value="confirmed">Chờ giao hàng</option>
-                        <option value="shipping">Đang giao</option>
-                        <option value="delivered">Đã giao</option>
-                        <option value="cancelled">Đã hủy</option>
-                        <option value="return">Trả hàng/Hoàn tiền</option>
-                    </select>
+                        <div class="form-group">
+                            <button type="submit" class="btn btn-primary">Lọc</button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Stats -->
+            <div class="stats-box">
+                <div>
+                    <strong>Tổng đơn hàng:</strong> <?php echo (int)($data['pagination']['total'] ?? 0); ?>
+                </div>
+                <div>
+                    <strong>Trang:</strong> <?php echo $data['pagination']['page']; ?> / <?php echo $data['pagination']['totalPages']; ?>
                 </div>
             </div>
 
-            <div class="modal-footer">
-                <button type="button" class="btn-modal btn-cancel" onclick="closeStatusModal()">Hủy</button>
-                <button type="submit" class="btn-modal btn-confirm">Cập nhật</button>
+            <!-- Orders Table -->
+            <div class="table-container">
+                <?php if (!empty($data['orders'])): ?>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th width="15%">Mã đơn hàng</th>
+                                <th width="15%">Ngày</th>
+                                <th width="18%">Khách hàng</th>
+                                <th width="12%">Số lượng</th>
+                                <th width="12%">Tổng tiền</th>
+                                <th width="15%">Trạng thái</th>
+                                <th width="13%">Hành động</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php foreach ($data['orders'] as $order): ?>
+                                <?php
+                                    $statusMap = [
+                                        'pending' => ['Chờ xác nhận', 'status-pending'],
+                                        'confirmed' => ['Đã xác nhận', 'status-confirmed'],
+                                        'shipping' => ['Đang giao', 'status-shipping'],
+                                        'delivered' => ['Đã giao', 'status-delivered'],
+                                        'cancelled' => ['Đã hủy', 'status-cancelled'],
+                                        'return' => ['Hoàn trả', 'status-return']
+                                    ];
+                                    $status = $order['TrangThai'] ?? 'pending';
+                                    $statusLabel = $statusMap[$status][0] ?? $status;
+                                    $statusClass = $statusMap[$status][1] ?? 'status-pending';
+                                ?>
+                                <tr>
+                                    <td><strong><?php echo htmlspecialchars($order['Order_Id']); ?></strong></td>
+                                    <td><?php echo date('d/m/Y', strtotime($order['Order_date'])); ?></td>
+                                    <td>
+                                        <div><?php echo htmlspecialchars($order['user_name'] ?? 'N/A'); ?></div>
+                                        <small style="color: var(--muted);"><?php echo htmlspecialchars($order['user_email'] ?? ''); ?></small>
+                                    </td>
+                                    <td><?php echo (int)($order['items_count'] ?? 0); ?> sản phẩm</td>
+                                    <td><strong><?php echo number_format((float)($order['total'] ?? 0), 0, ',', '.'); ?>₫</strong></td>
+                                    <td>
+                                        <span class="status-badge <?php echo $statusClass; ?>" data-status="<?php echo htmlspecialchars($status); ?>" data-order-id="<?php echo htmlspecialchars($order['Order_Id']); ?>">
+                                            <?php echo $statusLabel; ?>
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <div class="action-buttons">
+                                            <button class="btn btn-info btn-small btn-update-status" data-order-id="<?php echo htmlspecialchars($order['Order_Id']); ?>">
+                                                Cập nhật
+                                            </button>
+                                            <button class="btn btn-danger btn-small btn-delete" data-order-id="<?php echo htmlspecialchars($order['Order_Id']); ?>">
+                                                Xóa
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                <?php else: ?>
+                    <div class="empty-message">
+                        Không có đơn hàng nào.
+                    </div>
+                <?php endif; ?>
             </div>
-        </form>
+
+            <!-- Pagination -->
+            <?php if ($data['pagination']['totalPages'] > 1): ?>
+                <div class="pagination">
+                    <?php
+                        $page = $data['pagination']['page'];
+                        $totalPages = $data['pagination']['totalPages'];
+                        $status = $data['filter']['status'] ?? '';
+                        $q = $data['filter']['q'] ?? '';
+
+                        // Previous page
+                        if ($page > 1) {
+                            $prevUrl = ROOT_URL . 'admin/orders?' . http_build_query(['page' => $page - 1, 'status' => $status, 'q' => $q]);
+                            echo '<a href="' . htmlspecialchars($prevUrl) . '">&laquo; Trước</a>';
+                        }
+
+                        // Page numbers
+                        for ($i = max(1, $page - 2); $i <= min($totalPages, $page + 2); $i++) {
+                            if ($i == $page) {
+                                echo '<span class="current">' . $i . '</span>';
+                            } else {
+                                $pageUrl = ROOT_URL . 'admin/orders?' . http_build_query(['page' => $i, 'status' => $status, 'q' => $q]);
+                                echo '<a href="' . htmlspecialchars($pageUrl) . '">' . $i . '</a>';
+                            }
+                        }
+
+                        // Next page
+                        if ($page < $totalPages) {
+                            $nextUrl = ROOT_URL . 'admin/orders?' . http_build_query(['page' => $page + 1, 'status' => $status, 'q' => $q]);
+                            echo '<a href="' . htmlspecialchars($nextUrl) . '">Tiếp &raquo;</a>';
+                        }
+                    ?>
+                </div>
+            <?php endif; ?>
+        </main>
     </div>
-</div>
 
-<?php require_once ROOT_PATH . '/src/Views/includes/footer.php'; ?>
+    <!-- Status Update Modal -->
+    <div class="modal" id="statusModal">
+        <div class="modal-content">
+            <h3>Cập nhật trạng thái đơn hàng</h3>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="modalStatus">Trạng thái mới</label>
+                    <select id="modalStatus">
+                        <option value="pending">Chờ xác nhận</option>
+                        <option value="confirmed">Đã xác nhận</option>
+                        <option value="shipping">Đang giao</option>
+                        <option value="delivered">Đã giao</option>
+                        <option value="cancelled">Đã hủy</option>
+                        <option value="return">Hoàn trả</option>
+                    </select>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary" id="btnConfirmStatus">Cập nhật</button>
+                <button type="button" class="btn btn-danger" id="btnCancelStatus">Hủy</button>
+            </div>
+        </div>
+    </div>
 
-<script>
-function openStatusModal(orderId, currentStatus) {
-    document.getElementById('orderIdInput').value = orderId;
-    document.getElementById('statusSelect').value = currentStatus;
-    document.getElementById('statusModal').classList.add('active');
-}
+    <script>
+        let currentOrderId = null;
 
-function closeStatusModal() {
-    document.getElementById('statusModal').classList.remove('active');
-}
+        // Open status modal
+        document.querySelectorAll('.btn-update-status').forEach(btn => {
+            btn.addEventListener('click', function() {
+                currentOrderId = this.dataset.orderId;
+                const statusBadge = document.querySelector(`[data-order-id="${currentOrderId}"]`);
+                if (statusBadge) {
+                    document.getElementById('modalStatus').value = statusBadge.dataset.status;
+                }
+                document.getElementById('statusModal').classList.add('active');
+            });
+        });
 
-function filterByStatus(status) {
-    // Update active tab
-    document.querySelectorAll('.status-tab').forEach(btn => btn.classList.remove('active'));
-    event.target.classList.add('active');
+        // Close modal
+        document.getElementById('btnCancelStatus').addEventListener('click', function() {
+            document.getElementById('statusModal').classList.remove('active');
+        });
 
-    // Filter rows
-    const rows = document.querySelectorAll('.order-row');
-    rows.forEach(row => {
-        if (status === 'all') {
-            row.style.display = '';
-        } else {
-            row.style.display = row.dataset.status === status ? '' : 'none';
-        }
-    });
-}
+        // Confirm status update via AJAX
+        document.getElementById('btnConfirmStatus').addEventListener('click', function() {
+            const newStatus = document.getElementById('modalStatus').value;
+            if (!currentOrderId || !newStatus) return;
 
-// Close modal when clicking outside
-document.getElementById('statusModal').addEventListener('click', function(e) {
-    if (e.target === this) {
-        closeStatusModal();
-    }
-});
-</script>
+            const formData = new FormData();
+            formData.append('order_id', currentOrderId);
+            formData.append('status', newStatus);
+
+            fetch('<?php echo ROOT_URL; ?>admin/orders/updateStatus', {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    const statusBadge = document.querySelector(`[data-order-id="${currentOrderId}"]`);
+                    const statusMap = {
+                        'pending': ['Chờ xác nhận', 'status-pending'],
+                        'confirmed': ['Đã xác nhận', 'status-confirmed'],
+                        'shipping': ['Đang giao', 'status-shipping'],
+                        'delivered': ['Đã giao', 'status-delivered'],
+                        'cancelled': ['Đã hủy', 'status-cancelled'],
+                        'return': ['Hoàn trả', 'status-return']
+                    };
+                    const [label, cls] = statusMap[newStatus] || ['N/A', 'status-pending'];
+                    statusBadge.textContent = label;
+                    statusBadge.className = 'status-badge ' + cls;
+                    statusBadge.dataset.status = newStatus;
+                    alert('Cập nhật trạng thái thành công!');
+                } else {
+                    alert('Cập nhật thất bại');
+                }
+                document.getElementById('statusModal').classList.remove('active');
+            })
+            .catch(err => {
+                console.error(err);
+                alert('Lỗi khi cập nhật trạng thái');
+            });
+        });
+
+        // Delete order
+        document.querySelectorAll('.btn-delete').forEach(btn => {
+            btn.addEventListener('click', function() {
+                if (!confirm('Bạn có chắc muốn xóa đơn hàng này?')) return;
+
+                const orderId = this.dataset.orderId;
+                const formData = new FormData();
+                formData.append('order_id', orderId);
+
+                fetch('<?php echo ROOT_URL; ?>admin/orders/delete', {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                })
+                .then(res => res.json ? res.json() : res)
+                .then(() => {
+                    alert('Xóa đơn hàng thành công');
+                    location.reload();
+                })
+                .catch(err => {
+                    console.error(err);
+                    alert('Lỗi khi xóa');
+                });
+            });
+        });
+    </script>
+</body>
+
+</html>

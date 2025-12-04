@@ -178,7 +178,9 @@ public function deleteUser($id) {
 }
 
 public function orders() {
-    $this->renderView('admin/order');
+    // Delegate to AdminOrderController for full orders management
+    $oc = new AdminOrderController();
+    return $oc->index();
 }
 
 public function branch() {
