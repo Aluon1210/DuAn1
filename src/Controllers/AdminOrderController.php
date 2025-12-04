@@ -52,12 +52,23 @@ class AdminOrderController extends Controller
         if ($page > $totalPages) $page = $totalPages;
         $offset = ($page - 1) * $perPage;
 
-        // Main query: include precomputed items_count and total to avoid N+1
+        // Main query: Get product details from order_detail
+        // Query structure: orders -> order_detail -> product_variants -> products (for name, color, size)
         // NOTE: LIMIT and OFFSET must be literal integers, not bound parameters
-        $sql = "SELECT o.Order_Id, o.Order_date, o.TrangThai, o._UserName_Id,
+        $sql = "SELECT DISTINCT o.Order_Id, o.Order_date, o.TrangThai, o._UserName_Id,
                        u.FullName as user_name, u.Email as user_email,
                        (SELECT COUNT(*) FROM order_detail od WHERE od.Order_Id = o.Order_Id) as items_count,
-                       (SELECT IFNULL(SUM(od.quantity * od.Price),0) FROM order_detail od WHERE od.Order_Id = o.Order_Id) as total
+                       (SELECT IFNULL(SUM(od.quantity * od.Price),0) FROM order_detail od WHERE od.Order_Id = o.Order_Id) as total,
+                       (SELECT GROUP_CONCAT(
+                            CONCAT(p.Name, ' (', IFNULL(c.Name,'N/A'), ' ', IFNULL(s.Name,'N/A'), ')')
+                            SEPARATOR '; '
+                        ) 
+                        FROM order_detail od 
+                        INNER JOIN product_variants pv ON od.Variant_Id = pv.Variant_Id 
+                        INNER JOIN products p ON pv.Product_Id = p.Product_Id 
+                        LEFT JOIN colors c ON pv.Color_Id = c.Color_Id
+                        LEFT JOIN sizes s ON pv.Size_Id = s.Size_Id
+                        WHERE od.Order_Id = o.Order_Id) as product_variants
                 FROM orders o
                 LEFT JOIN users u ON o._UserName_Id = u._UserName_Id
                 " . ($where ? $where : '') . "
@@ -93,11 +104,15 @@ class AdminOrderController extends Controller
         // Kiểm tra admin
         if (!isset($_SESSION['user']) || $_SESSION['user']['role'] !== 'admin') {
             header('HTTP/1.1 403 Forbidden');
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'error' => 'Không có quyền']);
             exit;
         }
 
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
             header('HTTP/1.1 400 Bad Request');
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'error' => 'Phương thức không hợp lệ']);
             exit;
         }
 
@@ -106,6 +121,8 @@ class AdminOrderController extends Controller
 
         if (empty($orderId) || empty($newStatus)) {
             header('HTTP/1.1 400 Bad Request');
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'error' => 'Thiếu tham số']);
             exit;
         }
 
@@ -113,6 +130,8 @@ class AdminOrderController extends Controller
         $validStatuses = ['pending', 'confirmed', 'shipping', 'delivered', 'cancelled', 'return'];
         if (!in_array($newStatus, $validStatuses)) {
             header('HTTP/1.1 400 Bad Request');
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'error' => 'Trạng thái không hợp lệ']);
             exit;
         }
 
@@ -125,7 +144,7 @@ class AdminOrderController extends Controller
 
         if ($isAjax) {
             header('Content-Type: application/json');
-            echo json_encode(['success' => (bool)$success]);
+            echo json_encode(['success' => (bool)$success, 'error' => $success ? null : 'Cập nhật thất bại']);
             exit;
         }
 

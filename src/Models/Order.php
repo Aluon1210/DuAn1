@@ -46,10 +46,11 @@ class Order extends Model
     {
         return [
             'pending' => 'Chờ xác nhận',
-            'confirmed' => 'Đã xác nhận',
-            'processing' => 'Đang xử lý',
-            'shipping' => 'Đang giao hàng',
-            'delivered' => 'Đã nhận hàng'
+            'confirmed' => 'Chờ giao hàng',
+            'shipping' => 'Vận chuyển',
+            'delivered' => 'Hoàn thành',
+            'cancelled' => 'Đã hủy',
+            'return' => 'Trả hàng'
         ];
     }
 

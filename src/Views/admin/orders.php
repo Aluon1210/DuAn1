@@ -254,6 +254,23 @@
         flex-wrap: wrap;
     }
 
+    .status-select {
+        padding: 6px 10px;
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        font-size: 13px;
+        font-weight: 600;
+        background: #fff;
+        cursor: pointer;
+        transition: border-color 0.2s ease;
+    }
+
+    .status-select:hover,
+    .status-select:focus {
+        border-color: var(--gold);
+        outline: none;
+    }
+
     .empty-message {
         padding: 40px;
         text-align: center;
@@ -290,52 +307,6 @@
         color: #fff;
         border-color: var(--gold);
     }
-
-    .modal {
-        display: none;
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background: rgba(0, 0, 0, 0.5);
-        align-items: center;
-        justify-content: center;
-        z-index: 1000;
-    }
-
-    .modal.active {
-        display: flex;
-    }
-
-    .modal-content {
-        background: #fff;
-        border-radius: 12px;
-        padding: 30px;
-        max-width: 400px;
-        width: 90%;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-    }
-
-    .modal-content h3 {
-        margin-top: 0;
-        margin-bottom: 20px;
-        font-size: 18px;
-    }
-
-    .modal-body {
-        margin-bottom: 20px;
-    }
-
-    .modal-footer {
-        display: flex;
-        gap: 12px;
-        justify-content: flex-end;
-    }
-
-    .modal-footer .btn {
-        margin: 0;
-    }
 </style>
 
 <body>
@@ -364,11 +335,11 @@
                             <select id="filter-status" name="status">
                                 <option value="">-- Tất cả --</option>
                                 <option value="pending" <?php echo ($data['filter']['status'] === 'pending') ? 'selected' : ''; ?>>Chờ xác nhận</option>
-                                <option value="confirmed" <?php echo ($data['filter']['status'] === 'confirmed') ? 'selected' : ''; ?>>Đã xác nhận</option>
-                                <option value="shipping" <?php echo ($data['filter']['status'] === 'shipping') ? 'selected' : ''; ?>>Đang giao</option>
-                                <option value="delivered" <?php echo ($data['filter']['status'] === 'delivered') ? 'selected' : ''; ?>>Đã giao</option>
+                                <option value="confirmed" <?php echo ($data['filter']['status'] === 'confirmed') ? 'selected' : ''; ?>>Chờ giao hàng</option>
+                                <option value="shipping" <?php echo ($data['filter']['status'] === 'shipping') ? 'selected' : ''; ?>>Vận chuyển</option>
+                                <option value="delivered" <?php echo ($data['filter']['status'] === 'delivered') ? 'selected' : ''; ?>>Hoàn thành</option>
                                 <option value="cancelled" <?php echo ($data['filter']['status'] === 'cancelled') ? 'selected' : ''; ?>>Đã hủy</option>
-                                <option value="return" <?php echo ($data['filter']['status'] === 'return') ? 'selected' : ''; ?>>Hoàn trả</option>
+                                <option value="return" <?php echo ($data['filter']['status'] === 'return') ? 'selected' : ''; ?>>Trả hàng</option>
                             </select>
                         </div>
 
@@ -403,11 +374,10 @@
                             <tr>
                                 <th width="15%">Mã đơn hàng</th>
                                 <th width="15%">Ngày</th>
-                                <th width="18%">Khách hàng</th>
+                                <th width="25%">Sản phẩm</th>
                                 <th width="12%">Số lượng</th>
                                 <th width="12%">Tổng tiền</th>
-                                <th width="15%">Trạng thái</th>
-                                <th width="13%">Hành động</th>
+                                <th width="21%">Trạng thái</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -415,39 +385,34 @@
                                 <?php
                                     $statusMap = [
                                         'pending' => ['Chờ xác nhận', 'status-pending'],
-                                        'confirmed' => ['Đã xác nhận', 'status-confirmed'],
-                                        'shipping' => ['Đang giao', 'status-shipping'],
-                                        'delivered' => ['Đã giao', 'status-delivered'],
+                                        'confirmed' => ['Chờ giao hàng', 'status-confirmed'],
+                                        'shipping' => ['Vận chuyển', 'status-shipping'],
+                                        'delivered' => ['Hoàn thành', 'status-delivered'],
                                         'cancelled' => ['Đã hủy', 'status-cancelled'],
-                                        'return' => ['Hoàn trả', 'status-return']
+                                        'return' => ['Trả hàng', 'status-return']
                                     ];
                                     $status = $order['TrangThai'] ?? 'pending';
                                     $statusLabel = $statusMap[$status][0] ?? $status;
                                     $statusClass = $statusMap[$status][1] ?? 'status-pending';
+                                    $productVariants = $order['product_variants'] ?? 'N/A';
                                 ?>
                                 <tr>
                                     <td><strong><?php echo htmlspecialchars($order['Order_Id']); ?></strong></td>
                                     <td><?php echo date('d/m/Y', strtotime($order['Order_date'])); ?></td>
                                     <td>
-                                        <div><?php echo htmlspecialchars($order['user_name'] ?? 'N/A'); ?></div>
-                                        <small style="color: var(--muted);"><?php echo htmlspecialchars($order['user_email'] ?? ''); ?></small>
+                                        <small><?php echo htmlspecialchars($productVariants); ?></small>
                                     </td>
                                     <td><?php echo (int)($order['items_count'] ?? 0); ?> sản phẩm</td>
                                     <td><strong><?php echo number_format((float)($order['total'] ?? 0), 0, ',', '.'); ?>₫</strong></td>
                                     <td>
-                                        <span class="status-badge <?php echo $statusClass; ?>" data-status="<?php echo htmlspecialchars($status); ?>" data-order-id="<?php echo htmlspecialchars($order['Order_Id']); ?>">
-                                            <?php echo $statusLabel; ?>
-                                        </span>
-                                    </td>
-                                    <td>
-                                        <div class="action-buttons">
-                                            <button class="btn btn-info btn-small btn-update-status" data-order-id="<?php echo htmlspecialchars($order['Order_Id']); ?>">
-                                                Cập nhật
-                                            </button>
-                                            <button class="btn btn-danger btn-small btn-delete" data-order-id="<?php echo htmlspecialchars($order['Order_Id']); ?>">
-                                                Xóa
-                                            </button>
-                                        </div>
+                                        <select class="status-select" data-order-id="<?php echo htmlspecialchars($order['Order_Id']); ?>" data-current-status="<?php echo htmlspecialchars($status); ?>">
+                                            <option value="pending" <?php echo ($status === 'pending') ? 'selected' : ''; ?>>Chờ xác nhận</option>
+                                            <option value="confirmed" <?php echo ($status === 'confirmed') ? 'selected' : ''; ?>>Chờ giao hàng</option>
+                                            <option value="shipping" <?php echo ($status === 'shipping') ? 'selected' : ''; ?>>Vận chuyển</option>
+                                            <option value="delivered" <?php echo ($status === 'delivered') ? 'selected' : ''; ?>>Hoàn thành</option>
+                                            <option value="cancelled" <?php echo ($status === 'cancelled') ? 'selected' : ''; ?>>Đã hủy</option>
+                                            <option value="return" <?php echo ($status === 'return') ? 'selected' : ''; ?>>Trả hàng</option>
+                                        </select>
                                     </td>
                                 </tr>
                             <?php endforeach; ?>
@@ -496,118 +461,59 @@
         </main>
     </div>
 
-    <!-- Status Update Modal -->
-    <div class="modal" id="statusModal">
-        <div class="modal-content">
-            <h3>Cập nhật trạng thái đơn hàng</h3>
-            <div class="modal-body">
-                <div class="form-group">
-                    <label for="modalStatus">Trạng thái mới</label>
-                    <select id="modalStatus">
-                        <option value="pending">Chờ xác nhận</option>
-                        <option value="confirmed">Đã xác nhận</option>
-                        <option value="shipping">Đang giao</option>
-                        <option value="delivered">Đã giao</option>
-                        <option value="cancelled">Đã hủy</option>
-                        <option value="return">Hoàn trả</option>
-                    </select>
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-primary" id="btnConfirmStatus">Cập nhật</button>
-                <button type="button" class="btn btn-danger" id="btnCancelStatus">Hủy</button>
-            </div>
-        </div>
-    </div>
-
     <script>
-        let currentOrderId = null;
-
-        // Open status modal
-        document.querySelectorAll('.btn-update-status').forEach(btn => {
-            btn.addEventListener('click', function() {
-                currentOrderId = this.dataset.orderId;
-                const statusBadge = document.querySelector(`[data-order-id="${currentOrderId}"]`);
-                if (statusBadge) {
-                    document.getElementById('modalStatus').value = statusBadge.dataset.status;
-                }
-                document.getElementById('statusModal').classList.add('active');
-            });
-        });
-
-        // Close modal
-        document.getElementById('btnCancelStatus').addEventListener('click', function() {
-            document.getElementById('statusModal').classList.remove('active');
-        });
-
-        // Confirm status update via AJAX
-        document.getElementById('btnConfirmStatus').addEventListener('click', function() {
-            const newStatus = document.getElementById('modalStatus').value;
-            if (!currentOrderId || !newStatus) return;
-
-            const formData = new FormData();
-            formData.append('order_id', currentOrderId);
-            formData.append('status', newStatus);
-
-            fetch('<?php echo ROOT_URL; ?>admin/orders/updateStatus', {
-                method: 'POST',
-                body: formData,
-                headers: {
-                    'X-Requested-With': 'XMLHttpRequest'
-                }
-            })
-            .then(res => res.json())
-            .then(data => {
-                if (data.success) {
-                    const statusBadge = document.querySelector(`[data-order-id="${currentOrderId}"]`);
-                    const statusMap = {
-                        'pending': ['Chờ xác nhận', 'status-pending'],
-                        'confirmed': ['Đã xác nhận', 'status-confirmed'],
-                        'shipping': ['Đang giao', 'status-shipping'],
-                        'delivered': ['Đã giao', 'status-delivered'],
-                        'cancelled': ['Đã hủy', 'status-cancelled'],
-                        'return': ['Hoàn trả', 'status-return']
-                    };
-                    const [label, cls] = statusMap[newStatus] || ['N/A', 'status-pending'];
-                    statusBadge.textContent = label;
-                    statusBadge.className = 'status-badge ' + cls;
-                    statusBadge.dataset.status = newStatus;
-                    alert('Cập nhật trạng thái thành công!');
-                } else {
-                    alert('Cập nhật thất bại');
-                }
-                document.getElementById('statusModal').classList.remove('active');
-            })
-            .catch(err => {
-                console.error(err);
-                alert('Lỗi khi cập nhật trạng thái');
-            });
-        });
-
-        // Delete order
-        document.querySelectorAll('.btn-delete').forEach(btn => {
-            btn.addEventListener('click', function() {
-                if (!confirm('Bạn có chắc muốn xóa đơn hàng này?')) return;
-
+        // Handle status dropdown change with auto-save
+        document.querySelectorAll('.status-select').forEach(select => {
+            select.addEventListener('change', function() {
                 const orderId = this.dataset.orderId;
+                const newStatus = this.value;
+                const previousStatus = this.dataset.currentStatus;
+
+                if (newStatus === previousStatus) return;
+
                 const formData = new FormData();
                 formData.append('order_id', orderId);
+                formData.append('status', newStatus);
 
-                fetch('<?php echo ROOT_URL; ?>admin/orders/delete', {
+                // Disable select while saving
+                this.disabled = true;
+                this.parentElement.style.opacity = '0.6';
+
+                fetch('<?php echo ROOT_URL; ?>admin/updateOrderStatus', {
                     method: 'POST',
                     body: formData,
                     headers: {
                         'X-Requested-With': 'XMLHttpRequest'
                     }
                 })
-                .then(res => res.json ? res.json() : res)
-                .then(() => {
-                    alert('Xóa đơn hàng thành công');
-                    location.reload();
+                .then(res => {
+                    if (!res.ok) {
+                        throw new Error('HTTP ' + res.status + ' ' + res.statusText);
+                    }
+                    return res.json();
+                })
+                .then(data => {
+                    if (data && data.success) {
+                        // Update the data attribute and re-enable
+                        this.dataset.currentStatus = newStatus;
+                        this.disabled = false;
+                        this.parentElement.style.opacity = '1';
+                        console.log('✅ Cập nhật trạng thái ' + orderId + ' thành ' + newStatus + ' thành công');
+                    } else {
+                        // Revert the change
+                        this.value = previousStatus;
+                        this.disabled = false;
+                        this.parentElement.style.opacity = '1';
+                        alert('❌ Cập nhật trạng thái thất bại: ' + (data.error || 'Lỗi không xác định'));
+                    }
                 })
                 .catch(err => {
-                    console.error(err);
-                    alert('Lỗi khi xóa');
+                    console.error('❌ Lỗi khi cập nhật:', err);
+                    // Revert the change
+                    this.value = previousStatus;
+                    this.disabled = false;
+                    this.parentElement.style.opacity = '1';
+                    alert('❌ Lỗi khi cập nhật trạng thái:\n' + err.message);
                 });
             });
         });

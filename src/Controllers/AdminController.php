@@ -183,6 +183,12 @@ public function orders() {
     return $oc->index();
 }
 
+public function updateOrderStatus() {
+    // Delegate to AdminOrderController for status update
+    $oc = new AdminOrderController();
+    return $oc->updateStatus();
+}
+
 public function branch() {
     // delegate to BranchController
     $bc = new BranchController();
