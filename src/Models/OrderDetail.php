@@ -14,17 +14,20 @@ class OrderDetail extends Model {
      * @return array
      */
     public function getByOrderIdWithProduct($orderId) {
-        $sql = "SELECT od.*, 
-                       p.Product_Id as product_id,
+        // order_detail does not store Product_Id directly. Join via product_variants
+        $sql = "SELECT od.Order_Id,
+                       od.Variant_Id,
+                       od.quantity,
+                       od.Price,
+                       pv.Product_Id as product_id,
                        p.Name as product_name, 
                        p.Image as product_image,
-                       pv.Variant_Id as variant_id,
                        c.Name as color_name,
                        c.Hex_Code as color_hex,
                        s.Name as size_name
                 FROM {$this->table} od 
-                LEFT JOIN products p ON od.Product_Id = p.Product_Id 
                 LEFT JOIN product_variants pv ON od.Variant_Id = pv.Variant_Id
+                LEFT JOIN products p ON pv.Product_Id = p.Product_Id
                 LEFT JOIN colors c ON pv.Color_Id = c.Color_Id
                 LEFT JOIN sizes s ON pv.Size_Id = s.Size_Id
                 WHERE od.Order_Id = :order_id";
@@ -37,10 +40,12 @@ class OrderDetail extends Model {
      */
     public function getAllWithProduct() {
         $sql = "SELECT od.*, 
+                       pv.Product_Id as product_id,
                        p.Name as product_name, 
                        p.Image as product_image 
                 FROM {$this->table} od 
-                LEFT JOIN products p ON od.Product_Id = p.Product_Id";
+                LEFT JOIN product_variants pv ON od.Variant_Id = pv.Variant_Id
+                LEFT JOIN products p ON pv.Product_Id = p.Product_Id";
         return $this->query($sql);
     }
     
@@ -51,41 +56,23 @@ class OrderDetail extends Model {
      */
     public function create($data) {
         $orderId = $data['Order_Id'] ?? '';
-        $productId = $data['Product_Id'] ?? $data['product_id'] ?? '';
         $variantId = $data['Variant_Id'] ?? $data['variant_id'] ?? null;
-        $quantity = $data['quantity'] ?? $data['Quantity'] ?? 0;
-        
-        if (empty($orderId) || empty($productId)         || $quantity <= 0) {
-            error_log("OrderDetail create failed: Missing required fields. Order_Id: $orderId        , Product_Id: $productId, Quantity: $quantity");
-            return false;
-        }
-        
-        // Vì Variant_Id là NOT NULL trong databa        se, nếu không có variant_id
-        // ta cần tạo một 
+        $quantity = (int)($data['quantity'] ?? $data['Quantity'] ?? 0);
+        $price = isset($data['Price']) ? (float)$data['Price'] : (isset($data['price']) ? (float)$data['price'] : 0);
 
-variant mặc định hoặc dùng giá trị 0 (nếu được phép)
-        // Hoặc chỉ lưu khi có variant_id
-        
-        // Kiểm tra xem có variant_id không
-        if (empty($variantId)) {
-            // Nếu không có variant, tạo một variant mặc định cho sản phẩm này
-            // Hoặc bỏ qua việc lưu variant_id (nhưng database yêu cầu NOT NULL)
-            // Giải pháp: Tạo variant mặc định hoặc dùng giá trị đặc biệt
-            
-            // Tạm thời: Nếu không có variant, không thể lưu vào order_detail
-            // Vì Variant_Id là NOT NULL và có foreign key
-            error_log("OrderDetail create failed: Variant_Id is required but not provided for Product_Id: $productId");
+        if (empty($orderId) || empty($variantId) || $quantity <= 0) {
+            error_log("OrderDetail create failed: Missing required fields. Order_Id: $orderId, Variant_Id: $variantId, Quantity: $quantity");
             return false;
         }
-        
-        // Có variant_id, insert bình thường
-        $sql = "INSERT INTO {$this->table} (Order_Id, Product_Id, Variant_Id, Quantity) 
-                VALUES (:order_id, :product_id, :variant_id, :quantity)";
+
+        // Insert into order_detail: Order_Id, Variant_Id, quantity, Price
+        $sql = "INSERT INTO {$this->table} (Order_Id, Variant_Id, quantity, Price) 
+                VALUES (:order_id, :variant_id, :quantity, :price)";
         $params = [
             ':order_id' => $orderId,
-            ':product_id' => $productId,
             ':variant_id' => $variantId,
-            ':quantity' => (int)$quantity
+            ':quantity' => $quantity,
+            ':price' => $price
         ];
         
         try {

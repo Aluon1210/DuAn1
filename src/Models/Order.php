@@ -155,97 +155,132 @@ class Order extends Model
         try {
             $this->db->beginTransaction();
 
-            // Tạo đơn hàng
+            // Tạo đơn hàng trước
             $orderId = $this->createOrder($orderData);
-
-            if ($orderId) {
-                // Tạo chi tiết đơn hàng
-                $orderDetailModel = new \Models\OrderDetail();
-                $variantModel = new \Models\Product_Varirant();
-                $productModel = new \Models\Product();
-
-                // Danh sách các product đã có variant được cập nhật (để cập nhật quantity sau)
-                $productsToUpdate = [];
-
-                foreach ($orderDetails as $detail) {
-                    $productId = $detail['product_id'] ?? $detail['Product_Id'] ?? '';
-                    $variantId = $detail['var                    iant_id'] ?? $detail['Variant_Id'] ?? null;
-                    $quantity = $detail['quantity'] ?? 0;
-
-                    if (empty($productId) || $quantity <= 0) {
-                        continue;
-                    }
-
-                    // Nếu không có variant_id, tìm varian                    t có sẵn của sản phẩm
-                    if (empty($variantId)) {
-                        // Tìm variant có sẵn của sản phẩm
-                        $existingVariants = $variantModel->getByProductId($productId);
-                        if (!empty($existingVariants)) {
-                            // Dùng variant đầu tiên có sẵn
-                            $firstVariant = $existingVariants[0];
-                            $variantId = $firstVariant['Variant_Id'] ?? $firstVariant['id'] ?? null;
-                        } else {
-                            // Sản phẩm không có variant - không thể tạo order detail
-                            // Vì Variant_Id là NOT NULL trong database
-                            error_log("Cannot create order detail: Product $productId has no variants");
-                            $this->db->rollBack();
-                            throw new \Exception("Sản phẩm không có phân loại. Vui lòng liên hệ admin để thêm phân loại cho sản phẩm này.");
-                        }
-                    }
-
-                    if (empty($variantId)) {
-                        error_log("Cannot create order detail: No variant available for pro            duct: $productId");
-                        continue;
-                    }
-
-                    $detailData = [
-                        'Order_Id' => $orderId,
-                        'Product_Id' => $productId,
-                        'Variant_Id' => $variantId,
-                        'quantity' => $quantity
-                    ];
-                    $orderDetailModel->create($detailData);
-
-                    // Giảm số lượng                 sản phẩm/variant
-                    if ($variantId) {
-                        // Giảm stock của variant
-                        $variant = $variantModel->getById($variantId);
-                        if ($variant) {
-                            $newStock = max(0, ($variant['stock'] ?? 0) - $quantity);
-                            $variantModel->updateVariant($variantId, [
-                                'product_id' => $productId,
-                                'color_id' => $variant['color_id'] ?? null,
-                                'size_id' => $variant['size_id'] ?? null,
-                                'price' => $variant['price'] ?? 0,
-                                'stock' => $newStock,
-                                'sku' => $variant['sku'] ?? ''
-                            ]);
-
-                            // Đánh dấu product này cần cập nhật quantity từ variants
-                            if (!in_array($productId, $productsToUpdate)) {
-                                $productsToUpdate[] = $productId;
-                            }
-                        }
-                    } else {
-                        // Giảm số lượng sản phẩm (không có variant)
-                        $productModel->decreaseQuantity($productId, $quantity);
-                    }
+            if (!$orderId) {
+                // createOrder đã log lỗi chi tiết
+                if ($this->db->inTransaction()) {
+                    $this->db->rollBack();
                 }
-
-                // Cập nhật lại số lượng sản phẩm = tổng stock của tất cả variants
-                // (chỉ cập nhật một lần cho mỗi product)
-                foreach ($productsToUpdate as $productId) {
-                    $productModel->updateQuantityFromVariants($productId);
-                }
-
-                $this->db->commit();
-                return $orderId;
+                return false;
             }
 
-            $this->db->rollBack();
-            return false;
+            // Chuẩn bị model dùng chung
+            $orderDetailModel = new \Models\OrderDetail();
+            $variantModel = new \Models\Product_Varirant();
+            $productModel = new \Models\Product();
+
+            // Danh sách product cần sync lại số lượng từ variants
+            $productsToUpdate = [];
+
+            // Đánh dấu xem có tạo được chi tiết nào không
+            $createdAnyDetail = false;
+
+            foreach ($orderDetails as $detail) {
+                $productId = $detail['product_id'] ?? $detail['Product_Id'] ?? '';
+                $variantId = $detail['variant_id'] ?? $detail['Variant_Id'] ?? null;
+                $quantity = (int) ($detail['quantity'] ?? $detail['Quantity'] ?? 0);
+
+                if (empty($productId) || $quantity <= 0) {
+                    // Bỏ qua item lỗi dữ liệu, không làm hỏng cả đơn hàng
+                    error_log("Order createWithDetails skip item: invalid product or quantity. Data=" . print_r($detail, true));
+                    continue;
+                }
+
+                // Lấy sản phẩm (nếu lỗi thì log và bỏ qua)
+                $product = $productModel->getById($productId);
+                if (!$product) {
+                    error_log("Order createWithDetails: product not found for id {$productId}");
+                    continue;
+                }
+
+                // Giá: ưu tiên từ dữ liệu truyền vào, sau đó variant, cuối cùng là product
+                $priceFromInput = isset($detail['Price']) ? (float) $detail['Price'] : (isset($detail['price']) ? (float) $detail['price'] : null);
+                $price = $priceFromInput !== null ? $priceFromInput : (int) ($product['price'] ?? 0);
+
+                // Nếu có variant thì lấy thêm thông tin variant (nếu không có thì vẫn tiếp tục với giá product)
+                $variant = null;
+
+                // Nếu chưa có Variant_Id (do controller không truyền), cố gắng tìm variant đầu tiên của sản phẩm
+                if (empty($variantId)) {
+                    $existingVariants = $variantModel->getByProductId($productId);
+                    if (!empty($existingVariants)) {
+                        $firstVariant = $existingVariants[0];
+                        $variantId = $firstVariant['Variant_Id'] ?? $firstVariant['id'] ?? null;
+                    }
+                }
+
+                if (!empty($variantId)) {
+                    $variant = $variantModel->getById($variantId);
+                    if (!$variant) {
+                        error_log("Order createWithDetails: variant not found for id {$variantId}, product {$productId}");
+                    } else {
+                        if ($priceFromInput === null) {
+                            $price = (int) ($variant['price'] ?? $price);
+                        }
+                    }
+                } else {
+                    // Không tìm được variant hợp lệ → không thể chèn vào order_detail (có ràng buộc NOT NULL + FK)
+                    error_log("Order createWithDetails: no valid variant for product {$productId}, skip detail");
+                    continue;
+                }
+
+                // Tạo dữ liệu chi tiết đơn hàng
+                $detailData = [
+                    'Order_Id' => $orderId,
+                    'Variant_Id' => $variantId,
+                    'quantity' => $quantity,
+                    'Price' => $price
+                ];
+
+                $createResult = $orderDetailModel->create($detailData);
+                if (!$createResult) {
+                    // Nếu 1 chi tiết lỗi, rollback cả đơn để tránh trạng thái nửa vời
+                    throw new \Exception("Không thể tạo order_detail cho Order {$orderId}. Data=" . print_r($detailData, true));
+                }
+                $createdAnyDetail = true;
+
+                // Cập nhật tồn kho: ở đây giả định controller đã kiểm tra tồn kho trước
+                if ($variant) {
+                    $newStock = max(0, (int) ($variant['stock'] ?? 0) - $quantity);
+                    $variantModel->updateVariant($variantId, [
+                        'product_id' => $productId,
+                        'color_id' => $variant['color_id'] ?? null,
+                        'size_id' => $variant['size_id'] ?? null,
+                        'price' => $variant['price'] ?? 0,
+                        'stock' => $newStock,
+                        'sku' => $variant['sku'] ?? ''
+                    ]);
+
+                    if (!in_array($productId, $productsToUpdate, true)) {
+                        $productsToUpdate[] = $productId;
+                    }
+                } else {
+                    // Không có variant → trừ trực tiếp quantity trên product
+                    $productModel->decreaseQuantity($productId, $quantity);
+                }
+            }
+
+            // Nếu vì lý do nào đó không tạo được chi tiết nào thì rollback
+            if (!$createdAnyDetail) {
+                if ($this->db->inTransaction()) {
+                    $this->db->rollBack();
+                }
+                error_log("Order createWithDetails: no order_detail created for order {$orderId}");
+                return false;
+            }
+
+            // Sync lại quantity sản phẩm từ variants (mỗi product chỉ xử lý một lần)
+            foreach ($productsToUpdate as $pid) {
+                $productModel->updateQuantityFromVariants($pid);
+            }
+
+            $this->db->commit();
+            return $orderId;
         } catch (\Exception $e) {
-            $this->db->rollBack();
+            if ($this->db->inTransaction()) {
+                $this->db->rollBack();
+            }
             error_log("Order createWithDetails Error: " . $e->getMessage());
             return false;
         }

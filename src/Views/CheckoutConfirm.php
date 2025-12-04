@@ -23,7 +23,7 @@
             <div class="item-info">
               <div class="item-image">
                 <?php if (!empty($p['image'])): ?>
-                  <img src="<?php echo ROOT_URL; ?>public/images/<?php echo htmlspecialchars($p['image']); ?>" alt="" style="width:100%;height:100%;object-fit:cover;">
+                  <img src="<?php echo ROOT_URL; ?>public/images/<?php echo isset($p['image']) ? htmlspecialchars($p['image']) : 'placeholder.jpg'; ?>" alt="" style="width:100%;height:100%;object-fit:cover;">
                 <?php else: ?><span>✨</span><?php endif; ?>
               </div>
               <div>
@@ -35,8 +35,9 @@
               <div>Số lượng: <strong><?php echo (int)$it['quantity']; ?></strong></div>
               <div>Thành tiền: <strong><?php echo number_format($it['subtotal'], 0, ',', '.'); ?> ₫</strong></div>
             </div>
-            <input type="hidden" name="selected[]" value="<?php echo $p['id']; ?>">
-            <input type="hidden" name="quantity[<?php echo $p['id']; ?>]" value="<?php echo (int)$it['quantity']; ?>">
+            <?php $cartKey = $it['cart_key'] ?? ($p['id'] ?? ''); ?>
+            <input type="hidden" name="selected[]" value="<?php echo htmlspecialchars($cartKey); ?>">
+            <input type="hidden" name="quantity[<?php echo htmlspecialchars($cartKey); ?>]" value="<?php echo (int)$it['quantity']; ?>">
           </div>
         <?php endforeach; ?>
       </div>

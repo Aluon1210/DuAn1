@@ -837,24 +837,53 @@
                                     </div>
 
                                     <div class="order-item-body">
-                                        <div class="order-product">
-                                            <img src="<?php echo ROOT_URL; ?>asset/img/placeholder.jpg" alt="Sản phẩm" class="order-product-image">
-                                            <div class="order-product-info">
-                                                <div class="order-product-name">Sản phẩm từ đơn hàng</div>
-                                                <div class="order-product-variant">x1</div>
-                                                <div class="order-product-price">₫0</div>
+                                        <?php if (!empty($order['items'])): ?>
+                                            <?php foreach ($order['items'] as $item): ?>
+                                                <div class="order-product">
+                                                    <?php
+                                                        // Get image URL - use product_image field
+                                                        $img = $item['product_image'] ?? null;
+                                                        if ($img) {
+                                                            $imgUrl = ROOT_URL . 'public/images/' . htmlspecialchars($img);
+                                                        } else {
+                                                            $imgUrl = ROOT_URL . 'public/images/placeholder.jpg';
+                                                        }
+                                                        
+                                                        $variantLabel = '';
+                                                        if (!empty($item['color_name'])) {
+                                                            $variantLabel .= 'Màu: ' . htmlspecialchars($item['color_name']);
+                                                        }
+                                                        if (!empty($item['size_name'])) {
+                                                            $variantLabel .= ($variantLabel ? ' • ' : '') . 'Size: ' . htmlspecialchars($item['size_name']);
+                                                        }
+                                                        
+                                                        $productName = $item['product_name'] ?? 'Sản phẩm';
+                                                        $price = (float)($item['Price'] ?? 0);
+                                                        $qty = (int)($item['quantity'] ?? 0);
+                                                    ?>
+                                                    <img src="<?php echo htmlspecialchars($imgUrl); ?>" alt="<?php echo htmlspecialchars($productName); ?>" class="order-product-image" style="object-fit: cover;">
+                                                    <div class="order-product-info">
+                                                        <div class="order-product-name"><?php echo htmlspecialchars($productName); ?></div>
+                                                        <div class="order-product-variant"><?php echo $variantLabel ?: '—'; ?></div>
+                                                        <div class="order-product-price">₫<?php echo number_format($price, 0, ',', '.'); ?> x <?php echo $qty; ?></div>
+                                                    </div>
+                                                </div>
+                                            <?php endforeach; ?>
+                                        <?php else: ?>
+                                            <div class="empty-state">
+                                                <div class="icon">📦</div>
+                                                <p>Không có sản phẩm trong đơn này.</p>
                                             </div>
-                                        </div>
+                                        <?php endif; ?>
                                     </div>
 
                                     <div class="order-item-footer">
                                         <div class="order-total-price">
                                             <div class="order-total-price-label">Thành tiền:</div>
-                                            <div class="order-total-price-value">₫0</div>
+                                            <div class="order-total-price-value">₫<?php echo number_format((float)($order['total'] ?? 0), 0, ',', '.'); ?></div>
                                         </div>
                                         <div class="order-actions">
-                                            <button class="order-btn order-btn-secondary">Chat</button>
-                                            <button class="order-btn order-btn-primary">Xem Chi Tiết</button>
+                                            <a href="<?php echo ROOT_URL; ?>account/order/<?php echo urlencode($order['Order_Id']); ?>" class="order-btn order-btn-primary">Xem Chi Tiết</a>
                                         </div>
                                     </div>
                                 </div>
