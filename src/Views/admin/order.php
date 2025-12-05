@@ -15,13 +15,12 @@ $orders = [
     --text: #222;
     --gold: #d4af37;
     --border: #e8e8e8;
-    --bg: #f9f9f9;
+    --bg: #f6f6f7;
     --success: #28a745;
     --danger: #dc3545;
     --processing: #ffc107;
   }
 
-  /* Base */
   body {
     margin: 0;
     font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial;
@@ -30,43 +29,40 @@ $orders = [
     line-height: 1.5;
   }
 
-  /* Header */
+  /* Header ĐEN */
   .header {
     position: fixed;
     top: 0;
     left: 0;
     width: 100%;
     height: 100px;
-    background: #1B2127;
-    color: #FFD700;
+    background: #0f0f10;
+    color: var(--gold);
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 0 80px;
-    border-bottom-left-radius: 12px;
-    border-bottom-right-radius: 12px;
-    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.5);
+    padding: 0 60px;
     z-index: 1000;
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.45);
   }
 
   .header .brand {
-    font-size: 32px;
+    font-size: 30px;
     font-weight: 700;
   }
 
-  /* Sidebar */
+  /* Sidebar TRẮNG như yêu cầu */
   aside.sidebar {
     position: fixed;
     top: 100px;
-    /* ngay dưới header */
     left: 0;
     width: 260px;
     height: calc(100vh - 100px);
     background: #fff;
-    border-right: 3px solid #CD853F;
+    border-right: 3px solid var(--gold);
     padding: 20px;
     overflow-y: auto;
-    box-shadow: 4px 0 15px rgba(0, 0, 0, 0.08);
+    box-shadow: 4px 0 15px rgba(0,0,0,0.08);
     z-index: 999;
   }
 
@@ -74,11 +70,11 @@ $orders = [
     display: block;
     padding: 12px 16px;
     margin-bottom: 10px;
-    background: #e8e8e8;
+    background: #ededed;
     color: #000;
     border-radius: 10px;
     font-weight: 500;
-    transition: all 0.2s;
+    transition: 0.22s;
   }
 
   .menu-item:hover {
@@ -92,15 +88,31 @@ $orders = [
     font-weight: 600;
   }
 
-  /* Main content */
+  /* CONTENT */
   main.container {
-    margin-top: 100px;
-    /* bằng header height */
-    margin-left: calc(260px + 30px);
-    /* sidebar + khoảng cách */
-    width: calc(100% - 260px - 30px);
+    margin-top: 120px;
+    margin-left: 300px;
+    width: calc(100% - 300px);
     padding: 20px;
     box-sizing: border-box;
+  }
+
+  h2 {
+    margin-bottom: 18px;
+  }
+
+  .stat-card {
+    background: #fff;
+    padding: 16px 20px;
+    border-radius: 10px;
+    margin-bottom: 20px;
+    box-shadow: 0 3px 10px rgba(0,0,0,0.07);
+  }
+
+  .stat-number {
+    font-size: 30px;
+    font-weight: 700;
+    margin-top: 5px;
   }
 
   /* Table */
@@ -109,20 +121,18 @@ $orders = [
     border-collapse: collapse;
     background: #fff;
     border: 1px solid var(--border);
-    border-radius: 8px;
+    border-radius: 10px;
     overflow: hidden;
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+    box-shadow: 0 3px 10px rgba(0,0,0,0.06);
   }
 
-  table th,
-  table td {
+  table th, table td {
     padding: 12px 14px;
-    text-align: left;
     border-bottom: 1px solid var(--border);
   }
 
   table th {
-    background: var(--black);
+    background: #0f0f10;
     color: #fff;
     font-weight: 600;
   }
@@ -131,34 +141,27 @@ $orders = [
     background: #f1f1f1;
   }
 
-  /* Trạng thái */
+  /* Status */
   .order-status {
     padding: 6px 10px;
     border-radius: 6px;
     font-size: 13px;
     font-weight: 600;
     color: #fff;
-    display: inline-block;
   }
 
-  .order-status.completed {
-    background: var(--success);
-  }
+  .completed { background: var(--success); }
+  .processing { background: var(--processing); color: #111; }
 
-  .order-status.processing {
-    background: var(--processing);
-    color: #111;
-  }
-
-  /* Hành động */
+  /* Action buttons */
   .order-actions a {
     margin-right: 8px;
     font-size: 14px;
-    text-decoration: none;
     padding: 6px 10px;
-    border-radius: 4px;
+    text-decoration: none;
+    border-radius: 6px;
     font-weight: 600;
-    transition: all 0.2s;
+    transition: .2s;
   }
 
   .order-actions a:first-child {
@@ -166,57 +169,21 @@ $orders = [
     color: #111;
   }
 
-  .order-actions .btn-delete {
+  .btn-delete {
     background: var(--danger);
     color: #fff;
   }
 
   .order-actions a:hover {
-    opacity: 0.85;
+    opacity: .85;
   }
-
-  /* Responsive */
-  @media (max-width: 768px) {
-    aside.sidebar {
-      position: relative;
-      width: 100%;
-      height: auto;
-      top: 0;
-    }
-
-    main.container {
-      margin-left: 0;
-      margin-top: calc(100px + 20px);
-      width: 100%;
-      padding: 15px;
-    }
-
-    table th,
-    table td {
-      font-size: 13px;
-      padding: 10px;
-    }
-
-    .order-actions a {
-      font-size: 12px;
-      padding: 5px 8px;
-    }
-
-    table {
-      display: block;
-      max-height: 400px;
-      overflow-y: auto;
-    }
-  }
-</style>
 
 </style>
 
 <body>
-  <!-- SIDEBAR -->
   <div class="admin-container">
     <?php include __DIR__ . '/aside.php'; ?>
-    <!-- Nội dung -->
+
     <main class="container">
       <h2>Quản lý đơn hàng</h2>
 
@@ -249,7 +216,7 @@ $orders = [
               <td class="order-actions">
                 <a href="/admin/order/view/<?= $order['id'] ?>">Xem</a>
                 <a href="/admin/order/delete/<?= $order['id'] ?>" class="btn-delete"
-                  onclick="return confirm('Bạn có chắc muốn xóa đơn này?')">Xóa</a>
+                  onclick="return confirm('Xóa đơn hàng?')">Xóa</a>
               </td>
             </tr>
           <?php endforeach; ?>
@@ -258,5 +225,4 @@ $orders = [
     </main>
   </div>
 </body>
-
 </html>
