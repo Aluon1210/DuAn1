@@ -372,12 +372,14 @@
                     <table>
                         <thead>
                             <tr>
-                                <th width="15%">Mã đơn hàng</th>
-                                <th width="15%">Ngày</th>
-                                <th width="25%">Sản phẩm</th>
-                                <th width="12%">Số lượng</th>
-                                <th width="12%">Tổng tiền</th>
-                                <th width="21%">Trạng thái</th>
+                                <th width="12%">Mã Đơn Hàng</th>
+                                <th width="12%">Người nhận</th>
+                                <th width="10%">SDT</th>
+                                <th width="10%">Tổng tiền</th>
+                                <th width="8%">Số lượng</th>
+                                <th width="13%">Trạng thái</th>
+                                <th width="10%">Ngày đặt hàng</th>
+                                <th width="15%">Địa chỉ giao hàng</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -394,16 +396,16 @@
                                     $status = $order['TrangThai'] ?? 'pending';
                                     $statusLabel = $statusMap[$status][0] ?? $status;
                                     $statusClass = $statusMap[$status][1] ?? 'status-pending';
-                                    $productVariants = $order['product_variants'] ?? 'N/A';
+                                    $customerName = $order['user_name'] ?? 'Không xác định';
+                                    $customerPhone = $order['user_phone'] ?? 'N/A';
+                                    $address = $order['Adress'] ?? 'Không có địa chỉ';
                                 ?>
                                 <tr>
                                     <td><strong><?php echo htmlspecialchars($order['Order_Id']); ?></strong></td>
-                                    <td><?php echo date('d/m/Y', strtotime($order['Order_date'])); ?></td>
-                                    <td>
-                                        <small><?php echo htmlspecialchars($productVariants); ?></small>
-                                    </td>
-                                    <td><?php echo (int)($order['items_count'] ?? 0); ?> sản phẩm</td>
-                                    <td><strong><?php echo number_format((float)($order['total'] ?? 0), 0, ',', '.'); ?>₫</strong></td>
+                                    <td><?php echo htmlspecialchars($customerName); ?></td>
+                                    <td><?php echo htmlspecialchars($customerPhone); ?></td>
+                                    <td><strong><?php echo number_format((float)($order['total'] ?? 0), 0, ',', '.'); ?> ₫</strong></td>
+                                    <td><?php echo (int)($order['items_count'] ?? 0); ?></td>
                                     <td>
                                         <select class="status-select" data-order-id="<?php echo htmlspecialchars($order['Order_Id']); ?>" data-current-status="<?php echo htmlspecialchars($status); ?>">
                                             <option value="pending" <?php echo ($status === 'pending') ? 'selected' : ''; ?>>Chờ xác nhận</option>
@@ -414,6 +416,8 @@
                                             <option value="return" <?php echo ($status === 'return') ? 'selected' : ''; ?>>Trả hàng</option>
                                         </select>
                                     </td>
+                                    <td><?php echo date('d/m/Y', strtotime($order['Order_date'])); ?></td>
+                                    <td><small><?php echo htmlspecialchars($address); ?></small></td>
                                 </tr>
                             <?php endforeach; ?>
                         </tbody>

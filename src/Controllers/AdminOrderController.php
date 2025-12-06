@@ -55,23 +55,23 @@ class AdminOrderController extends Controller
         // Main query: Get product details from order_detail
         // Query structure: orders -> order_detail -> product_variants -> products (for name, color, size)
         // NOTE: LIMIT and OFFSET must be literal integers, not bound parameters
-        $sql = "SELECT DISTINCT o.Order_Id, o.Order_date, o.TrangThai, o._UserName_Id,
-                       u.FullName as user_name, u.Email as user_email,
-                       (SELECT COUNT(*) FROM order_detail od WHERE od.Order_Id = o.Order_Id) as items_count,
-                       (SELECT IFNULL(SUM(od.quantity * od.Price),0) FROM order_detail od WHERE od.Order_Id = o.Order_Id) as total,
-                       (SELECT GROUP_CONCAT(
+        $sql = "SELECT o.Order_Id, o.Order_date, o.TrangThai, o.Adress, o._UserName_Id,
+                       u.FullName as user_name, u.Email as user_email, u.Phone as user_phone,
+                       SUM(od.quantity) as items_count,
+                       SUM(od.quantity * od.Price) as total,
+                       GROUP_CONCAT(
                             CONCAT(p.Name, ' (', IFNULL(c.Name,'N/A'), ' ', IFNULL(s.Name,'N/A'), ')')
                             SEPARATOR '; '
-                        ) 
-                        FROM order_detail od 
-                        INNER JOIN product_variants pv ON od.Variant_Id = pv.Variant_Id 
-                        INNER JOIN products p ON pv.Product_Id = p.Product_Id 
-                        LEFT JOIN colors c ON pv.Color_Id = c.Color_Id
-                        LEFT JOIN sizes s ON pv.Size_Id = s.Size_Id
-                        WHERE od.Order_Id = o.Order_Id) as product_variants
+                        ) as product_variants
                 FROM orders o
                 LEFT JOIN users u ON o._UserName_Id = u._UserName_Id
+                LEFT JOIN order_detail od ON o.Order_Id = od.Order_Id
+                LEFT JOIN product_variants pv ON od.Variant_Id = pv.Variant_Id
+                LEFT JOIN products p ON pv.Product_Id = p.Product_Id
+                LEFT JOIN colors c ON pv.Color_Id = c.Color_Id
+                LEFT JOIN sizes s ON pv.Size_Id = s.Size_Id
                 " . ($where ? $where : '') . "
+                GROUP BY o.Order_Id, o.Order_date, o.TrangThai, o.Adress, o._UserName_Id, u.FullName, u.Email, u.Phone
                 ORDER BY o.Order_date DESC
                 LIMIT " . (int)$perPage . " OFFSET " . (int)$offset;
 
@@ -160,9 +160,9 @@ class AdminOrderController extends Controller
 
     /**
      * Xóa đơn hàng
-     * URL: /admin/orders/delete (POST)
+     * URL: /admin/orders/delete/{id} (GET hoặc POST)
      */
-    public function delete()
+    public function delete($orderId = null)
     {
         // Kiểm tra admin
         if (!isset($_SESSION['user']) || $_SESSION['user']['role'] !== 'admin') {
@@ -170,12 +170,11 @@ class AdminOrderController extends Controller
             exit;
         }
 
-        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-            header('HTTP/1.1 400 Bad Request');
-            exit;
+        // Lấy order_id từ URL param hoặc POST
+        if (empty($orderId)) {
+            $orderId = $_POST['order_id'] ?? '';
         }
 
-        $orderId = $_POST['order_id'] ?? '';
         if (empty($orderId)) {
             $_SESSION['error'] = 'Order id missing';
             header('Location: ' . ROOT_URL . 'admin/orders');
