@@ -172,38 +172,72 @@ class Order extends Model
                 $variantId = isset($detail['variant_id']) ? (int) $detail['variant_id'] : (int) ($detail['Variant_Id'] ?? 0);
                 $quantity = (int) ($detail['quantity'] ?? $detail['Quantity'] ?? 0);
 
-                if (empty($productId) || $variantId <= 0 || $quantity <= 0) {
+                if (empty($productId) || $quantity <= 0) {
                     error_log("Order createWithDetails skip: invalid detail " . print_r($detail, true));
                     continue;
                 }
 
-                // Lấy variant để kiểm tra tồn kho và giá
-                $variant = $variantModel->getById($variantId);
-                if (!$variant) {
-                    error_log("Order createWithDetails skip: variant not found id={$variantId}");
-                    continue;
-                }
+                // Nếu không có variant (variantId <= 0), tạo 1 variant tạm thời cho product này
+                if ($variantId <= 0) {
+                    $product = $productModel->getById($productId);
+                    if (!$product) {
+                        error_log("Order createWithDetails skip: product not found id={$productId}");
+                        continue;
+                    }
 
-                $variantProductId = $variant['product_id'] ?? $variant['Product_Id'] ?? null;
-                if ($variantProductId !== $productId) {
-                    error_log("Order createWithDetails skip: variant {$variantId} not belong to product {$productId}");
-                    continue;
-                }
+                    $price = (int) ($product['price'] ?? 0);
+                    $stock = (int) ($product['quantity'] ?? 0);
 
-                $price = (int) ($variant['price'] ?? $variant['Price'] ?? 0);
-                $stock = (int) ($variant['stock'] ?? $variant['Quantity_In_Stock'] ?? 0);
+                    if ($stock <= 0) {
+                        error_log("Order createWithDetails skip: product {$productId} out of stock");
+                        continue;
+                    }
 
-                if ($stock <= 0) {
-                    error_log("Order createWithDetails skip: variant {$variantId} out of stock");
-                    continue;
-                }
+                    if ($quantity > $stock) {
+                        $quantity = $stock;
+                    }
 
-                if ($quantity > $stock) {
-                    $quantity = $stock; // bán tối đa bằng tồn kho
-                }
+                    if ($quantity <= 0) {
+                        continue;
+                    }
 
-                if ($quantity <= 0) {
-                    continue;
+                    // Tạo variant tạm thời an toàn thông qua Product_Varirant API
+                    $newVariantId = $variantModel->createSyntheticVariant($productId, $price, $stock);
+                    if ($newVariantId === false) {
+                        error_log("Order createWithDetails: failed to create synthetic variant for product {$productId}");
+                        continue;
+                    }
+                    $variantId = $newVariantId;
+                    $variant = $variantModel->getById($variantId);
+                } else {
+                    // Lấy variant để kiểm tra tồn kho và giá
+                    $variant = $variantModel->getById($variantId);
+                    if (!$variant) {
+                        error_log("Order createWithDetails skip: variant not found id={$variantId}");
+                        continue;
+                    }
+
+                    $variantProductId = $variant['product_id'] ?? $variant['Product_Id'] ?? null;
+                    if ($variantProductId !== $productId) {
+                        error_log("Order createWithDetails skip: variant {$variantId} not belong to product {$productId}");
+                        continue;
+                    }
+
+                    $price = (int) ($variant['price'] ?? $variant['Price'] ?? 0);
+                    $stock = (int) ($variant['stock'] ?? $variant['Quantity_In_Stock'] ?? 0);
+
+                    if ($stock <= 0) {
+                        error_log("Order createWithDetails skip: variant {$variantId} out of stock");
+                        continue;
+                    }
+
+                    if ($quantity > $stock) {
+                        $quantity = $stock; // bán tối đa bằng tồn kho
+                    }
+
+                    if ($quantity <= 0) {
+                        continue;
+                    }
                 }
 
                 // 2. Tạo bản ghi order_detail
@@ -224,10 +258,10 @@ class Order extends Model
                 // 3. Trừ tồn kho variant
                 $newStock = max(0, $stock - $quantity);
                 $variantModel->updateVariant($variantId, [
-                    'product_id' => $variantProductId,
+                    'product_id' => $productId,
                     'color_id' => $variant['color_id'] ?? $variant['Color_Id'] ?? null,
                     'size_id' => $variant['size_id'] ?? $variant['Size_Id'] ?? null,
-                    'price' => $variant['price'] ?? $variant['Price'] ?? 0,
+                    'price' => $price,
                     'stock' => $newStock,
                     'sku' => $variant['sku'] ?? $variant['SKU'] ?? ''
                 ]);

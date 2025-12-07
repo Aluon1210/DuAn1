@@ -32,7 +32,7 @@ class CartController extends Controller
             // Đã đúng format variant-based mới
             if (is_array($value) && isset($value['variant_id']) && isset($value['product_id'])) {
                 $vId = (int)$value['variant_id'];
-                if ($vId <= 0) {
+                if ($vId < 0) {
                     // Bỏ qua entry không hợp lệ
                     continue;
                 }
@@ -66,21 +66,21 @@ class CartController extends Controller
             }
 
             // Nếu chưa có variant_id, thử parse từ key dạng variant_{id}
-            if (!$variantId && str_starts_with((string)$key, 'variant_')) {
+            if ($variantId === null && str_starts_with((string)$key, 'variant_')) {
                 $variantId = (int)substr((string)$key, 8);
             }
 
             // Nếu vẫn không có variant_id nhưng có product_id, chọn variant đầu tiên trong DB
-            if (!$variantId && $productId) {
+            if ($variantId === null && $productId) {
                 $variants = $variantModel->getByProductId($productId);
                 if (!empty($variants)) {
                     $first = $variants[0];
                     $variantId = (int)($first['Variant_Id'] ?? $first['id'] ?? 0);
                 }
             }
-
+            
             // Nếu vẫn không tìm được variant hợp lệ thì bỏ qua entry
-            if (!$variantId) {
+            if ($variantId === null) {
                 continue;
             }
 
@@ -150,7 +150,8 @@ class CartController extends Controller
             $color = null;
             $size = null;
 
-            // Với chuẩn mới, mọi item đều phải gắn với variant
+            // Variant có thể không tồn tại (product đơn lẻ). Nếu có thì dùng giá và tồn kho của variant,
+            // nếu không thì fallback về dữ liệu của product (dành cho sản phẩm không có variants).
             $variant = $variantModel->getById($variantId);
             if ($variant && ($variant['product_id'] == $productId || ($variant['Product_Id'] ?? null) == $productId)) {
                 $price = $variant['price'] ?? $price;
@@ -164,8 +165,17 @@ class CartController extends Controller
                     $size = $sizeModel->getById($variant['size_id']);
                 }
             } else {
-                // Nếu variant không hợp lệ thì bỏ qua entry
-                continue;
+                // Nếu không có variant nhưng variant_id == 0 => coi như sản phẩm đơn lẻ, dùng thông tin product
+                if ((int)$variantId === 0) {
+                    $price = $product['price'];
+                    $maxQuantity = $product['quantity'];
+                    $variant = null;
+                    $color = null;
+                    $size = null;
+                } else {
+                    // Nếu variant_id != 0 nhưng variant không hợp lệ thì bỏ qua entry
+                    continue;
+                }
             }
 
             // Đảm bảo không vượt quá số lượng tồn kho
@@ -224,31 +234,30 @@ class CartController extends Controller
                 exit;
             }
 
-            // BẮT BUỘC phải có variant_id trong chuẩn mới
+            // Nếu không gửi variant_id, cố gắng chọn variant đầu tiên còn hàng
             if ($variantId <= 0) {
-                // Nếu không gửi variant_id, cố gắng chọn variant đầu tiên còn hàng
                 $variants = $variantModel->getByProductId($id);
                 if (!empty($variants)) {
                     $first = $variants[0];
                     $variantId = (int)($first['Variant_Id'] ?? $first['id'] ?? 0);
+                } else {
+                    // Không có variant trong DB: đánh dấu là sản phẩm đơn lẻ bằng variant_id = 0
+                    $variantId = 0;
                 }
             }
 
-            if ($variantId <= 0) {
-                $_SESSION['error'] = 'Vui lòng chọn phân loại (màu/size) cho sản phẩm trước khi thêm vào giỏ hàng';
-                header('Location: ' . ROOT_URL . 'product/detail/' . $id);
-                exit;
-            }
+            // Kiểm tra variant hợp lệ nếu variant_id > 0, ngược lại dùng tồn kho/giá trên product
+            $maxQuantity = (int)($product['quantity'] ?? 0);
+            if ($variantId > 0) {
+                $variant = $variantModel->getById($variantId);
+                if (!$variant || ($variant['product_id'] ?? $variant['Product_Id'] ?? null) !== $id) {
+                    $_SESSION['error'] = 'Biến thể không hợp lệ';
+                    header('Location: ' . ROOT_URL . 'product/detail/' . $id);
+                    exit;
+                }
 
-            // Kiểm tra variant hợp lệ và tồn kho
-            $variant = $variantModel->getById($variantId);
-            if (!$variant || ($variant['product_id'] ?? $variant['Product_Id'] ?? null) !== $id) {
-                $_SESSION['error'] = 'Biến thể không hợp lệ';
-                header('Location: ' . ROOT_URL . 'product/detail/' . $id);
-                exit;
+                $maxQuantity = (int)($variant['stock'] ?? $variant['Quantity_In_Stock'] ?? 0);
             }
-
-            $maxQuantity = (int)($variant['stock'] ?? $variant['Quantity_In_Stock'] ?? 0);
 
             if ($quantity > $maxQuantity) {
                 $_SESSION['error'] = 'Số lượng vượt quá tồn kho';
@@ -256,7 +265,7 @@ class CartController extends Controller
                 exit;
             }
 
-            // Key giỏ hàng mới: luôn theo variant
+            // Key giỏ hàng mới: luôn theo variant (với sản phẩm đơn lẻ sẽ là 'variant_0')
             $cartKey = 'variant_' . $variantId;
 
             // Thêm vào giỏ hàng hoặc cập nhật số lượng
@@ -452,15 +461,21 @@ class CartController extends Controller
             $price = $product['price'];
             $maxQuantity = $product['quantity'];
 
-            // Với chuẩn mới, luôn có variant
+            // Variant có thể là product-level (variant_id == 0). Nếu variant tồn tại thì dùng variant,
+            // nếu không và variant_id == 0 thì dùng giá/tồn kho của product.
             $variant = $variantModel->getById($variantId);
             if ($variant && ($variant['product_id'] == $productId || ($variant['Product_Id'] ?? null) == $productId)) {
                 $price = $variant['price'] ?? $price;
                 $maxQuantity = $variant['stock'] ?? $variant['Quantity_In_Stock'] ?? $maxQuantity;
             } else {
-                $_SESSION['error'] = 'Biến thể không hợp lệ';
-                header('Location: ' . ROOT_URL . 'cart');
-                exit;
+                if ((int)$variantId === 0) {
+                    $price = $product['price'];
+                    $maxQuantity = $product['quantity'];
+                } else {
+                    $_SESSION['error'] = 'Biến thể không hợp lệ';
+                    header('Location: ' . ROOT_URL . 'cart');
+                    exit;
+                }
             }
 
             if ($maxQuantity < $qty) {
@@ -552,15 +567,21 @@ class CartController extends Controller
             $price = $product['price'];
             $maxQuantity = $product['quantity'];
 
-            // Với chuẩn mới, luôn có variant
+            // Variant có thể là product-level (variant_id == 0). Nếu variant tồn tại thì dùng variant,
+            // nếu không và variant_id == 0 thì dùng giá/tồn kho của product.
             $variant = $variantModel->getById($variantId);
             if ($variant && ($variant['product_id'] == $productId || ($variant['Product_Id'] ?? null) == $productId)) {
                 $price = $variant['price'] ?? $price;
                 $maxQuantity = (int)($variant['stock'] ?? $variant['Quantity_In_Stock'] ?? 0);
             } else {
-                $_SESSION['error'] = 'Biến thể không hợp lệ';
-                header('Location: ' . ROOT_URL . 'cart');
-                exit;
+                if ((int)$variantId === 0) {
+                    $price = $product['price'];
+                    $maxQuantity = (int)$product['quantity'];
+                } else {
+                    $_SESSION['error'] = 'Biến thể không hợp lệ';
+                    header('Location: ' . ROOT_URL . 'cart');
+                    exit;
+                }
             }
 
             if ($maxQuantity < $qty) {
@@ -671,9 +692,14 @@ class CartController extends Controller
                 $price = $variant['price'] ?? $price;
                 $maxQuantity = (int)($variant['stock'] ?? $variant['Quantity_In_Stock'] ?? 0);
             } else {
-                $_SESSION['error'] = 'Biến thể không hợp lệ';
-                header('Location: ' . ROOT_URL . 'cart');
-                exit;
+                if ((int)$variantId === 0) {
+                    $price = $product['price'] ?? $price;
+                    $maxQuantity = (int)$product['quantity'];
+                } else {
+                    $_SESSION['error'] = 'Biến thể không hợp lệ';
+                    header('Location: ' . ROOT_URL . 'cart');
+                    exit;
+                }
             }
 
             if ($maxQuantity < $qty) {
