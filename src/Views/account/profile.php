@@ -990,13 +990,33 @@
                     }
                 })();
 
-                function showToast(text) {
+                function showToast(text, type = 'info') {
+                    const colors = {
+                        'success': { bg: '#4caf50', icon: '✅' },
+                        'error': { bg: '#f44336', icon: '❌' },
+                        'warning': { bg: '#ff9800', icon: '⚠️' },
+                        'info': { bg: '#2196f3', icon: 'ℹ️' }
+                    };
+                    const style = colors[type] || colors['info'];
+                    
                     const t = document.createElement('div');
-                    t.style.position = 'fixed'; t.style.right = '20px'; t.style.bottom = '20px'; t.style.background = 'rgba(0,0,0,0.8)';
-                    t.style.color = '#fff'; t.style.padding = '12px 16px'; t.style.borderRadius = '8px'; t.style.zIndex = 99999;
+                    t.style.cssText = `position: fixed; right: 20px; bottom: 20px; background: ${style.bg}; color: white; padding: 16px 20px; border-radius: 12px; z-index: 99999; font-weight: 600; font-size: 14px; box-shadow: 0 4px 12px rgba(0,0,0,0.2); animation: slideInRight 0.3s ease-out;`;
                     t.textContent = text;
                     document.body.appendChild(t);
-                    setTimeout(()=>{ t.style.transition = 'opacity 0.3s'; t.style.opacity = '0'; setTimeout(()=>t.remove(),300); }, 5000);
+                    
+                    // Add animation
+                    const style2 = document.createElement('style');
+                    style2.textContent = '@keyframes slideInRight { from { transform: translateX(400px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }';
+                    if (!document.querySelector('style[data-toast-anim]')) {
+                        style2.setAttribute('data-toast-anim', '1');
+                        document.head.appendChild(style2);
+                    }
+                    
+                    setTimeout(()=>{ 
+                        t.style.transition = 'opacity 0.3s ease-out'; 
+                        t.style.opacity = '0'; 
+                        setTimeout(()=>t.remove(), 300); 
+                    }, 4000);
                 }
 
                 function escapeHtml(unsafe) {
@@ -1009,25 +1029,52 @@
                 }
 
                 function showReviewModal(orderId, products) {
-                    // Build modal
+                    // Build modern modal overlay
                     const modal = document.createElement('div');
-                    modal.style.position = 'fixed'; modal.style.left = '0'; modal.style.top = '0'; modal.style.width = '100%'; modal.style.height = '100%';
-                    modal.style.background = 'rgba(0,0,0,0.6)'; modal.style.display = 'flex'; modal.style.alignItems = 'center'; modal.style.justifyContent = 'center'; modal.style.zIndex = 99998;
+                    modal.style.cssText = 'position: fixed; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 99998; animation: fadeIn 0.3s ease-out;';
 
                     const box = document.createElement('div');
-                    box.style.width = '760px'; box.style.maxWidth = '95%'; box.style.background = '#fff'; box.style.borderRadius = '8px'; box.style.padding = '18px'; box.style.maxHeight = '85%'; box.style.overflow = 'auto';
+                    box.style.cssText = 'width: 700px; max-width: 95%; background: white; border-radius: 16px; padding: 0; max-height: 85vh; overflow: auto; box-shadow: 0 20px 60px rgba(0,0,0,0.3); animation: slideUp 0.3s ease-out;';
 
-                    const title = document.createElement('h3'); title.textContent = 'Cảm ơn bạn đã mua hàng — Đánh giá sản phẩm';
-                    box.appendChild(title);
-                    const desc = document.createElement('p'); desc.textContent = 'Hãy để lại đánh giá cho các sản phẩm bạn đã mua (bắt buộc đăng nhập).'; box.appendChild(desc);
+                    // Modal header with close button
+                    const header = document.createElement('div');
+                    header.style.cssText = 'background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%); padding: 30px; border-radius: 16px 16px 0 0; position: relative; display: flex; justify-content: space-between; align-items: flex-start;';
 
-                    // Show order meta (date)
+                    const titleDiv = document.createElement('div');
+                    const title = document.createElement('h2');
+                    title.textContent = '⭐ Đánh giá sản phẩm';
+                    title.style.cssText = 'color: white; font-family: "Playfair Display", serif; font-size: 28px; margin: 0 0 8px 0; font-weight: 700;';
+                    titleDiv.appendChild(title);
+
+                    const subtitle = document.createElement('p');
+                    subtitle.textContent = 'Chia sẻ trải nghiệm của bạn với sản phẩm đã mua';
+                    subtitle.style.cssText = 'color: rgba(255,255,255,0.8); font-size: 14px; margin: 0; font-weight: 300;';
+                    titleDiv.appendChild(subtitle);
+                    header.appendChild(titleDiv);
+
+                    const closeBtn = document.createElement('button');
+                    closeBtn.innerHTML = '✕';
+                    closeBtn.style.cssText = 'background: rgba(255,255,255,0.2); border: none; color: white; font-size: 24px; width: 40px; height: 40px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.3s;';
+                    closeBtn.addEventListener('mouseenter', ()=>{ closeBtn.style.background = 'rgba(255,255,255,0.3)'; });
+                    closeBtn.addEventListener('mouseleave', ()=>{ closeBtn.style.background = 'rgba(255,255,255,0.2)'; });
+                    closeBtn.addEventListener('click', ()=>{ modal.remove(); });
+                    header.appendChild(closeBtn);
+                    box.appendChild(header);
+
+                    // Order info
                     const orderDate = document.querySelector('.order-item-shopee[data-order-id="' + orderId + '"]')?.dataset?.orderDate || '';
                     if (orderDate) {
-                        const meta = document.createElement('div'); meta.style.marginBottom = '10px'; meta.style.color = 'var(--text-light)'; meta.textContent = 'Ngày đặt: ' + orderDate; box.appendChild(meta);
+                        const meta = document.createElement('div');
+                        meta.style.cssText = 'padding: 15px 30px; background: #f8f9fa; border-bottom: 1px solid #eee; font-size: 14px; color: #666;';
+                        meta.innerHTML = '<strong>📅 Ngày đặt hàng:</strong> ' + escapeHtml(orderDate);
+                        box.appendChild(meta);
                     }
 
-                    // Create form list: one textarea per product, display details (name, qty, unit, total)
+                    // Content container with padding
+                    const content = document.createElement('div');
+                    content.style.cssText = 'padding: 30px;';
+
+                    // Create form list: one textarea per product
                     products.forEach((p, idx) => {
                         const el = p.element;
                         const pname = el.dataset.productName || ('Sản phẩm ' + (idx+1));
@@ -1035,80 +1082,111 @@
                         const unit = el.dataset.unitPrice || '0';
                         const total = el.dataset.total || (Number(qty) * Number(unit));
 
-                        const wrap = document.createElement('div'); wrap.style.marginBottom = '12px'; wrap.style.borderBottom = '1px solid #eee'; wrap.style.paddingBottom = '10px';
+                        const wrap = document.createElement('div');
+                        wrap.style.cssText = 'margin-bottom: 28px; padding: 20px; background: #f8f9fa; border-radius: 12px; border-left: 4px solid #d4af37;';
 
-                        const nameEl = document.createElement('div'); nameEl.style.fontWeight = '700'; nameEl.style.marginBottom = '6px'; nameEl.textContent = pname; wrap.appendChild(nameEl);
+                        // Product name
+                        const nameEl = document.createElement('div');
+                        nameEl.style.cssText = 'font-weight: 700; font-size: 16px; color: #1a1a1a; margin-bottom: 12px;';
+                        nameEl.textContent = '🛍️ ' + pname;
+                        wrap.appendChild(nameEl);
 
-                        const info = document.createElement('div'); info.style.fontSize = '14px'; info.style.color = 'var(--text-light)'; info.style.marginBottom = '8px';
-                        info.innerHTML = '<strong>Số lượng:</strong> ' + qty + ' &nbsp; • &nbsp; <strong>Đơn giá:</strong> ' + formatCurrency(unit) + ' &nbsp; • &nbsp; <strong>Thành tiền:</strong> ' + formatCurrency(total);
+                        // Product details in a nice format
+                        const info = document.createElement('div');
+                        info.style.cssText = 'font-size: 13px; color: #666; margin-bottom: 15px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; line-height: 1.6;';
+                        info.innerHTML = '<div><strong>Số lượng:</strong> ' + escapeHtml(qty) + '</div>' +
+                                         '<div><strong>Đơn giá:</strong> ' + formatCurrency(unit) + '</div>' +
+                                         '<div colspan="2"><strong>Thành tiền:</strong> ' + formatCurrency(total) + '</div>';
                         wrap.appendChild(info);
 
-                        const ta = document.createElement('textarea'); ta.rows = 4; ta.style.width = '100%'; ta.name = 'content_' + p.productId; ta.placeholder = 'Viết đánh giá...';
+                        // Textarea with better styling
+                        const ta = document.createElement('textarea');
+                        ta.rows = 5;
+                        ta.name = 'content_' + p.productId;
+                        ta.placeholder = 'Chia sẻ trải nghiệm của bạn... (ví dụ: chất lượng, kích thước, màu sắc, tính năng)';
+                        ta.style.cssText = 'width: 100%; padding: 12px; border: 2px solid #ddd; border-radius: 8px; font-family: "Poppins", sans-serif; font-size: 14px; resize: vertical; transition: border-color 0.3s; outline: none;';
+                        ta.addEventListener('focus', ()=>{ ta.style.borderColor = '#d4af37'; ta.style.boxShadow = '0 0 0 3px rgba(212,175,55,0.1)'; });
+                        ta.addEventListener('blur', ()=>{ ta.style.borderColor = '#ddd'; ta.style.boxShadow = 'none'; });
                         wrap.appendChild(ta);
 
-                        const btn = document.createElement('button'); btn.type = 'button'; btn.textContent = 'Gửi đánh giá cho sản phẩm này';
-                        btn.style.marginTop = '6px'; btn.className = 'btn btn-primary';
+                        // Submit button
+                        const btn = document.createElement('button');
+                        btn.type = 'button';
+                        btn.textContent = '📤 Gửi đánh giá';
+                        btn.style.cssText = 'margin-top: 12px; padding: 12px 20px; background: linear-gradient(135deg, #d4af37 0%, #e8c855 100%); border: none; color: white; font-weight: 600; border-radius: 8px; cursor: pointer; transition: all 0.3s; font-size: 14px; width: 100%;';
+                        btn.addEventListener('mouseenter', ()=>{ btn.style.transform = 'translateY(-2px)'; btn.style.boxShadow = '0 6px 20px rgba(212,175,55,0.3)'; });
+                        btn.addEventListener('mouseleave', ()=>{ btn.style.transform = 'none'; btn.style.boxShadow = 'none'; });
                         btn.addEventListener('click', async function(){
-                            const content = ta.value.trim();
-                            if (!content) { alert('Vui lòng nhập nội dung đánh giá'); return; }
+                            const comment = ta.value.trim();
+                            if (!comment) { 
+                                ta.style.borderColor = '#f8d7da';
+                                setTimeout(()=>{ ta.style.borderColor = '#ddd'; }, 1000);
+                                showToast('⚠️ Vui lòng nhập nội dung đánh giá', 'warning');
+                                return; 
+                            }
+                            btn.disabled = true;
+                            btn.textContent = '⏳ Đang gửi...';
                             try {
                                 const res = await fetch(ROOT + '/product/postComment/' + encodeURIComponent(p.productId), {
                                     method: 'POST',
                                     headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-Requested-With': 'XMLHttpRequest' },
-                                    body: 'content=' + encodeURIComponent(content)
+                                    body: 'content=' + encodeURIComponent(comment)
                                 });
                                 const json = await res.json();
                                 if (json.ok) {
-                                    showToast('Đã gửi đánh giá');
-                                    // If product detail is present on this page and reloadComments helper exists, refresh comments in-place
+                                    showToast('✅ Đã gửi đánh giá thành công', 'success');
+                                    ta.value = '';
+                                    ta.style.background = '#e8f5e9';
+                                    btn.textContent = '✓ Đã gửi';
+                                    btn.style.background = '#4caf50';
+                                    btn.disabled = true;
+                                    
+                                    // Try to reload comments if on product detail
                                     if (typeof window.reloadComments === 'function') {
                                         try {
                                             await window.reloadComments();
                                         } catch (e) { /* ignore */ }
-                                        // close modal overlay
-                                        try {
-                                            let ancestorModal = btn.closest('div');
-                                            while (ancestorModal && !ancestorModal.style?.position?.includes('fixed')) {
-                                                ancestorModal = ancestorModal.parentElement;
-                                            }
-                                            if (ancestorModal) ancestorModal.remove();
-                                        } catch (e) { /* ignore */ }
-                                        return;
                                     }
-
-                                    // Fallback: append comment locally then redirect to product detail
-                                    const c = json.comment;
-                                    const commentItem = document.createElement('div'); commentItem.className = 'comment-item';
-                                    commentItem.innerHTML = '<div class="comment-header"><strong>' + (c.user_name || 'Bạn') + '</strong> <span class="comment-date">' + (c.Create_at || '') + '</span></div><div class="comment-content">' + (c.Content ? escapeHtml(c.Content) : '') + '</div>';
-                                    const target = document.querySelector('.comments-list[data-product-id="' + p.productId + '"]') || document.querySelector('.comments-list');
-                                    if (target) target.insertBefore(commentItem, target.firstChild);
-
-                                    try {
-                                        let ancestorModal = btn.closest('div');
-                                        while (ancestorModal && !ancestorModal.style?.position?.includes('fixed')) {
-                                            ancestorModal = ancestorModal.parentElement;
-                                        }
-                                        if (ancestorModal) ancestorModal.remove();
-                                    } catch (e) { /* ignore */ }
-                                    setTimeout(function(){ window.location.href = ROOT + '/product/detail/' + encodeURIComponent(p.productId); }, 300);
                                 } else {
-                                    alert('Không thể gửi đánh giá');
+                                    showToast('❌ Không thể gửi đánh giá', 'error');
+                                    btn.disabled = false;
+                                    btn.textContent = '📤 Gửi đánh giá';
                                 }
                             } catch (e) {
-                                console.error(e); alert('Lỗi gửi đánh giá');
+                                console.error(e);
+                                showToast('❌ Lỗi gửi đánh giá', 'error');
+                                btn.disabled = false;
+                                btn.textContent = '📤 Gửi đánh giá';
                             }
                         });
                         wrap.appendChild(btn);
 
-                        box.appendChild(wrap);
+                        content.appendChild(wrap);
                     });
 
-                    const close = document.createElement('button'); close.type = 'button'; close.textContent = 'Đóng'; close.className = 'btn btn-secondary';
-                    close.style.marginTop = '8px'; close.addEventListener('click', function(){ modal.remove(); });
-                    box.appendChild(close);
+                    box.appendChild(content);
+
+                    // Modal footer with close button
+                    const footer = document.createElement('div');
+                    footer.style.cssText = 'padding: 20px 30px; background: #f8f9fa; border-top: 1px solid #eee; border-radius: 0 0 16px 16px; text-align: right;';
+
+                    const closeFooterBtn = document.createElement('button');
+                    closeFooterBtn.type = 'button';
+                    closeFooterBtn.textContent = '✕ Đóng';
+                    closeFooterBtn.style.cssText = 'padding: 10px 20px; background: #e5e5e5; border: none; color: #333; border-radius: 8px; cursor: pointer; font-weight: 600; transition: all 0.3s;';
+                    closeFooterBtn.addEventListener('mouseenter', ()=>{ closeFooterBtn.style.background = '#d5d5d5'; });
+                    closeFooterBtn.addEventListener('mouseleave', ()=>{ closeFooterBtn.style.background = '#e5e5e5'; });
+                    closeFooterBtn.addEventListener('click', ()=>{ modal.remove(); });
+                    footer.appendChild(closeFooterBtn);
+                    box.appendChild(footer);
 
                     modal.appendChild(box);
                     document.body.appendChild(modal);
+
+                    // Add animations
+                    const style = document.createElement('style');
+                    style.textContent = '@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } } @keyframes slideUp { from { transform: translateY(30px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }';
+                    document.head.appendChild(style);
                 }
             } catch (e) { console.error(e); }
         })();

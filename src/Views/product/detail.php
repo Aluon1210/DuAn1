@@ -408,7 +408,7 @@
     <!-- COMMENTS SECTION -->
     <div class="product-detail-container" style="margin-top: 40px;">
         <div class="comments-section">
-            <h3>📝 Bình luận sản phẩm</h3>
+            <h3>📝 Đánh giá Sản phẩm của người mua</h3>
 
             <?php if (isset($_SESSION['message'])): ?>
                 <div class="alert alert-success">
@@ -424,33 +424,12 @@
                 </div>
             <?php endif; ?>
 
-            <!-- FORM COMMENT (chỉ hiển thị nếu đã đăng nhập và đã nhận hàng) -->
-            <?php if (isset($_SESSION['user'])): ?>
-                <?php if (isset($canComment) && $canComment): ?>
-                    <div class="comment-form">
-                        <h4 style="margin-top: 0; margin-bottom: 16px; color: var(--primary-black);">
-                            Chia sẻ ý kiến của bạn
-                        </h4>
-                        <form method="POST"
-                            action="<?php echo ROOT_URL; ?>product/postComment/<?php echo htmlspecialchars($product['id']); ?>">
-                            <textarea name="content" placeholder="Nhập bình luận của bạn..." required></textarea>
-                            <button type="submit">Đăng bình luận</button>
-                        </form>
-                    </div>
-                <?php else: ?>
-                    <div class="login-prompt"
-                        style="background: linear-gradient(135deg, #fff3cd 0%, #ffeaa7 100%); border-left: 4px solid #ffc107;">
-                        <p style="color: #856404;">📦 Bạn chỉ có thể bình luận sau khi đã nhận hàng sản phẩm này</p>
-                        <p style="color: #856404; font-size: 14px; margin-top: 8px;">Vui lòng đợi đơn hàng của bạn được giao thành
-                            công.</p>
-                    </div>
-                <?php endif; ?>
-            <?php else: ?>
-                <div class="login-prompt">
-                    <p>👤 Vui lòng đăng nhập để bình luận sản phẩm này</p>
-                    <a href="<?php echo ROOT_URL; ?>login">Đăng nhập ngay</a>
+            <!-- COMMENTING DISABLED: show read-only notice only -->
+            <!-- <div style="margin-bottom: 20px;">
+                <div class="alert" style="background: linear-gradient(135deg, #eef6ff 0%, #f7fbff 100%); border-left: 4px solid #007bff;">
+                    <strong>Chú ý:</strong> Chức năng đăng bình luận tạm thời bị vô hiệu hóa. Trang chỉ hiển thị các bình luận hiện có.
                 </div>
-            <?php endif; ?>
+            </div> -->
 
             <!-- DANH SÁCH BÌNH LUẬN -->
             <div style="margin-top: 30px;">
@@ -486,24 +465,39 @@
 <script>
     // Helper to reload comments section via AJAX using the new CommentController
     (function(){
-        const productId = '<?php echo htmlspecialchars($product['id'] ?? $product['Product_Id'] ?? ''); ?>';
-        if (!productId) return;
-        const ROOT = '<?php echo rtrim(ROOT_URL, "/"); ?>';
+        const productId = "<?php echo htmlspecialchars($product['id'] ?? $product['Product_Id'] ?? ''); ?>";
+        if (!productId) {
+            console.warn('[reloadComments] productId is empty');
+            return;
+        }
+        const ROOT = "<?php echo rtrim(ROOT_URL, "/"); ?>";
 
         window.reloadComments = async function(){
             try {
+                console.log('[reloadComments] productId=', productId);
                 const res = await fetch(ROOT + '/comment/ajaxList/' + encodeURIComponent(productId));
                 const json = await res.json();
+                console.log('[reloadComments] response:', json);
                 if (json.ok && typeof json.html !== 'undefined') {
                     const container = document.querySelector('.comments-list[data-product-id="' + productId + '"]') || document.querySelector('.comments-list');
                     if (container) {
-                        container.innerHTML = json.html;
+                        // Use a safe parser to inject HTML
+                        const tmp = document.createElement('div');
+                        tmp.innerHTML = json.html;
+                        container.innerHTML = tmp.innerHTML;
+                        console.log('[reloadComments] updated container with', tmp.childElementCount, 'items');
+                    } else {
+                        console.warn('[reloadComments] comments container not found for productId=', productId);
                     }
+                } else {
+                    console.warn('[reloadComments] no html in response or ok=false', json);
                 }
             } catch (e) { console.error('Failed to reload comments', e); }
         };
 
-        // Optionally expose: reload on page load (comment out if not desired)
-        // reloadComments();
+        // Reload comments on page load so saved comments always appear
+        document.addEventListener('DOMContentLoaded', function(){
+            try { if (typeof window.reloadComments === 'function') window.reloadComments(); } catch (e) { console.error(e); }
+        });
     })();
 </script>

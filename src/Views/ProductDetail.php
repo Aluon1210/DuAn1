@@ -304,6 +304,79 @@
         border: 1px solid #f5c6cb;
     }
 
+    /* Comments Section */
+    .comments-section {
+        margin-top: 60px;
+        padding-top: 40px;
+        border-top: 2px solid var(--border-light);
+    }
+
+    .comments-section h3 {
+        font-family: 'Playfair Display', serif;
+        font-size: 28px;
+        margin-bottom: 30px;
+        color: var(--primary-black);
+        padding-bottom: 15px;
+        border-bottom: 2px solid var(--primary-gold-light);
+    }
+
+    .comments-list {
+        display: flex;
+        flex-direction: column;
+        gap: 24px;
+    }
+
+    .comment-item {
+        padding: 24px;
+        background: white;
+        border: 2px solid var(--border-light);
+        border-radius: 12px;
+        transition: var(--transition-smooth);
+    }
+
+    .comment-item:hover {
+        border-color: var(--primary-gold);
+        box-shadow: 0 4px 12px rgba(212, 175, 55, 0.1);
+    }
+
+    .comment-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 12px;
+        flex-wrap: wrap;
+        gap: 12px;
+    }
+
+    .comment-author {
+        font-weight: 600;
+        color: var(--primary-black);
+        font-size: 15px;
+    }
+
+    .comment-date {
+        font-size: 13px;
+        color: var(--text-light);
+    }
+
+    .comment-content {
+        color: var(--text-dark);
+        line-height: 1.6;
+        font-size: 14px;
+        white-space: pre-wrap;
+        word-break: break-word;
+    }
+
+    .empty-comments {
+        text-align: center;
+        padding: 40px 20px;
+        color: var(--text-light);
+    }
+
+    .empty-comments p {
+        font-size: 16px;
+    }
+
     @media (max-width: 768px) {
         .product-detail-container {
             padding: 20px;
@@ -647,6 +720,48 @@
                         <div style="color: #721c24; font-weight: 600; font-size: 18px;">Sản phẩm hiện đang hết hàng</div>
                         <p style="color: #721c24; margin-top: 8px; font-size: 14px;">Vui lòng quay lại sau hoặc liên hệ với
                             chúng tôi</p>
+                    </div>
+                <?php endif; ?>
+            </div>
+        </div>
+    </div>
+
+    <!-- COMMENTS SECTION -->
+    <div class="product-detail-container" style="margin-top: 40px;">
+        <div class="comments-section">
+            <h3>📝 Bình luận sản phẩm</h3>
+
+            <!-- COMMENTING DISABLED: show read-only notice only -->
+            <div style="margin-bottom: 20px;">
+                <div class="alert" style="background: linear-gradient(135deg, #eef6ff 0%, #f7fbff 100%); border-left: 4px solid #007bff;">
+                    <strong>Chú ý:</strong> Chức năng đăng bình luận tạm thời bị vô hiệu hóa. Trang chỉ hiển thị các bình luận hiện có.
+                </div>
+            </div>
+
+            <!-- DANH SÁCH BÌNH LUẬN -->
+            <div style="margin-top: 30px;">
+                <?php if (!empty($comments)): ?>
+                    <div class="comments-list" data-product-id="<?php echo htmlspecialchars($product['id'] ?? $product['Product_Id'] ?? ''); ?>">
+                        <?php foreach ($comments as $comment): ?>
+                            <div class="comment-item">
+                                <div class="comment-header">
+                                    <span class="comment-author">
+                                        👤 <?php echo htmlspecialchars($comment['user_name'] ?? 'Ẩn danh'); ?>
+                                    </span>
+                                    <span class="comment-date">
+                                        <?php echo htmlspecialchars($comment['Create_at'] ?? date('d/m/Y')); ?>
+                                    </span>
+                                </div>
+                                <div class="comment-content">
+                                    <?php echo htmlspecialchars($comment['Content']); ?>
+                                </div>
+                            </div>
+                        <?php endforeach; ?>
+                    </div>
+                <?php else: ?>
+                    <div class="empty-comments">
+                        <div style="font-size: 48px; margin-bottom: 12px;">💭</div>
+                        <p>Chưa có bình luận nào. Hãy là người đầu tiên bình luận!</p>
                     </div>
                 <?php endif; ?>
             </div>
