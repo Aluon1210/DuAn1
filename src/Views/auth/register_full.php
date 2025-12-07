@@ -123,6 +123,36 @@
         color: var(--primary-black);
         text-decoration: underline;
     }
+
+    .oauth-button {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        padding: 14px 20px;
+        border: 2px solid var(--border-light);
+        border-radius: 12px;
+        background: white;
+        cursor: pointer;
+        font-size: 15px;
+        font-weight: 600;
+        color: var(--text-dark);
+        text-decoration: none;
+        transition: var(--transition-smooth);
+        text-align: center;
+    }
+
+    .oauth-button:hover {
+        background: var(--bg-light);
+        border-color: var(--primary-gold);
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(212, 175, 55, 0.15);
+    }
+
+    .oauth-button.google::before {
+        content: '🔐';
+        font-size: 18px;
+    }
 </style>
 
 <div class="auth-container">
@@ -226,6 +256,10 @@
     <div class="auth-divider">
         <span>HOẶC</span>
     </div>
+
+    <a href="<?php echo ROOT_URL; ?>auth/google" class="oauth-button google">
+        Đăng ký với Google
+    </a>
 
     <div class="auth-footer">
         Đã có tài khoản? 
