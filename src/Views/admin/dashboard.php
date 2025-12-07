@@ -71,45 +71,89 @@
             <section class="card">
                 <h3>Doanh thu theo tuần & tháng - <?php echo $data['year']; ?></h3>
 
-                <div style="display:flex;gap:18px;flex-wrap:wrap;align-items:flex-start;">
-                    <div style="width:100%; display:flex; gap:12px; margin-bottom:12px; align-items:center;">
-                        <label style="font-weight:600;">Chọn tuần:</label>
-                        <select id="select-week" style="padding:6px;border-radius:6px;">
-                            <option value="">-- Chọn tuần --</option>
-                            <?php foreach (($data['weekOptions'] ?? []) as $w): ?>
-                                <option value="<?php echo htmlspecialchars($w); ?>" <?php echo (!empty($data['selectedWeek']) && $data['selectedWeek'] === $w) ? 'selected' : ''; ?>><?php echo htmlspecialchars($w); ?></option>
-                            <?php endforeach; ?>
-                        </select>
+                <style>
+                    .dashboard-panels { display: grid; grid-template-columns: repeat(2, minmax(360px, 1fr)); gap: 18px; align-items: start; }
+                    @media (max-width: 900px) { .dashboard-panels { grid-template-columns: 1fr; } }
+                </style>
 
-                        <label style="font-weight:600;margin-left:18px;">Chọn tháng:</label>
-                        <select id="select-month" style="padding:6px;border-radius:6px;">
-                            <option value="">-- Chọn tháng --</option>
-                            <?php foreach (($data['monthOptions'] ?? []) as $m): ?>
-                                <option value="<?php echo htmlspecialchars($m); ?>" <?php echo (!empty($data['selectedMonth']) && $data['selectedMonth'] === $m) ? 'selected' : ''; ?>><?php echo htmlspecialchars($m); ?></option>
-                            <?php endforeach; ?>
-                        </select>
-
-                        <button id="btn-clear-period" class="btn btn-small" style="margin-left:8px;">Bỏ chọn</button>
-                    </div>
-                    <div style="flex:1;min-width:360px;">
-                        <div style="margin-bottom:12px;font-weight:700;">Doanh thu theo tuần (mấy tuần gần nhất)</div>
+                <div class="dashboard-panels">
+                    <!-- Weekly revenue panel -->
+                    <div class="card" style="padding:12px;">
+                        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+                            <div style="font-weight:700;">Doanh thu theo tuần</div>
+                            <div style="display:flex;gap:8px;align-items:center;">
+                                <label style="font-size:13px;">Tuần</label>
+                                <select class="select-week" data-target="weekly" style="padding:6px;border-radius:6px;">
+                                    <option value="">-- Chọn tuần --</option>
+                                    <?php foreach (($data['weekOptions'] ?? []) as $w): ?>
+                                        <option value="<?php echo htmlspecialchars($w); ?>" <?php echo (!empty($data['selectedWeek']) && $data['selectedWeek'] === $w) ? 'selected' : ''; ?>><?php echo htmlspecialchars($w); ?></option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
+                        </div>
                         <canvas id="chart-weekly" width="600" height="260"></canvas>
                     </div>
 
-                    <div style="flex:1;min-width:360px;">
-                        <div style="margin-bottom:12px;font-weight:700;">Doanh thu theo tháng</div>
+                    <!-- Monthly revenue panel -->
+                    <div class="card" style="padding:12px;">
+                        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+                            <div style="font-weight:700;">Doanh thu theo tháng</div>
+                            <div style="display:flex;gap:8px;align-items:center;">
+                                <label style="font-size:13px;">Tháng</label>
+                                <select class="select-month" data-target="monthly" style="padding:6px;border-radius:6px;">
+                                    <option value="">-- Chọn tháng --</option>
+                                    <?php foreach (($data['monthOptions'] ?? []) as $m): ?>
+                                        <option value="<?php echo htmlspecialchars($m); ?>" <?php echo (!empty($data['selectedMonth']) && $data['selectedMonth'] === $m) ? 'selected' : ''; ?>><?php echo htmlspecialchars($m); ?></option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
+                        </div>
                         <canvas id="chart-monthly" width="600" height="260"></canvas>
                     </div>
-                </div>
 
-                <div style="margin-top:18px; display:flex; gap:18px; flex-wrap:wrap;">
-                    <div style="flex:1; min-width:360px;">
-                        <h4>Top 5 sản phẩm bán chạy</h4>
+                    <!-- Top products panel -->
+                    <div class="card" style="padding:12px;">
+                        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+                            <div style="font-weight:700;">Top 5 sản phẩm bán chạy</div>
+                            <div style="display:flex;gap:8px;align-items:center;">
+                                <label style="font-size:13px;">Tuần/Tháng</label>
+                                <select class="select-week" data-target="top-products" style="padding:6px;border-radius:6px;">
+                                    <option value="">-- Chọn tuần --</option>
+                                    <?php foreach (($data['weekOptions'] ?? []) as $w): ?>
+                                        <option value="<?php echo htmlspecialchars($w); ?>"><?php echo htmlspecialchars($w); ?></option>
+                                    <?php endforeach; ?>
+                                </select>
+                                <select class="select-month" data-target="top-products" style="padding:6px;border-radius:6px;">
+                                    <option value="">-- Chọn tháng --</option>
+                                    <?php foreach (($data['monthOptions'] ?? []) as $m): ?>
+                                        <option value="<?php echo htmlspecialchars($m); ?>"><?php echo htmlspecialchars($m); ?></option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
+                        </div>
                         <canvas id="chart-top-products" width="600" height="240"></canvas>
                     </div>
 
-                    <div style="flex:1; min-width:360px;">
-                        <h4>Top 5 khách hàng theo doanh số</h4>
+                    <!-- Top customers panel -->
+                    <div class="card" style="padding:12px;">
+                        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+                            <div style="font-weight:700;">Top 5 khách hàng theo doanh số</div>
+                            <div style="display:flex;gap:8px;align-items:center;">
+                                <label style="font-size:13px;">Tuần/Tháng</label>
+                                <select class="select-week" data-target="top-customers" style="padding:6px;border-radius:6px;">
+                                    <option value="">-- Chọn tuần --</option>
+                                    <?php foreach (($data['weekOptions'] ?? []) as $w): ?>
+                                        <option value="<?php echo htmlspecialchars($w); ?>"><?php echo htmlspecialchars($w); ?></option>
+                                    <?php endforeach; ?>
+                                </select>
+                                <select class="select-month" data-target="top-customers" style="padding:6px;border-radius:6px;">
+                                    <option value="">-- Chọn tháng --</option>
+                                    <?php foreach (($data['monthOptions'] ?? []) as $m): ?>
+                                        <option value="<?php echo htmlspecialchars($m); ?>"><?php echo htmlspecialchars($m); ?></option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
+                        </div>
                         <canvas id="chart-top-customers" width="600" height="240"></canvas>
                     </div>
                 </div>
@@ -230,18 +274,19 @@ if(ctxTopProd){ makeBarChart(ctxTopProd, topProductLabels, topProductData, 'Số
 const ctxTopCust = document.getElementById('chart-top-customers');
 if(ctxTopCust){ makeBarChart(ctxTopCust, topCustomerLabels, topCustomerData, 'Doanh thu (VNĐ)'); }
 
-// selector behaviour
-document.getElementById('select-week')?.addEventListener('change', function(e){
-    const v = e.target.value;
-    if (v) location.href = new URL(window.location.href).origin + window.location.pathname + '?week=' + encodeURIComponent(v);
-    else location.href = window.location.pathname;
+// selector behaviour: attach to all per-panel selects
+document.querySelectorAll('.select-week').forEach(function(el){
+    el.addEventListener('change', function(e){
+        const v = e.target.value;
+        if (v) window.location.href = window.location.pathname + '?week=' + encodeURIComponent(v);
+        else window.location.href = window.location.pathname;
+    });
 });
-document.getElementById('select-month')?.addEventListener('change', function(e){
-    const v = e.target.value;
-    if (v) location.href = new URL(window.location.href).origin + window.location.pathname + '?month=' + encodeURIComponent(v);
-    else location.href = window.location.pathname;
-});
-document.getElementById('btn-clear-period')?.addEventListener('click', function(e){
-    location.href = window.location.pathname;
+document.querySelectorAll('.select-month').forEach(function(el){
+    el.addEventListener('change', function(e){
+        const v = e.target.value;
+        if (v) window.location.href = window.location.pathname + '?month=' + encodeURIComponent(v);
+        else window.location.href = window.location.pathname;
+    });
 });
 </script>
