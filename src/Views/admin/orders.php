@@ -379,7 +379,8 @@
                                 <th width="8%">Số lượng</th>
                                 <th width="13%">Trạng thái</th>
                                 <th width="10%">Ngày đặt hàng</th>
-                                <th width="15%">Địa chỉ giao hàng</th>
+                                <th width="12%">Ghi chú</th>
+                                <th width="13%">Địa chỉ giao hàng</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -417,6 +418,7 @@
                                         </select>
                                     </td>
                                     <td><?php echo date('d/m/Y', strtotime($order['Order_date'])); ?></td>
+                                    <td><small><?php echo htmlspecialchars($order['Note'] ?? 'Không có ghi chú'); ?></small></td>
                                     <td><small><?php echo htmlspecialchars($address); ?></small></td>
                                 </tr>
                             <?php endforeach; ?>

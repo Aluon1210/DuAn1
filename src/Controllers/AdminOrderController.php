@@ -55,7 +55,7 @@ class AdminOrderController extends Controller
         // Main query: Get product details from order_detail
         // Query structure: orders -> order_detail -> product_variants -> products (for name, color, size)
         // NOTE: LIMIT and OFFSET must be literal integers, not bound parameters
-        $sql = "SELECT o.Order_Id, o.Order_date, o.TrangThai, o.Adress, o._UserName_Id,
+        $sql = "SELECT o.Order_Id, o.Order_date, o.TrangThai, o.Adress, o.Note, o._UserName_Id,
                        u.FullName as user_name, u.Email as user_email, u.Phone as user_phone,
                        SUM(od.quantity) as items_count,
                        SUM(od.quantity * od.Price) as total,
@@ -71,7 +71,7 @@ class AdminOrderController extends Controller
                 LEFT JOIN colors c ON pv.Color_Id = c.Color_Id
                 LEFT JOIN sizes s ON pv.Size_Id = s.Size_Id
                 " . ($where ? $where : '') . "
-                GROUP BY o.Order_Id, o.Order_date, o.TrangThai, o.Adress, o._UserName_Id, u.FullName, u.Email, u.Phone
+                GROUP BY o.Order_Id, o.Order_date, o.TrangThai, o.Adress, o.Note, o._UserName_Id, u.FullName, u.Email, u.Phone
                 ORDER BY o.Order_date DESC
                 LIMIT " . (int)$perPage . " OFFSET " . (int)$offset;
 
