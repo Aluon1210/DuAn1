@@ -11,7 +11,6 @@ $menuItems = [
     '/DuAn1/admin/categories' => 'Danh mục',
     '/DuAn1/admin/branch' => 'Hãng',
     '/DuAn1/admin/comments' => 'Bình luận',
-    '/DuAn1/admin/stats' => 'Thống kê',
 ];
 ?>
 
@@ -20,8 +19,8 @@ $menuItems = [
         <i class="fas fa-gem"></i> Luxury Admin
     </div>
     <nav>
-        <a href="#">Trang chủ</a>
-        <a href="#">Đăng xuất</a>
+        <a href="<?php echo ROOT_URL; ?>admin/dashboard">Trang chủ</a>
+        <a href="<?php echo ROOT_URL; ?>logout">Đăng xuất</a>
     </nav>
 </header>
 

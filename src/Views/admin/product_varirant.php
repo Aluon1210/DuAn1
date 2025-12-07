@@ -254,10 +254,11 @@
                                 <option value="">-- Chọn sản phẩm --</option>
                                 <?php if (!empty($data['products'])): ?>
                                     <?php foreach ($data['products'] as $product): ?>
-                                        <option value="<?php echo htmlspecialchars($product['id']); ?>"
-                                            <?php echo (!empty($data['variant']['product_id']) && $data['variant']['product_id'] === $product['id']) ? 'selected' : ''; ?>>
-                                            <?php echo htmlspecialchars($product['name']); ?>
-                                        </option>
+                                            <option value="<?php echo htmlspecialchars($product['id']); ?>"
+                                                data-price="<?php echo (int)($product['price'] ?? 0); ?>"
+                                                <?php echo (!empty($data['variant']['product_id']) && $data['variant']['product_id'] === $product['id']) ? 'selected' : ''; ?>>
+                                                <?php echo htmlspecialchars($product['name']); ?>
+                                            </option>
                                     <?php endforeach; ?>
                                 <?php endif; ?>
                             </select>
@@ -396,4 +397,31 @@
 </body>
 
 </html>
+
+<script>
+document.addEventListener('DOMContentLoaded', function(){
+    var prodSelect = document.getElementById('variant-product');
+    var priceInput = document.getElementById('variant-price');
+    var isEditing = <?php echo !empty($data['editing']) ? 'true' : 'false'; ?>;
+
+    function applyPriceFromSelected(){
+        if(!prodSelect) return;
+        var opt = prodSelect.selectedOptions && prodSelect.selectedOptions[0];
+        if(!opt) return;
+        var p = opt.getAttribute('data-price');
+        var priceVal = p ? parseInt(p, 10) : 0;
+        var current = priceInput ? parseInt(priceInput.value || '0', 10) : 0;
+        // if not editing or current price is zero, set the input
+        if(priceInput && (!isEditing || current === 0)){
+            priceInput.value = priceVal;
+        }
+    }
+
+    if(prodSelect){
+        prodSelect.addEventListener('change', applyPriceFromSelected);
+        // initial apply
+        applyPriceFromSelected();
+    }
+});
+</script>
 
