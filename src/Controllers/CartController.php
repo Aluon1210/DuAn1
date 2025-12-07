@@ -655,6 +655,13 @@ class CartController extends Controller
             exit;
         }
 
+        $address = isset($_POST['address']) ? trim($_POST['address']) : '';
+        if (empty($address)) {
+            $_SESSION['error'] = 'Vui lòng nhập địa chỉ nhận hàng';
+            header('Location: ' . ROOT_URL . 'cart');
+            exit;
+        }
+
         $productModel = new \Models\Product();
         $orderDetails = [];
         $totalAmount = 0;

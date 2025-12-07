@@ -44,8 +44,8 @@
 
       <div class="checkout-section">
         <div style="margin-bottom:16px;">
-          <label style="font-weight:600; display:block; margin-bottom:6px;">Địa chỉ nhận hàng</label>
-          <input type="text" name="address" value="<?php echo isset($user['address']) ? htmlspecialchars($user['address']) : ''; ?>" style="width:100%; padding:12px 14px; border:2px solid var(--border-light); border-radius:8px;">
+          <label style="font-weight:600; display:block; margin-bottom:6px;">Địa chỉ nhận hàng <span style="color:red;">*</span></label>
+          <input type="text" name="address" value="<?php echo isset($user['address']) ? htmlspecialchars($user['address']) : ''; ?>" required placeholder="Nhập địa chỉ nhận hàng" style="width:100%; padding:12px 14px; border:2px solid var(--border-light); border-radius:8px;">
         </div>
         <div style="margin-bottom:16px;">
           <label style="font-weight:600; display:block; margin-bottom:6px;">Ghi chú</label>
