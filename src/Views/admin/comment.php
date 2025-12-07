@@ -2,8 +2,11 @@
 // comment.php
 // Kết nối DB trước đó (ví dụ: include 'pdo.php';)
 
-// Lấy dữ liệu bình luận từ DB (ví dụ)
-// $comments = pdo_query("SELECT * FROM comments ORDER BY created_at DESC");
+// Lấy dữ liệu bình luận từ DB
+require_once ROOT_PATH . '/src/Models/Comment.php';
+// Sử dụng model để lấy dữ liệu kèm tên người dùng và tên sản phẩm
+$commentModel = new \Models\Comment();
+$comments = $commentModel->query("SELECT c.Comment_Id, c.Content, c.Create_at, c.Product_Id, u.FullName as user_name, p.name as product_name \n                FROM comments c \n                LEFT JOIN users u ON c._UserName_Id = u._UserName_Id \n                LEFT JOIN products p ON c.Product_Id = p.Product_Id \n                ORDER BY c.Create_at DESC");
 ?>
 
 <!DOCTYPE html>
@@ -184,10 +187,7 @@
             <!-- Thống kê -->
             <div class="stats-box">
                 <p><strong>Tổng bình luận:</strong>
-                    <?php
-                    // echo count($comments); 
-                    echo 3; // demo
-                    ?>
+                    <?php echo htmlspecialchars(count($comments)); ?>
                 </p>
             </div>
 
@@ -201,53 +201,16 @@
                             <th>Sản phẩm</th>
                             <th>Nội dung</th>
                             <th>Ngày</th>
-                            <th>Trạng thái</th>
-                            <th>Hành động</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <?php
-                        // foreach($comments as $c):
-                        ?>
-                        <tr>
-                            <td>1</td>
-                            <td>Nguyen Van A</td>
-                            <td>Áo thun trắng</td>
-                            <td>Bình luận rất hay!</td>
-                            <td>2025-11-19</td>
-                            <td><span class="status-badge approved">Đã duyệt</span></td>
-                            <td>
-                                <a href="#" class="btn-small btn-edit">Sửa</a>
-                                <a href="#" class="btn-small btn-delete">Xóa</a>
-                            </td>
-                        </tr>
-                        <tr>
-                            <td>2</td>
-                            <td>Tran Thi B</td>
-                            <td>Quần jeans</td>
-                            <td>Chất lượng tốt</td>
-                            <td>2025-11-18</td>
-                            <td><span class="status-badge pending">Chờ duyệt</span></td>
-                            <td>
-                                <a href="#" class="btn-small btn-edit">Sửa</a>
-                                <a href="#" class="btn-small btn-delete">Xóa</a>
-                            </td>
-                        </tr>
-                        <tr>
-                            <td>3</td>
-                            <td>Le Van C</td>
-                            <td>Áo sơ mi xanh</td>
-                            <td>Không vừa size</td>
-                            <td>2025-11-17</td>
-                            <td><span class="status-badge rejected">Từ chối</span></td>
-                            <td>
-                                <a href="#" class="btn-small btn-edit">Sửa</a>
-                                <a href="#" class="btn-small btn-delete">Xóa</a>
-                            </td>
-                        </tr>
-                        <?php
-                        // endforeach;
-                        ?>
+                        </tr                   <?php foreach ($comments as $c): ?>
+                            <tr>
+                                <td><?php echo htmlspecialchars($c['Comment_Id'] ?? ''); ?></td>
+                                <td><?php echo htmlspecialchars($c['user_name'] ?? ''); ?></td>
+                                <td><?php echo htmlspecialchars($c['product_name'] ?? ($c['Product_Id'] ?? '')); ?></td>
+                                <td><?php echo htmlspecialchars($c['Content'] ?? ''); ?></td>
+                                <td><?php echo htmlspecialchars($c['Create_at'] ?? ''); ?></td>
+                                
+                            </tr>
+                        <?php endforeach; ?>
                     </tbody>
                 </table>
             </div>

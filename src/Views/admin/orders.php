@@ -350,6 +350,14 @@
                         </div>
 
                         <div class="form-group">
+                            <label for="filter-sort">Sắp xếp theo ngày</label>
+                            <select id="filter-sort" name="sort">
+                                <option value="desc" <?php echo ($data['filter']['sort'] === 'desc') ? 'selected' : ''; ?>>Z-A (Mới nhất)</option>
+                                <option value="asc" <?php echo ($data['filter']['sort'] === 'asc') ? 'selected' : ''; ?>>A-Z (Cũ nhất)</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
                             <button type="submit" class="btn btn-primary">Lọc</button>
                         </div>
                     </div>
@@ -433,33 +441,62 @@
 
             <!-- Pagination -->
             <?php if ($data['pagination']['totalPages'] > 1): ?>
-                <div class="pagination">
+                <div class="pagination" id="orders-pagination">
                     <?php
-                        $page = $data['pagination']['page'];
-                        $totalPages = $data['pagination']['totalPages'];
+                        $page = (int)$data['pagination']['page'];
+                        $totalPages = (int)$data['pagination']['totalPages'];
                         $status = $data['filter']['status'] ?? '';
                         $q = $data['filter']['q'] ?? '';
+                        $perPage = $data['pagination']['perPage'] ?? '';
+                        $sort = $data['filter']['sort'] ?? 'desc';
 
-                        // Previous page
+                        // Helper to build url preserving filters
+                        $buildUrl = function($p) use ($status, $q, $perPage, $sort) {
+                            $params = ['page' => $p];
+                            if ($status !== '') $params['status'] = $status;
+                            if ($q !== '') $params['q'] = $q;
+                            if ($perPage !== '') $params['perPage'] = $perPage;
+                            if ($sort !== 'desc') $params['sort'] = $sort;
+                            return ROOT_URL . 'admin/orders?' . http_build_query($params);
+                        };
+
+                        // First and Previous
                         if ($page > 1) {
-                            $prevUrl = ROOT_URL . 'admin/orders?' . http_build_query(['page' => $page - 1, 'status' => $status, 'q' => $q]);
-                            echo '<a href="' . htmlspecialchars($prevUrl) . '">&laquo; Trước</a>';
+                            echo '<a href="' . htmlspecialchars($buildUrl(1)) . '">« Đầu</a>';
+                            echo '<a href="' . htmlspecialchars($buildUrl($page - 1)) . '">&lsaquo; Trước</a>';
                         }
 
-                        // Page numbers
-                        for ($i = max(1, $page - 2); $i <= min($totalPages, $page + 2); $i++) {
+                        // Determine window of pages to show (centered on current)
+                        $window = 5; // show up to 5 page numbers
+                        $half = (int)floor($window / 2);
+                        $start = max(1, $page - $half);
+                        $end = min($totalPages, $start + $window - 1);
+                        if ($end - $start + 1 < $window) {
+                            $start = max(1, $end - $window + 1);
+                        }
+
+                        if ($start > 1) {
+                            echo '<a href="' . htmlspecialchars($buildUrl(1)) . '">1</a>';
+                            if ($start > 2) echo '<span>...</span>';
+                        }
+
+                        for ($i = $start; $i <= $end; $i++) {
                             if ($i == $page) {
                                 echo '<span class="current">' . $i . '</span>';
                             } else {
-                                $pageUrl = ROOT_URL . 'admin/orders?' . http_build_query(['page' => $i, 'status' => $status, 'q' => $q]);
-                                echo '<a href="' . htmlspecialchars($pageUrl) . '">' . $i . '</a>';
+                                echo '<a href="' . htmlspecialchars($buildUrl($i)) . '">' . $i . '</a>';
                             }
                         }
 
-                        // Next page
+                        if ($end < $totalPages) {
+                            if ($end < $totalPages - 1) echo '<span>...</span>';
+                            echo '<a href="' . htmlspecialchars($buildUrl($totalPages)) . '">' . $totalPages . '</a>';
+                        }
+
+                        // Next and Last
                         if ($page < $totalPages) {
-                            $nextUrl = ROOT_URL . 'admin/orders?' . http_build_query(['page' => $page + 1, 'status' => $status, 'q' => $q]);
-                            echo '<a href="' . htmlspecialchars($nextUrl) . '">Tiếp &raquo;</a>';
+                            echo '<a href="' . htmlspecialchars($buildUrl($page + 1)) . '">Tiếp &rsaquo;</a>';
+                            echo '<a href="' . htmlspecialchars($buildUrl($totalPages)) . '">Cuối »</a>';
                         }
                     ?>
                 </div>

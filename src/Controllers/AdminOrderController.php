@@ -21,11 +21,12 @@ class AdminOrderController extends Controller
         }
         $orderModel = new Order();
 
-        // Params: status, page, perPage, optional search q
+        // Params: status, page, perPage, optional search q, sort (asc/desc)
         $status = isset($_GET['status']) ? trim($_GET['status']) : '';
         $page = max(1, (int)($_GET['page'] ?? 1));
         $perPage = max(1, min(100, (int)($_GET['perPage'] ?? 20)));
         $search = isset($_GET['q']) ? trim($_GET['q']) : '';
+        $sort = isset($_GET['sort']) && $_GET['sort'] === 'asc' ? 'ASC' : 'DESC';
 
         $where = '';
         $params = [];
@@ -72,7 +73,7 @@ class AdminOrderController extends Controller
                 LEFT JOIN sizes s ON pv.Size_Id = s.Size_Id
                 " . ($where ? $where : '') . "
                 GROUP BY o.Order_Id, o.Order_date, o.TrangThai, o.Adress, o.Note, o._UserName_Id, u.FullName, u.Email, u.Phone
-                ORDER BY o.Order_date DESC
+                ORDER BY o.Order_date " . $sort . ", o.Order_Id " . $sort . "
                 LIMIT " . (int)$perPage . " OFFSET " . (int)$offset;
 
         $orders = $orderModel->query($sql, $params);
@@ -88,7 +89,8 @@ class AdminOrderController extends Controller
             ],
             'filter' => [
                 'status' => $status,
-                'q' => $search
+                'q' => $search,
+                'sort' => $sort === 'ASC' ? 'asc' : 'desc'
             ]
         ];
 
