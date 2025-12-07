@@ -44,7 +44,7 @@ class Comment extends Model {
     public function createComment($data) {
         try {
             // Generate Comment_Id theo format cm+0000000001
-            $commentId = IdGenerator::generate('cm+', $this->table, 'Comment_Id', 10);
+            $commentId = IdGenerator::generate('Cmt', $this->table, 'Comment_Id', 10);
             
             $dbData = [
                 'Comment_Id' => $commentId,

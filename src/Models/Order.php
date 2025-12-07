@@ -71,7 +71,7 @@ class Order extends Model
     {
         try {
             // Generate Order_Id theo format or+0000000001
-            $orderId = IdGenerator::generate('or+', $this->table, 'Order_Id', 10);
+            $orderId = IdGenerator::generate('Ord', $this->table, 'Order_Id', 10);
 
             // Mặc định trạng thái là 'pending' (chờ xác nhận)
             $status = $data['status'] ?? $data['TrangThai'] ?? 'pending';

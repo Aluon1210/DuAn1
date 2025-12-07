@@ -380,7 +380,7 @@ class Product extends Model
     {
         try {
             // Generate Product_Id theo format sp+0000000001
-            $productId = IdGenerator::generate('sp+', $this->table, 'Product_Id', 10);
+            $productId = IdGenerator::generate('P', $this->table, 'Product_Id', 10);
 
             $dbData = [
                 'Product_Id' => $productId,

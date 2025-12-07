@@ -46,7 +46,7 @@ class User extends Model {
         $dbData = []; // Khai báo trước để dùng trong catch
         try {
             // Generate username theo format kh+0000000001
-            $username = IdGenerator::generate('kh+', $this->table, '_UserName_Id', 10);
+            $username = IdGenerator::generate('Us', $this->table, '_UserName_Id', 10);
             
             // Map dữ liệu từ code sang database
             $dbData = [
