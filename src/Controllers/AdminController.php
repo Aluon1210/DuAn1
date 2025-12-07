@@ -10,6 +10,7 @@ use Models\Color;
 use Models\Size;
 use Models\Product_Varirant;
 use Models\User;
+use Models\Dashboard;
 
 class AdminController extends Controller {
 
@@ -177,7 +178,15 @@ public function deleteUser($id) {
 }
 
 public function orders() {
-    $this->renderView('admin/order');
+    // Delegate to AdminOrderController for full orders management
+    $oc = new AdminOrderController();
+    return $oc->index();
+}
+
+public function updateOrderStatus() {
+    // Delegate to AdminOrderController for status update
+    $oc = new AdminOrderController();
+    return $oc->updateStatus();
 }
 
 public function branch() {
@@ -332,7 +341,91 @@ public function stats() {
 
 public function dashboard() {
     $this->requireAdmin();
-    $this->renderView('admin/dashboard');
+
+    $dm = new Dashboard();
+    $year = (int)date('Y');
+
+    // get optional selectors from query
+    $selectedWeek = isset($_GET['week']) ? trim($_GET['week']) : null; // format YYYY-WW
+    $selectedMonth = isset($_GET['month']) ? trim($_GET['month']) : null; // format YYYY-MM
+
+    // default period-level data (yearly)
+    $topCustomers = $dm->topCustomers($year, 5);
+    $topProducts = $dm->topProducts($year, 5);
+    $revenueByMonth = $dm->revenueByMonth($year);
+    $revenueByWeek = $dm->revenueByWeek(12); // last 12 weeks
+    $topWorst = $dm->topWorstProducts($year, 5);
+
+    // per-day datasets for selected week or month
+    $weeklyPerDay = [];
+    $monthlyPerDay = [];
+    $topProductsPeriod = $topProducts;
+    $topCustomersPeriod = $topCustomers;
+
+    if ($selectedWeek) {
+        // parse selectedWeek YYYY-WW
+        if (preg_match('/^(\d{4})-W?(\d{1,2})$/', $selectedWeek, $m)) {
+            $wYear = (int)$m[1];
+            $wNum = (int)$m[2];
+            $weeklyPerDay = $dm->revenueByWeekPerDay($wYear, $wNum);
+
+            $dt = new \DateTime();
+            $dt->setISODate($wYear, $wNum);
+            $start = $dt->format('Y-m-d');
+            $dt->modify('+6 days');
+            $end = $dt->format('Y-m-d');
+
+            $topProductsPeriod = $dm->topProductsByRange($start, $end, 5);
+            $topCustomersPeriod = $dm->topCustomersByRange($start, $end, 5);
+        }
+    }
+
+    if ($selectedMonth) {
+        if (preg_match('/^(\d{4})-(\d{1,2})$/', $selectedMonth, $mm)) {
+            $mYear = (int)$mm[1];
+            $mNum = (int)$mm[2];
+            $monthlyPerDay = $dm->revenueByMonthDays($mYear, $mNum, 30);
+
+            $start = sprintf('%04d-%02d-01', $mYear, $mNum);
+            $dt2 = new \DateTime($start);
+            $dt2->modify('+29 days');
+            $end = $dt2->format('Y-m-d');
+
+            $topProductsPeriod = $dm->topProductsByRange($start, $end, 5);
+            $topCustomersPeriod = $dm->topCustomersByRange($start, $end, 5);
+        }
+    }
+
+    // Build last-12 week options and last 12 months for selectors
+    $weekOptions = array_keys($dm->revenueByWeek(12));
+    $monthOptions = [];
+    for ($i = 0; $i < 12; $i++) {
+        $d = new \DateTime();
+        $d->modify('-' . $i . ' months');
+        $monthOptions[] = $d->format('Y-m');
+    }
+
+    $data = [
+        'title' => 'Dashbroad',
+        'topCustomers' => $topCustomers,
+        'topProducts' => $topProducts,
+        'revenueByMonth' => $revenueByMonth,
+        'revenueByWeek' => $revenueByWeek,
+        'topWorst' => $topWorst,
+        'year' => $year
+    ];
+
+    // extra period data
+    $data['weeklyPerDay'] = $weeklyPerDay;
+    $data['monthlyPerDay'] = $monthlyPerDay;
+    $data['topProductsPeriod'] = $topProductsPeriod;
+    $data['topCustomersPeriod'] = $topCustomersPeriod;
+    $data['selectedWeek'] = $selectedWeek;
+    $data['selectedMonth'] = $selectedMonth;
+    $data['weekOptions'] = $weekOptions;
+    $data['monthOptions'] = $monthOptions;
+
+    $this->renderView('admin/dashboard', $data);
 }
 
     /**

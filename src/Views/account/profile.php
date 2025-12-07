@@ -837,24 +837,71 @@
                                     </div>
 
                                     <div class="order-item-body">
-                                        <div class="order-product">
-                                            <img src="<?php echo ROOT_URL; ?>asset/img/placeholder.jpg" alt="Sản phẩm" class="order-product-image">
-                                            <div class="order-product-info">
-                                                <div class="order-product-name">Sản phẩm từ đơn hàng</div>
-                                                <div class="order-product-variant">x1</div>
-                                                <div class="order-product-price">₫0</div>
+                                        <?php if (!empty($order['items'])): ?>
+                                            <?php foreach ($order['items'] as $item): ?>
+                                                <div class="order-product">
+                                                    <?php
+                                                        // Get image URL - use product_image field
+                                                        $img = $item['product_image'] ?? null;
+                                                        if ($img) {
+                                                            $imgUrl = ROOT_URL . 'public/images/' . htmlspecialchars($img);
+                                                        } else {
+                                                            $imgUrl = ROOT_URL . 'public/images/placeholder.jpg';
+                                                        }
+                                                        
+                                                        $variantLabel = '';
+                                                        if (!empty($item['color_name'])) {
+                                                            $variantLabel .= 'Màu: ' . htmlspecialchars($item['color_name']);
+                                                        }
+                                                        if (!empty($item['size_name'])) {
+                                                            $variantLabel .= ($variantLabel ? ' • ' : '') . 'Size: ' . htmlspecialchars($item['size_name']);
+                                                        }
+                                                        
+                                                        $productName = $item['product_name'] ?? 'Sản phẩm';
+                                                        $price = (float)($item['Price'] ?? 0);
+                                                        $qty = (int)($item['quantity'] ?? 0);
+                                                    ?>
+                                                    <img src="<?php echo htmlspecialchars($imgUrl); ?>" alt="<?php echo htmlspecialchars($productName); ?>" class="order-product-image" style="object-fit: cover;">
+                                                    <div class="order-product-info">
+                                                        <div class="order-product-name"><?php echo htmlspecialchars($productName); ?></div>
+                                                        <div class="order-product-variant"><?php echo $variantLabel ?: '—'; ?></div>
+                                                        <div class="order-product-price">₫<?php echo number_format($price, 0, ',', '.'); ?> x <?php echo $qty; ?></div>
+                                                </div>
+                                                <?php if ($status === 'delivered' && isset($_SESSION['user'])): ?>
+                                                    <div style="background:#f8f8f8; border:1px solid var(--border-light); border-radius:8px; padding:12px; margin-top:10px;">
+                                                        <form method="POST" action="<?php echo ROOT_URL; ?>product/postComment/<?php echo urlencode($item['product_id']); ?>">
+                                                            <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+                                                                <span style="font-size:13px; color:var(--text-light);">Đánh giá:</span>
+                                                                <label style="cursor:pointer; color:#d4af37;">★<input type="radio" name="rating" value="5" style="display:none" checked></label>
+                                                                <label style="cursor:pointer; color:#d4af37; opacity:0.9;">★<input type="radio" name="rating" value="4" style="display:none"></label>
+                                                                <label style="cursor:pointer; color:#d4af37; opacity:0.8;">★<input type="radio" name="rating" value="3" style="display:none"></label>
+                                                                <label style="cursor:pointer; color:#d4af37; opacity:0.7;">★<input type="radio" name="rating" value="2" style="display:none"></label>
+                                                                <label style="cursor:pointer; color:#d4af37; opacity:0.6;">★<input type="radio" name="rating" value="1" style="display:none"></label>
+                                                            </div>
+                                                            <textarea name="content" rows="2" placeholder="Viết cảm nhận của bạn" required style="width:100%; padding:10px; border:1px solid var(--border-light); border-radius:6px;"></textarea>
+                                                            <div style="display:flex; justify-content:flex-end; margin-top:8px;">
+                                                                <button type="submit" class="order-btn order-btn-primary">Gửi đánh giá</button>
+                                                            </div>
+                                                        </form>
+                                                    </div>
+                                                <?php endif; ?>
                                             </div>
-                                        </div>
+                                        <?php endforeach; ?>
+                                        <?php else: ?>
+                                            <div class="empty-state">
+                                                <div class="icon">📦</div>
+                                                <p>Không có sản phẩm trong đơn này.</p>
+                                            </div>
+                                        <?php endif; ?>
                                     </div>
 
                                     <div class="order-item-footer">
                                         <div class="order-total-price">
                                             <div class="order-total-price-label">Thành tiền:</div>
-                                            <div class="order-total-price-value">₫0</div>
+                                            <div class="order-total-price-value">₫<?php echo number_format((float)($order['total'] ?? 0), 0, ',', '.'); ?></div>
                                         </div>
                                         <div class="order-actions">
-                                            <button class="order-btn order-btn-secondary">Chat</button>
-                                            <button class="order-btn order-btn-primary">Xem Chi Tiết</button>
+                                            <a href="<?php echo ROOT_URL; ?>account/order/<?php echo urlencode($order['Order_Id']); ?>" class="order-btn order-btn-primary">Xem Chi Tiết</a>
                                         </div>
                                     </div>
                                 </div>

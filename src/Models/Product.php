@@ -5,15 +5,17 @@ namespace Models;
 use Core\Model;
 use Core\IdGenerator;
 
-class Product extends Model {
-    
+class Product extends Model
+{
+
     protected $table = 'products';
-    
+
     /**
      * Lấy tất cả sản phẩm với thông tin danh mục
      * @return array
      */
-    public function getAllWithCategory() {
+    public function getAllWithCategory()
+    {
         try {
             $sql = "SELECT p.*, 
                            c.Name as category_name,
@@ -50,13 +52,14 @@ class Product extends Model {
             return [];
         }
     }
-    
+
     /**
      * Lấy sản phẩm theo danh mục
      * @param string $categoryId
      * @return array
      */
-    public function getByCategory($categoryId) {
+    public function getByCategory($categoryId)
+    {
         try {
             $sql = "SELECT p.*, 
                            c.Name as category_name,
@@ -84,13 +87,14 @@ class Product extends Model {
             return [];
         }
     }
-    
+
     /**
      * Tìm kiếm sản phẩm
      * @param string $keyword
      * @return array
      */
-    public function search($keyword) {
+    public function search($keyword)
+    {
         try {
             $sql = "SELECT p.*, 
                            c.Name as category_name,
@@ -120,13 +124,14 @@ class Product extends Model {
             return [];
         }
     }
-    
+
     /**
      * Lấy sản phẩm với thông tin danh mục theo ID
      * @param string $id
      * @return array|false
      */
-    public function getByIdWithCategory($id) {
+    public function getByIdWithCategory($id)
+    {
         try {
             $sql = "SELECT p.*, 
                            c.Name as category_name,
@@ -154,23 +159,25 @@ class Product extends Model {
             return false;
         }
     }
-    
+
     /**
      * Override getById để dùng Product_Id
      */
-    public function getById($id) {
+    public function getById($id)
+    {
         $product = $this->getOne(['Product_Id' => $id]);
         return $product ? $this->normalizeSingleProduct($product) : false;
     }
-    
+
     /**
      * Override getAll để trả về dữ liệu chuẩn hóa
      */
-    public function getAll($conditions = []) {
+    public function getAll($conditions = [])
+    {
         try {
             $sql = "SELECT * FROM {$this->table}";
             $params = [];
-            
+
             if (!empty($conditions)) {
                 $where = [];
                 foreach ($conditions as $key => $value) {
@@ -180,9 +187,9 @@ class Product extends Model {
                 }
                 $sql .= " WHERE " . implode(" AND ", $where);
             }
-            
+
             $sql .= " ORDER BY Create_at DESC";
-            
+
             $stmt = $this->db->prepare($sql);
             $stmt->execute($params);
             $results = $stmt->fetchAll(\PDO::FETCH_ASSOC);
@@ -192,52 +199,55 @@ class Product extends Model {
             return [];
         }
     }
-    
+
     /**
      * Chuẩn hóa dữ liệu sản phẩm từ DB sang format code
      */
-    private function normalizeProductData($products) {
+    private function normalizeProductData($products)
+    {
         if (empty($products)) {
             return [];
         }
-        
+
         $normalized = [];
         foreach ($products as $product) {
             $normalized[] = $this->normalizeSingleProduct($product);
         }
         return $normalized;
     }
-    
+
     /**
      * Chuẩn hóa một sản phẩm
      */
-    private function normalizeSingleProduct($product) {
+    private function normalizeSingleProduct($product)
+    {
         // Nếu đã được normalize rồi (có cả id và name ở dạng lowercase) thì return luôn
         if (isset($product['id']) && isset($product['name']) && !isset($product['Product_Id'])) {
             return $product;
         }
-        
+
         // Normalize từ database format sang code format
         return [
             'id' => $product['id'] ?? $product['Product_Id'] ?? '',
             'name' => $product['name'] ?? $product['Name'] ?? '',
             'description' => $product['description'] ?? $product['Description'] ?? '',
-            'price' => (int)($product['price'] ?? $product['Price'] ?? 0),
-            'quantity' => (int)($product['quantity'] ?? $product['Quantity'] ?? 0),
+            'price' => (int) ($product['price'] ?? $product['Price'] ?? 0),
+            'quantity' => (int) ($product['quantity'] ?? $product['Quantity'] ?? 0),
             'image' => $product['image'] ?? $product['Image'] ?? '',
             'category_id' => $product['category_id'] ?? $product['Category_Id'] ?? '',
             'branch_id' => $product['branch_id'] ?? $product['Branch_Id'] ?? '',
             'created_at' => $product['created_at'] ?? $product['Create_at'] ?? '',
-            'product_view' => (int)($product['product_view'] ?? $product['Product_View'] ?? 0),
+            'product_view' => (int) ($product['product_view'] ?? $product['Product_View'] ?? 0),
             'category_name' => $product['category_name'] ?? '',
             'branch_name' => $product['branch_name'] ?? ''
         ];
     }
-    
+
     /**
      * Map tên cột từ code sang database
      */
-    private function mapColumnName($key) {
+    private function mapColumnName($key)
+    {
         $map = [
             'id' => 'Product_Id',
             'name' => 'Name',
@@ -252,24 +262,26 @@ class Product extends Model {
         ];
         return $map[$key] ?? $key;
     }
-    
+
     /**
      * Cập nhật số lượng sản phẩm
      * @param string $id
      * @param int $quantity
      * @return bool
      */
-    public function updateQuantity($id, $quantity) {
+    public function updateQuantity($id, $quantity)
+    {
         return $this->update($id, ['Quantity' => $quantity], 'Product_Id');
     }
-    
+
     /**
      * Giảm số lượng sản phẩm khi bán
      * @param string $id
      * @param int $quantity
      * @return bool
      */
-    public function decreaseQuantity($id, $quantity) {
+    public function decreaseQuantity($id, $quantity)
+    {
         $product = $this->getById($id);
         if ($product && $product['quantity'] >= $quantity) {
             $newQuantity = $product['quantity'] - $quantity;
@@ -277,24 +289,53 @@ class Product extends Model {
         }
         return false;
     }
-    
+
+    /**
+     * Tính tổng số lượng từ tất cả variants của sản phẩm
+     * @param string $productId
+     * @return int
+     */
+    public function calculateTotalQuantityFromVariants($productId)
+    {
+        $sql = "SELECT SUM(Quantity_In_Stock) as total 
+                FROM product_variants 
+                WHERE Product_Id = :product_id";
+        $result = $this->query($sql, ['product_id' => $productId]);
+        if (!empty($result) && isset($result[0]['total'])) {
+            return (int) $result[0]['total'];
+        }
+        return 0;
+    }
+
+    /**
+     * Cập nhật số lượng sản phẩm bằng tổng stock của tất cả variants
+     * @param string $productId
+     * @return bool
+     */
+    public function updateQuantityFromVariants($productId)
+    {
+        $totalQuantity = $this->calculateTotalQuantityFromVariants($productId);
+        return $this->updateQuantity($productId, $totalQuantity);
+    }
+
     /**
      * Override update để hỗ trợ custom primary key
      */
-    public function update($id, $data, $primaryKey = 'Product_Id') {
+    public function update($id, $data, $primaryKey = 'Product_Id')
+    {
         $set = [];
         $params = [];
-        
+
         foreach ($data as $key => $value) {
             $dbKey = $this->mapColumnName($key);
             $set[] = "$dbKey = :$key";
             $params[$key] = $value;
         }
-        
+
         $setClause = implode(", ", $set);
         $sql = "UPDATE {$this->table} SET {$setClause} WHERE {$primaryKey} = :id";
         $params['id'] = $id;
-        
+
         $stmt = $this->db->prepare($sql);
         return $stmt->execute($params);
     }
@@ -304,7 +345,8 @@ class Product extends Model {
      * @param string $id
      * @return bool
      */
-    public function deleteById($id) {
+    public function deleteById($id)
+    {
         $sql = "DELETE FROM {$this->table} WHERE Product_Id = :id";
         $stmt = $this->db->prepare($sql);
         return $stmt->execute(['id' => $id]);
@@ -315,47 +357,49 @@ class Product extends Model {
      * @param string $categoryId
      * @return int
      */
-    public function countByCategory($categoryId) {
+    public function countByCategory($categoryId)
+    {
         try {
             $sql = "SELECT COUNT(*) as cnt FROM {$this->table} WHERE Category_Id = :category_id";
             $stmt = $this->db->prepare($sql);
             $stmt->execute(['category_id' => $categoryId]);
             $row = $stmt->fetch(\PDO::FETCH_ASSOC);
-            return $row ? (int)$row['cnt'] : 0;
+            return $row ? (int) $row['cnt'] : 0;
         } catch (\Exception $e) {
             error_log("Error in countByCategory: " . $e->getMessage());
             return 0;
         }
     }
-    
+
     /**
      * Tạo sản phẩm mới
      * @param array $data
      * @return string|false Product_Id hoặc false nếu lỗi
      */
-    public function createProduct($data) {
+    public function createProduct($data)
+    {
         try {
             // Generate Product_Id theo format sp+0000000001
             $productId = IdGenerator::generate('sp+', $this->table, 'Product_Id', 10);
-            
+
             $dbData = [
                 'Product_Id' => $productId,
                 'Name' => $data['name'] ?? $data['Name'] ?? '',
                 'Description' => $data['description'] ?? $data['Description'] ?? '',
-                'Price' => (int)($data['price'] ?? $data['Price'] ?? 0),
-                'Quantity' => (int)($data['quantity'] ?? $data['Quantity'] ?? 0),
+                'Price' => (int) ($data['price'] ?? $data['Price'] ?? 0),
+                'Quantity' => (int) ($data['quantity'] ?? $data['Quantity'] ?? 0),
                 'Image' => $data['image'] ?? $data['Image'] ?? '',
                 'Category_Id' => $data['category_id'] ?? $data['Category_Id'] ?? '',
                 'Branch_Id' => $data['branch_id'] ?? $data['Branch_Id'] ?? '',
                 'Create_at' => $data['created_at'] ?? $data['Create_at'] ?? date('Y-m-d'),
-                'Product_View' => (int)($data['product_view'] ?? $data['Product_View'] ?? 0)
+                'Product_View' => (int) ($data['product_view'] ?? $data['Product_View'] ?? 0)
             ];
-            
+
             if (empty($dbData['Name']) || empty($dbData['Category_Id']) || empty($dbData['Branch_Id'])) {
                 error_log("Product creation failed: Missing required fields");
                 return false;
             }
-            
+
             if ($this->create($dbData)) {
                 return $dbData['Product_Id'];
             }
@@ -370,4 +414,3 @@ class Product extends Model {
     }
 }
 ?>
-

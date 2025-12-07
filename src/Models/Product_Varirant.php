@@ -239,6 +239,39 @@ class Product_Varirant extends Model
         $stmt = $this->db->prepare($sql);
         return $stmt->execute([':id' => $id]);
     }
+
+    /**
+     * Tạo một variant "tạm" cho sản phẩm không có variant (sử dụng trong checkout)
+     * Trả về Variant_Id (int) mới hoặc false nếu thất bại
+     *
+     * @param string $productId
+     * @param int $price
+     * @param int $stock
+     * @return int|false
+     */
+    public function createSyntheticVariant(string $productId, int $price, int $stock)
+    {
+        try {
+            $stmt = $this->db->query("SELECT MAX(Variant_Id) as maxid FROM " . $this->table);
+            $row = $stmt->fetch(\PDO::FETCH_ASSOC);
+            $newVariantId = ((int)($row['maxid'] ?? 0)) + 1;
+
+            $insertSql = "INSERT INTO {$this->table} (Variant_Id, Product_Id, Color_Id, Size_Id, Quantity_In_Stock, Price, SKU)
+                          VALUES (:id, :product_id, NULL, NULL, :stock, :price, '')";
+            $insertStmt = $this->db->prepare($insertSql);
+            $ok = $insertStmt->execute([
+                ':id' => $newVariantId,
+                ':product_id' => $productId,
+                ':stock' => $stock,
+                ':price' => $price
+            ]);
+
+            return $ok ? $newVariantId : false;
+        } catch (\Exception $e) {
+            error_log("createSyntheticVariant failed for product {$productId}: " . $e->getMessage());
+            return false;
+        }
+    }
 }
 
 ?>

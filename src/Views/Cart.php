@@ -223,6 +223,7 @@
             <table class="cart-table">
                 <thead>
                     <tr>
+                        <th>Chọn</th>
                         <th>Sản phẩm</th>
                         <th>Giá</th>
                         <th>Số lượng</th>
@@ -232,7 +233,10 @@
                 </thead>
                 <tbody>
                     <?php foreach ($cartItems as $item): ?>
-                        <tr>
+                        <tr <?php echo ($item['variant'] ? $item['variant']['stock'] : $item['product']['quantity']) <= 0 ? 'style="opacity:0.5;"' : ''; ?> >
+                            <td style="text-align:center;">
+                                <input type="checkbox" name="selected[]" value="<?php echo htmlspecialchars($item['cart_key']); ?>" <?php echo ($item['variant'] ? $item['variant']['stock'] : $item['product']['quantity']) <= 0 ? 'disabled' : ''; ?> class="cart-select">
+                            </td>
                             <td>
                                 <div style="display: flex; align-items: center;">
                                     <div class="cart-item-image">
@@ -244,29 +248,53 @@
                                     </div>
                                     <div class="cart-item-info">
                                         <div class="cart-item-name"><?php echo htmlspecialchars($item['product']['name']); ?></div>
-                                        <a href="<?php echo ROOT_URL; ?>product/detail/<?php echo $item['product']['id']; ?>" class="cart-item-link">
+                                        <?php if ($item['color'] || $item['size']): ?>
+                                            <div style="margin-top: 8px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
+                                                <?php if ($item['color']): ?>
+                                                    <div style="display: flex; align-items: center; gap: 6px;">
+                                                        <span style="font-size: 12px; color: var(--text-light);">Màu:</span>
+                                                        <div style="width: 20px; height: 20px; border-radius: 50%; background-color: <?php echo htmlspecialchars($item['color']['hex_code']); ?>; border: 2px solid #ddd; box-shadow: 0 1px 3px rgba(0,0,0,0.2);" title="<?php echo htmlspecialchars($item['color']['name']); ?>"></div>
+                                                        <span style="font-size: 13px; color: var(--text-dark);"><?php echo htmlspecialchars($item['color']['name']); ?></span>
+                                                    </div>
+                                                <?php endif; ?>
+                                                <?php if ($item['size']): ?>
+                                                    <div style="display: flex; align-items: center; gap: 6px;">
+                                                        <span style="font-size: 12px; color: var(--text-light);">Size:</span>
+                                                        <span style="font-size: 13px; color: var(--text-dark); font-weight: 600;"><?php echo htmlspecialchars($item['size']['value']); ?></span>
+                                                    </div>
+                                                <?php endif; ?>
+                                            </div>
+                                        <?php endif; ?>
+                                        <a href="<?php echo ROOT_URL; ?>product/detail/<?php echo $item['product']['id']; ?>" class="cart-item-link" style="margin-top: 8px; display: inline-block;">
                                             Xem chi tiết →
                                         </a>
                                     </div>
                                 </div>
                             </td>
                             <td style="text-align: center;">
-                                <div class="cart-price"><?php echo number_format($item['product']['price'], 0, ',', '.'); ?> ₫</div>
+                                <div class="cart-price"><?php echo number_format($item['price'], 0, ',', '.'); ?> ₫</div>
                             </td>
                             <td style="text-align: center;">
-                                <input type="number" 
-                                       name="quantity[<?php echo $item['product']['id']; ?>]" 
-                                       value="<?php echo $item['quantity']; ?>" 
-                                       min="1" 
-                                       max="<?php echo $item['product']['quantity']; ?>" 
-                                       class="cart-quantity-input" 
-                                       required>
+                                <div style="display:inline-flex; align-items:center; gap:8px; justify-content:center;">
+                                    <button type="button" class="btn btn-primary qty-minus" data-id="<?php echo htmlspecialchars($item['cart_key']); ?>" <?php echo ($item['variant'] ? $item['variant']['stock'] : $item['product']['quantity']) <= 0 ? 'disabled' : ''; ?>>-</button>
+                                    <input type="number" 
+                                           name="quantity[<?php echo htmlspecialchars($item['cart_key']); ?>]" 
+                                           value="<?php echo $item['quantity']; ?>" 
+                                           min="1" 
+                                           max="<?php echo $item['variant'] ? $item['variant']['stock'] : $item['product']['quantity']; ?>" 
+                                           class="cart-quantity-input" 
+                                           data-price="<?php echo $item['price']; ?>"
+                                           data-id="<?php echo htmlspecialchars($item['cart_key']); ?>"
+                                           <?php echo ($item['variant'] ? $item['variant']['stock'] : $item['product']['quantity']) <= 0 ? 'disabled' : ''; ?>
+                                           required>
+                                    <button type="button" class="btn btn-primary qty-plus" data-id="<?php echo htmlspecialchars($item['cart_key']); ?>" <?php echo ($item['variant'] ? $item['variant']['stock'] : $item['product']['quantity']) <= 0 ? 'disabled' : ''; ?>>+</button>
+                                </div>
                             </td>
                             <td style="text-align: right;">
-                                <div class="cart-subtotal"><?php echo number_format($item['subtotal'], 0, ',', '.'); ?> ₫</div>
+                                <div class="cart-subtotal" data-id="<?php echo htmlspecialchars($item['cart_key']); ?>"><?php echo number_format($item['subtotal'], 0, ',', '.'); ?> ₫</div>
                             </td>
                             <td style="text-align: center;">
-                                <a href="<?php echo ROOT_URL; ?>cart/remove/<?php echo $item['product']['id']; ?>" 
+                                <a href="<?php echo ROOT_URL; ?>cart/remove/<?php echo htmlspecialchars($item['cart_key']); ?>" 
                                    class="btn btn-danger" 
                                    style="padding: 10px 20px; font-size: 13px;">
                                     Xóa
@@ -282,6 +310,9 @@
                     <button type="submit" class="btn btn-primary" style="padding: 14px 30px;">
                         💾 Cập nhật giỏ hàng
                     </button>
+                    <button type="submit" class="btn btn-success" style="padding: 14px 30px;" formaction="<?php echo ROOT_URL; ?>cart/confirm">
+                        ✓ Tiến hành thanh toán
+                    </button>
                     <a href="<?php echo ROOT_URL; ?>product" class="btn btn-primary" style="padding: 14px 30px;">
                         ← Tiếp tục mua hàng
                     </a>
@@ -295,12 +326,6 @@
                 </div>
             </div>
         </form>
-
-        <div style="margin-top: 30px; padding-top: 30px; border-top: 2px solid var(--border-light); text-align: center;">
-            <a href="#" class="btn btn-success" style="padding: 18px 60px; font-size: 18px; text-transform: uppercase; letter-spacing: 1.5px;">
-                ✓ Tiến hành thanh toán
-            </a>
-        </div>
     </div>
 <?php else: ?>
     <div class="cart-empty">

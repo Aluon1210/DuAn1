@@ -316,22 +316,24 @@
         color: #721c24;
         border: 1px solid #f5c6cb;
     }
-
 </style>
 
 <?php if ($product): ?>
     <div class="product-detail-container">
-        <a href="<?php echo ROOT_URL; ?>product" class="btn btn-primary" style="margin-bottom: 30px; display: inline-flex; align-items: center; gap: 8px;">
+        <a href="<?php echo ROOT_URL; ?>product" class="btn btn-primary"
+            style="margin-bottom: 30px; display: inline-flex; align-items: center; gap: 8px;">
             <span>←</span> <span>Quay lại danh sách</span>
         </a>
-        
+
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 50px; margin-top: 30px;">
             <!-- Hình ảnh -->
             <div class="product-detail-image">
                 <?php if (!empty($product['image'])): ?>
-                    <img src="<?php echo ROOT_URL; ?>public/images/<?php echo htmlspecialchars($product['image']); ?>" alt="<?php echo htmlspecialchars($product['name']); ?>">
+                    <img src="<?php echo ROOT_URL; ?>public/images/<?php echo htmlspecialchars($product['image']); ?>"
+                        alt="<?php echo htmlspecialchars($product['name']); ?>">
                 <?php else: ?>
-                    <div style="width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; font-size: 150px; opacity: 0.2; background: linear-gradient(135deg, var(--accent-gray) 0%, #e8e8e8 100%);">
+                    <div
+                        style="width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; font-size: 150px; opacity: 0.2; background: linear-gradient(135deg, var(--accent-gray) 0%, #e8e8e8 100%);">
                         ✨
                     </div>
                 <?php endif; ?>
@@ -340,14 +342,14 @@
             <!-- Thông tin sản phẩm -->
             <div class="product-detail-info">
                 <h1 class="product-detail-title"><?php echo htmlspecialchars($product['name']); ?></h1>
-                
+
                 <div class="product-detail-price"><?php echo number_format($product['price'], 0, ',', '.'); ?></div>
 
                 <div class="product-info-box">
                     <p>
-                        <strong>Danh mục:</strong> 
-                        <?php 
-                        $cat = array_filter($categories, function($c) use ($product) {
+                        <strong>Danh mục:</strong>
+                        <?php
+                        $cat = array_filter($categories, function ($c) use ($product) {
                             return $c['id'] == $product['category_id'];
                         });
                         if (!empty($cat)) {
@@ -356,8 +358,9 @@
                         ?>
                     </p>
                     <p>
-                        <strong>Kho hàng:</strong> 
-                        <span style="color: <?php echo $product['quantity'] > 0 ? '#27ae60' : '#e74c3c'; ?>; font-weight: 600;">
+                        <strong>Kho hàng:</strong>
+                        <span
+                            style="color: <?php echo $product['quantity'] > 0 ? '#27ae60' : '#e74c3c'; ?>; font-weight: 600;">
                             <?php echo $product['quantity']; ?> sản phẩm
                         </span>
                         <?php if ($product['quantity'] > 0): ?>
@@ -379,18 +382,23 @@
                     <form method="POST" action="<?php echo ROOT_URL; ?>cart/add/<?php echo $product['id']; ?>">
                         <div class="quantity-selector">
                             <label for="quantity">Số lượng:</label>
-                            <input type="number" id="quantity" name="quantity" value="1" min="1" max="<?php echo $product['quantity']; ?>" required>
-                            <span style="color: var(--text-light); font-size: 14px;">(Tối đa: <?php echo $product['quantity']; ?>)</span>
+                            <input type="number" id="quantity" name="quantity" value="1" min="1"
+                                max="<?php echo $product['quantity']; ?>" required>
+                            <span style="color: var(--text-light); font-size: 14px;">(Tối đa:
+                                <?php echo $product['quantity']; ?>)</span>
                         </div>
-                        <button type="submit" class="btn btn-success" style="padding: 18px 50px; font-size: 18px; width: 100%; text-transform: uppercase; letter-spacing: 1.5px;">
+                        <button type="submit" class="btn btn-success"
+                            style="padding: 18px 50px; font-size: 18px; width: 100%; text-transform: uppercase; letter-spacing: 1.5px;">
                             🛒 Thêm vào giỏ hàng
                         </button>
                     </form>
                 <?php else: ?>
-                    <div style="padding: 24px; background: linear-gradient(135deg, #f8d7da 0%, #f5c6cb 100%); border-radius: 12px; text-align: center; margin-top: 30px;">
+                    <div
+                        style="padding: 24px; background: linear-gradient(135deg, #f8d7da 0%, #f5c6cb 100%); border-radius: 12px; text-align: center; margin-top: 30px;">
                         <div style="font-size: 48px; margin-bottom: 16px;">⏳</div>
                         <div style="color: #721c24; font-weight: 600; font-size: 18px;">Sản phẩm hiện đang hết hàng</div>
-                        <p style="color: #721c24; margin-top: 8px; font-size: 14px;">Vui lòng quay lại sau hoặc liên hệ với chúng tôi</p>
+                        <p style="color: #721c24; margin-top: 8px; font-size: 14px;">Vui lòng quay lại sau hoặc liên hệ với
+                            chúng tôi</p>
                     </div>
                 <?php endif; ?>
             </div>
@@ -404,31 +412,39 @@
 
             <?php if (isset($_SESSION['message'])): ?>
                 <div class="alert alert-success">
-                    <?php echo htmlspecialchars($_SESSION['message']); unset($_SESSION['message']); ?>
+                    <?php echo htmlspecialchars($_SESSION['message']);
+                    unset($_SESSION['message']); ?>
                 </div>
             <?php endif; ?>
 
             <?php if (isset($_SESSION['error'])): ?>
                 <div class="alert alert-error">
-                    <?php echo htmlspecialchars($_SESSION['error']); unset($_SESSION['error']); ?>
+                    <?php echo htmlspecialchars($_SESSION['error']);
+                    unset($_SESSION['error']); ?>
                 </div>
             <?php endif; ?>
 
-            <!-- FORM COMMENT (chỉ hiển thị nếu đã đăng nhập) -->
+            <!-- FORM COMMENT (chỉ hiển thị nếu đã đăng nhập và đã nhận hàng) -->
             <?php if (isset($_SESSION['user'])): ?>
-                <div class="comment-form">
-                    <h4 style="margin-top: 0; margin-bottom: 16px; color: var(--primary-black);">
-                        Chia sẻ ý kiến của bạn
-                    </h4>
-                    <form method="POST" action="<?php echo ROOT_URL; ?>product/postComment/<?php echo htmlspecialchars($product['id']); ?>">
-                        <textarea 
-                            name="content" 
-                            placeholder="Nhập bình luận của bạn..."
-                            required
-                        ></textarea>
-                        <button type="submit">Đăng bình luận</button>
-                    </form>
-                </div>
+                <?php if (isset($canComment) && $canComment): ?>
+                    <div class="comment-form">
+                        <h4 style="margin-top: 0; margin-bottom: 16px; color: var(--primary-black);">
+                            Chia sẻ ý kiến của bạn
+                        </h4>
+                        <form method="POST"
+                            action="<?php echo ROOT_URL; ?>product/postComment/<?php echo htmlspecialchars($product['id']); ?>">
+                            <textarea name="content" placeholder="Nhập bình luận của bạn..." required></textarea>
+                            <button type="submit">Đăng bình luận</button>
+                        </form>
+                    </div>
+                <?php else: ?>
+                    <div class="login-prompt"
+                        style="background: linear-gradient(135deg, #fff3cd 0%, #ffeaa7 100%); border-left: 4px solid #ffc107;">
+                        <p style="color: #856404;">📦 Bạn chỉ có thể bình luận sau khi đã nhận hàng sản phẩm này</p>
+                        <p style="color: #856404; font-size: 14px; margin-top: 8px;">Vui lòng đợi đơn hàng của bạn được giao thành
+                            công.</p>
+                    </div>
+                <?php endif; ?>
             <?php else: ?>
                 <div class="login-prompt">
                     <p>👤 Vui lòng đăng nhập để bình luận sản phẩm này</p>

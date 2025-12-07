@@ -33,6 +33,23 @@ class AccountController extends Controller {
         // Lấy các đơn hàng của user
         $orderModel = new Order();
         $orders = $orderModel->getByUserId($userId);
+
+        // Lấy chi tiết cho mỗi đơn (items, total)
+        $orderDetailModel = new \Models\OrderDetail();
+        if (!empty($orders)) {
+            foreach ($orders as &$o) {
+                $items = $orderDetailModel->getByOrderIdWithProduct($o['Order_Id']);
+                $total = 0;
+                foreach ($items as $it) {
+                    $qty = (int)($it['quantity'] ?? 0);
+                    $price = (float)($it['Price'] ?? $it['price'] ?? 0);
+                    $total += $qty * $price;
+                }
+                $o['items'] = $items;
+                $o['total'] = $total;
+            }
+            unset($o);
+        }
         
         $data = [
             'title' => 'Tài Khoản Cá Nhân - Luxury Fashion Store',
@@ -97,6 +114,23 @@ class AccountController extends Controller {
         // Lấy các đơn hàng của user
         $orderModel = new Order();
         $orders = $orderModel->getByUserId($userId) ?? [];
+
+        // Lấy chi tiết cho mỗi đơn
+        $orderDetailModel = new \Models\OrderDetail();
+        if (!empty($orders)) {
+            foreach ($orders as &$o) {
+                $items = $orderDetailModel->getByOrderIdWithProduct($o['Order_Id']);
+                $total = 0;
+                foreach ($items as $it) {
+                    $qty = (int)($it['quantity'] ?? 0);
+                    $price = (float)($it['Price'] ?? $it['price'] ?? 0);
+                    $total += $qty * $price;
+                }
+                $o['items'] = $items;
+                $o['total'] = $total;
+            }
+            unset($o);
+        }
         
         $data = [
             'title' => 'Lịch Sử Đơn Hàng - Luxury Fashion Store',

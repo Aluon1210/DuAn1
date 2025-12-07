@@ -20,7 +20,7 @@ class Controller {
         // $data['title'] sẽ trở thành biến $title
         extract($data);
         
-        // 1. Đường dẫn đến file view con (đã bỏ 'client/')
+        // 1. Đường dẫn đến file view con (đã bỏ 'client/') 
         $viewFile = ROOT_PATH . '/src/Views/' . $view . '.php';
         
         if (!file_exists($viewFile)) {

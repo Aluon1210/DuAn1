@@ -21,7 +21,9 @@ class CategoryController extends Controller {
 
         $data = [
             'title' => 'Danh mục sản phẩm',
-            'categories' => $categories
+            'categories' => $categories,
+            'totalCategories' => count($categories),
+            'editing' => false
         ];
 
         $this->renderView('admin/category', $data);
