@@ -455,7 +455,7 @@
             <!-- DANH SÁCH BÌNH LUẬN -->
             <div style="margin-top: 30px;">
                 <?php if (!empty($comments)): ?>
-                    <div class="comments-list">
+                    <div class="comments-list" data-product-id="<?php echo htmlspecialchars($product['id'] ?? $product['Product_Id'] ?? ''); ?>">
                         <?php foreach ($comments as $comment): ?>
                             <div class="comment-item">
                                 <div class="comment-header">
@@ -482,3 +482,28 @@
         </div>
     </div>
 <?php endif; ?>
+
+<script>
+    // Helper to reload comments section via AJAX using the new CommentController
+    (function(){
+        const productId = '<?php echo htmlspecialchars($product['id'] ?? $product['Product_Id'] ?? ''); ?>';
+        if (!productId) return;
+        const ROOT = '<?php echo rtrim(ROOT_URL, "/"); ?>';
+
+        window.reloadComments = async function(){
+            try {
+                const res = await fetch(ROOT + '/comment/ajaxList/' + encodeURIComponent(productId));
+                const json = await res.json();
+                if (json.ok && typeof json.html !== 'undefined') {
+                    const container = document.querySelector('.comments-list[data-product-id="' + productId + '"]') || document.querySelector('.comments-list');
+                    if (container) {
+                        container.innerHTML = json.html;
+                    }
+                }
+            } catch (e) { console.error('Failed to reload comments', e); }
+        };
+
+        // Optionally expose: reload on page load (comment out if not desired)
+        // reloadComments();
+    })();
+</script>

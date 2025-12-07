@@ -823,7 +823,7 @@
                                     'return' => 'Trả hàng'
                                 ][$status] ?? 'Chưa rõ';
                             ?>
-                                <div class="order-item-shopee" data-status="<?php echo $status; ?>">
+                                <div class="order-item-shopee" data-status="<?php echo $status; ?>" data-order-id="<?php echo htmlspecialchars($order['Order_Id'] ?? ''); ?>" data-order-date="<?php echo htmlspecialchars($order['Order_date'] ?? ''); ?>">
                                     <div class="order-item-header">
                                         <div class="order-item-header-left">
                                             <div style="font-weight: 600;"><?php echo htmlspecialchars('Đơn hàng #' . ($order['Order_Id'] ?? 'N/A')); ?></div>
@@ -839,7 +839,14 @@
                                     <div class="order-item-body">
                                         <?php if (!empty($order['items'])): ?>
                                             <?php foreach ($order['items'] as $item): ?>
-                                                <div class="order-product">
+                                                <?php
+                                                    $productIdAttr = htmlspecialchars($item['Product_Id'] ?? $item['product_id'] ?? '');
+                                                    $productNameAttr = htmlspecialchars($item['product_name'] ?? $item['ProductName'] ?? 'Sản phẩm');
+                                                    $qtyAttr = (int)($item['quantity'] ?? 0);
+                                                    $unitPriceAttr = (float)($item['Price'] ?? $item['price'] ?? 0);
+                                                    $totalAttr = $qtyAttr * $unitPriceAttr;
+                                                ?>
+                                                <div class="order-product" data-product-id="<?php echo $productIdAttr; ?>" data-product-name="<?php echo $productNameAttr; ?>" data-qty="<?php echo $qtyAttr; ?>" data-unit-price="<?php echo $unitPriceAttr; ?>" data-total="<?php echo $totalAttr; ?>">
                                                     <?php
                                                         // Get image URL - use product_image field
                                                         $img = $item['product_image'] ?? null;
@@ -933,6 +940,178 @@
                 }
             });
         }
+
+        // --- Review popup for delivered orders ---
+        (function(){
+            // Only run when user is logged in and there are delivered orders
+            try {
+                const ROOT = '<?php echo rtrim(ROOT_URL, "/"); ?>';
+                const deliveredOrders = Array.from(document.querySelectorAll('.order-item-shopee')).filter(o => o.dataset.status === 'delivered');
+                if (!deliveredOrders.length) return;
+
+                // For each delivered order, check if any product is not yet commented by user
+                const formatCurrency = (v) => {
+                    try { return new Intl.NumberFormat('vi-VN').format(Number(v)) + ' ₫'; } catch(e) { return v; }
+                };
+
+                const checkOrder = async (orderEl) => {
+                    const orderId = orderEl.dataset.orderId || null;
+                    if (!orderId) return null;
+
+                    const items = Array.from(orderEl.querySelectorAll('.order-product'));
+                    const products = items.map(it => {
+                        const pid = it.dataset.productId || null;
+                        return { element: it, productId: pid };
+                    }).filter(p => p.productId);
+
+                    const unreviewed = [];
+                    for (const p of products) {
+                        try {
+                            const res = await fetch(ROOT + '/product/ajaxHasComment/' + encodeURIComponent(p.productId));
+                            const json = await res.json();
+                            if (json.ok && !json.hasComment) {
+                                unreviewed.push(p);
+                            }
+                        } catch (e) { /* ignore network errors */ }
+                    }
+                    return { orderId, unreviewed };
+                };
+
+                // Only show 1 popup at a time; choose the first order with unreviewed products
+                (async function(){
+                    for (const ord of deliveredOrders) {
+                        const info = await checkOrder(ord);
+                        if (info && info.unreviewed && info.unreviewed.length) {
+                            showReviewModal(info.orderId, info.unreviewed);
+                            // show a toast notification
+                            showToast('Đơn hàng đã được giao — bạn có thể đánh giá sản phẩm đã mua');
+                            break;
+                        }
+                    }
+                })();
+
+                function showToast(text) {
+                    const t = document.createElement('div');
+                    t.style.position = 'fixed'; t.style.right = '20px'; t.style.bottom = '20px'; t.style.background = 'rgba(0,0,0,0.8)';
+                    t.style.color = '#fff'; t.style.padding = '12px 16px'; t.style.borderRadius = '8px'; t.style.zIndex = 99999;
+                    t.textContent = text;
+                    document.body.appendChild(t);
+                    setTimeout(()=>{ t.style.transition = 'opacity 0.3s'; t.style.opacity = '0'; setTimeout(()=>t.remove(),300); }, 5000);
+                }
+
+                function escapeHtml(unsafe) {
+                    return unsafe
+                        .replace(/&/g, "&amp;")
+                        .replace(/</g, "&lt;")
+                        .replace(/>/g, "&gt;")
+                        .replace(/\"/g, "&quot;")
+                        .replace(/'/g, "&#039;");
+                }
+
+                function showReviewModal(orderId, products) {
+                    // Build modal
+                    const modal = document.createElement('div');
+                    modal.style.position = 'fixed'; modal.style.left = '0'; modal.style.top = '0'; modal.style.width = '100%'; modal.style.height = '100%';
+                    modal.style.background = 'rgba(0,0,0,0.6)'; modal.style.display = 'flex'; modal.style.alignItems = 'center'; modal.style.justifyContent = 'center'; modal.style.zIndex = 99998;
+
+                    const box = document.createElement('div');
+                    box.style.width = '760px'; box.style.maxWidth = '95%'; box.style.background = '#fff'; box.style.borderRadius = '8px'; box.style.padding = '18px'; box.style.maxHeight = '85%'; box.style.overflow = 'auto';
+
+                    const title = document.createElement('h3'); title.textContent = 'Cảm ơn bạn đã mua hàng — Đánh giá sản phẩm';
+                    box.appendChild(title);
+                    const desc = document.createElement('p'); desc.textContent = 'Hãy để lại đánh giá cho các sản phẩm bạn đã mua (bắt buộc đăng nhập).'; box.appendChild(desc);
+
+                    // Show order meta (date)
+                    const orderDate = document.querySelector('.order-item-shopee[data-order-id="' + orderId + '"]')?.dataset?.orderDate || '';
+                    if (orderDate) {
+                        const meta = document.createElement('div'); meta.style.marginBottom = '10px'; meta.style.color = 'var(--text-light)'; meta.textContent = 'Ngày đặt: ' + orderDate; box.appendChild(meta);
+                    }
+
+                    // Create form list: one textarea per product, display details (name, qty, unit, total)
+                    products.forEach((p, idx) => {
+                        const el = p.element;
+                        const pname = el.dataset.productName || ('Sản phẩm ' + (idx+1));
+                        const qty = el.dataset.qty || '0';
+                        const unit = el.dataset.unitPrice || '0';
+                        const total = el.dataset.total || (Number(qty) * Number(unit));
+
+                        const wrap = document.createElement('div'); wrap.style.marginBottom = '12px'; wrap.style.borderBottom = '1px solid #eee'; wrap.style.paddingBottom = '10px';
+
+                        const nameEl = document.createElement('div'); nameEl.style.fontWeight = '700'; nameEl.style.marginBottom = '6px'; nameEl.textContent = pname; wrap.appendChild(nameEl);
+
+                        const info = document.createElement('div'); info.style.fontSize = '14px'; info.style.color = 'var(--text-light)'; info.style.marginBottom = '8px';
+                        info.innerHTML = '<strong>Số lượng:</strong> ' + qty + ' &nbsp; • &nbsp; <strong>Đơn giá:</strong> ' + formatCurrency(unit) + ' &nbsp; • &nbsp; <strong>Thành tiền:</strong> ' + formatCurrency(total);
+                        wrap.appendChild(info);
+
+                        const ta = document.createElement('textarea'); ta.rows = 4; ta.style.width = '100%'; ta.name = 'content_' + p.productId; ta.placeholder = 'Viết đánh giá...';
+                        wrap.appendChild(ta);
+
+                        const btn = document.createElement('button'); btn.type = 'button'; btn.textContent = 'Gửi đánh giá cho sản phẩm này';
+                        btn.style.marginTop = '6px'; btn.className = 'btn btn-primary';
+                        btn.addEventListener('click', async function(){
+                            const content = ta.value.trim();
+                            if (!content) { alert('Vui lòng nhập nội dung đánh giá'); return; }
+                            try {
+                                const res = await fetch(ROOT + '/product/postComment/' + encodeURIComponent(p.productId), {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-Requested-With': 'XMLHttpRequest' },
+                                    body: 'content=' + encodeURIComponent(content)
+                                });
+                                const json = await res.json();
+                                if (json.ok) {
+                                    showToast('Đã gửi đánh giá');
+                                    // If product detail is present on this page and reloadComments helper exists, refresh comments in-place
+                                    if (typeof window.reloadComments === 'function') {
+                                        try {
+                                            await window.reloadComments();
+                                        } catch (e) { /* ignore */ }
+                                        // close modal overlay
+                                        try {
+                                            let ancestorModal = btn.closest('div');
+                                            while (ancestorModal && !ancestorModal.style?.position?.includes('fixed')) {
+                                                ancestorModal = ancestorModal.parentElement;
+                                            }
+                                            if (ancestorModal) ancestorModal.remove();
+                                        } catch (e) { /* ignore */ }
+                                        return;
+                                    }
+
+                                    // Fallback: append comment locally then redirect to product detail
+                                    const c = json.comment;
+                                    const commentItem = document.createElement('div'); commentItem.className = 'comment-item';
+                                    commentItem.innerHTML = '<div class="comment-header"><strong>' + (c.user_name || 'Bạn') + '</strong> <span class="comment-date">' + (c.Create_at || '') + '</span></div><div class="comment-content">' + (c.Content ? escapeHtml(c.Content) : '') + '</div>';
+                                    const target = document.querySelector('.comments-list[data-product-id="' + p.productId + '"]') || document.querySelector('.comments-list');
+                                    if (target) target.insertBefore(commentItem, target.firstChild);
+
+                                    try {
+                                        let ancestorModal = btn.closest('div');
+                                        while (ancestorModal && !ancestorModal.style?.position?.includes('fixed')) {
+                                            ancestorModal = ancestorModal.parentElement;
+                                        }
+                                        if (ancestorModal) ancestorModal.remove();
+                                    } catch (e) { /* ignore */ }
+                                    setTimeout(function(){ window.location.href = ROOT + '/product/detail/' + encodeURIComponent(p.productId); }, 300);
+                                } else {
+                                    alert('Không thể gửi đánh giá');
+                                }
+                            } catch (e) {
+                                console.error(e); alert('Lỗi gửi đánh giá');
+                            }
+                        });
+                        wrap.appendChild(btn);
+
+                        box.appendChild(wrap);
+                    });
+
+                    const close = document.createElement('button'); close.type = 'button'; close.textContent = 'Đóng'; close.className = 'btn btn-secondary';
+                    close.style.marginTop = '8px'; close.addEventListener('click', function(){ modal.remove(); });
+                    box.appendChild(close);
+
+                    modal.appendChild(box);
+                    document.body.appendChild(modal);
+                }
+            } catch (e) { console.error(e); }
+        })();
     </script>
 </body>
 </html>

@@ -325,16 +325,57 @@ class ProductController extends Controller
             ]);
 
             if ($commentId) {
+                // If AJAX request, return JSON with comment data
+                if (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest') {
+                    $userName = $_SESSION['user']['FullName'] ?? ($_SESSION['user']['name'] ?? '');
+                    $comment = [
+                        'Comment_Id' => $commentId,
+                        'Content' => $content,
+                        'Create_at' => date('Y-m-d'),
+                        '_UserName_Id' => $userId,
+                        'user_name' => $userName
+                    ];
+                    header('Content-Type: application/json');
+                    echo json_encode(['ok' => true, 'comment' => $comment]);
+                    return;
+                }
                 $_SESSION['message'] = 'Bình luận của bạn đã được đăng';
             } else {
                 $_SESSION['error'] = 'Không thể đăng bình luận';
             }
         } catch (\Exception $e) {
+            if (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest') {
+                header('Content-Type: application/json');
+                echo json_encode(['ok' => false, 'error' => 'server', 'message' => $e->getMessage()]);
+                return;
+            }
             $_SESSION['error'] = 'Lỗi khi đăng bình luận: ' . $e->getMessage();
         }
 
         header('Location: ' . ROOT_URL . 'product/detail/' . $productId);
         exit;
+    }
+
+    /**
+     * AJAX: Kiểm tra xem user hiện tại đã comment product chưa
+     * URL: /product/ajaxHasComment/{productId}
+     */
+    public function ajaxHasComment($productId)
+    {
+        header('Content-Type: application/json');
+        if (!isset($_SESSION['user'])) {
+            echo json_encode(['ok' => false, 'error' => 'unauth']);
+            return;
+        }
+
+        $userId = $_SESSION['user']['id'] ?? '';
+        $commentModel = new Comment();
+        try {
+            $has = $commentModel->hasUserCommented($userId, $productId);
+            echo json_encode(['ok' => true, 'hasComment' => (bool)$has]);
+        } catch (\Exception $e) {
+            echo json_encode(['ok' => false, 'error' => 'server']);
+        }
     }
 
     /**

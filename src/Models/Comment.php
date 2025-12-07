@@ -22,6 +22,19 @@ class Comment extends Model {
                 ORDER BY c.Create_at DESC";
         return $this->query($sql, ['product_id' => $productId]);
     }
+
+    /**
+     * Kiểm tra user đã comment sản phẩm chưa
+     * @param string $userId
+     * @param string $productId
+     * @return bool
+     */
+    public function hasUserCommented($userId, $productId)
+    {
+        $sql = "SELECT COUNT(*) as cnt FROM {$this->table} WHERE _UserName_Id = :user_id AND Product_Id = :product_id";
+        $res = $this->query($sql, ['user_id' => $userId, 'product_id' => $productId]);
+        return !empty($res) && (int)($res[0]['cnt'] ?? 0) > 0;
+    }
     
     /**
      * Tạo comment mới
