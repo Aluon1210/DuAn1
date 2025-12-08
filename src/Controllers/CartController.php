@@ -112,97 +112,102 @@ class CartController extends Controller
     }
 
     /**
-     * Hiển thị giỏ hàng
+     * Hiển thị giỏ hàng từ database
      * URL: /cart hoặc /cart/index
      */
     public function index()
     {
-        $this->initCart();
+        // Kiểm tra đăng nhập
+        if (!isset($_SESSION['user'])) {
+            header('Location: ' . ROOT_URL . 'login');
+            exit;
+        }
 
         $productModel = new Product();
         $variantModel = new \Models\Product_Varirant();
         $colorModel = new \Models\Color();
         $sizeModel = new \Models\Size();
+        $cartModel = new \Models\Cart();
+        $orderModel = new \Models\Order();
+
+        $userId = $_SESSION['user']['id'] ?? $_SESSION['user']['username'] ?? '';
+        $dbCartItems = $cartModel->getCartByUserId($userId);
 
         $cartItems = [];
         $total = 0;
 
-        foreach ($_SESSION['cart'] as $cartKey => $cartData) {
-            if (!is_array($cartData) || !isset($cartData['variant_id']) || !isset($cartData['product_id'])) {
-                // Bỏ qua entry không hợp lệ theo chuẩn mới
+        foreach ($dbCartItems as $cartRow) {
+            $variantId = (int)$cartRow['Variant_Id'];
+            $quantity = (int)$cartRow['Quantity'];
+            $cartId = $cartRow['_Cart_Id'];
+
+            // Lấy thông tin variant để tìm product
+            $variant = $variantModel->getById($variantId);
+            if (!$variant) {
+                // Xóa variant không tồn tại khỏi giỏ hàng
+                $cartModel->deleteCart($cartId);
                 continue;
             }
 
-            $productId = $cartData['product_id'];
-            $variantId = $cartData['variant_id'];
-            $quantity = (int)($cartData['quantity'] ?? 1);
+            $productId = $variant['product_id'] ?? $variant['Product_Id'] ?? null;
+            if (!$productId) {
+                $cartModel->deleteCart($cartId);
+                continue;
+            }
 
             $product = $productModel->getById($productId);
             if (!$product) {
                 // Xóa sản phẩm không tồn tại khỏi giỏ hàng
-                unset($_SESSION['cart'][$cartKey]);
+                $cartModel->deleteCart($cartId);
                 continue;
             }
 
-            $price = $product['price'];
-            $maxQuantity = $product['quantity'];
-            $variant = null;
+            $price = $variant['price'] ?? $product['price'];
+            $maxQuantity = $variant['stock'] ?? $variant['Quantity_In_Stock'] ?? 0;
             $color = null;
             $size = null;
 
-            // Variant có thể không tồn tại (product đơn lẻ). Nếu có thì dùng giá và tồn kho của variant,
-            // nếu không thì fallback về dữ liệu của product (dành cho sản phẩm không có variants).
-            $variant = $variantModel->getById($variantId);
-            if ($variant && ($variant['product_id'] == $productId || ($variant['Product_Id'] ?? null) == $productId)) {
-                $price = $variant['price'] ?? $price;
-                $maxQuantity = $variant['stock'] ?? $maxQuantity;
-
-                // Lấy thông tin color và size
-                if (!empty($variant['color_id'])) {
-                    $color = $colorModel->getById($variant['color_id']);
-                }
-                if (!empty($variant['size_id'])) {
-                    $size = $sizeModel->getById($variant['size_id']);
-                }
-            } else {
-                // Nếu không có variant nhưng variant_id == 0 => coi như sản phẩm đơn lẻ, dùng thông tin product
-                if ((int)$variantId === 0) {
-                    $price = $product['price'];
-                    $maxQuantity = $product['quantity'];
-                    $variant = null;
-                    $color = null;
-                    $size = null;
-                } else {
-                    // Nếu variant_id != 0 nhưng variant không hợp lệ thì bỏ qua entry
-                    continue;
-                }
+            // Lấy thông tin color và size
+            if (!empty($variant['color_id'])) {
+                $color = $colorModel->getById($variant['color_id']);
+            }
+            if (!empty($variant['size_id'])) {
+                $size = $sizeModel->getById($variant['size_id']);
             }
 
-            // Đảm bảo không vượt quá số lượng tồn kho
-            $quantity = min($quantity, $maxQuantity);
+            // Đảm bảo không vượt quá tồn kho
+            if ($quantity > $maxQuantity) {
+                $quantity = $maxQuantity;
+                // Cập nhật lại số lượng trong DB
+                $cartModel->updateCartQuantity($cartId, $quantity);
+            }
+
             $subtotal = $price * $quantity;
 
             $cartItems[] = [
+                'cart_id' => $cartId,
                 'product' => $product,
                 'quantity' => $quantity,
                 'subtotal' => $subtotal,
                 'price' => $price,
                 'variant' => $variant,
                 'color' => $color,
-                'size' => $size,
-                'cart_key' => $cartKey
+                'size' => $size
             ];
 
             $total += $subtotal;
         }
 
+        // Lấy lịch sử đơn hàng
+        $orders = $orderModel->getByUserId($userId);
+
         $data = [
             'title' => 'Giỏ Hàng',
             'cartItems' => $cartItems,
-            'total' => $total
+            'total' => $total,
+            'orders' => $orders ?? []
         ];
 
-        // Dùng view Cart duy nhất cho giỏ hàng
         $this->renderView('Cart', $data);
     }
 
@@ -212,41 +217,112 @@ class CartController extends Controller
      */
     public function add($id)
     {
-        $this->initCart();
+        // Kiểm tra đăng nhập trước
+        if (!isset($_SESSION['user'])) {
+            $_SESSION['error'] = 'Vui lòng đăng nhập để thêm sản phẩm vào giỏ hàng';
+            header('Location: ' . ROOT_URL . 'login');
+            exit;
+        }
 
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            header('Location: ' . ROOT_URL . 'product');
+            exit;
+        }
+
+        $productModel = new Product();
+        $variantModel = new \Models\Product_Varirant();
+        $cartModel = new \Models\Cart();
+
+        $product = $productModel->getById($id);
+        if (!$product) {
+            $_SESSION['error'] = 'Sản phẩm không tồn tại';
+            header('Location: ' . ROOT_URL . 'product');
+            exit;
+        }
+
+        $quantity = isset($_POST['quantity']) ? (int) $_POST['quantity'] : 1;
+        $variantId = isset($_POST['variant_id']) ? (int) trim($_POST['variant_id']) : 0;
+
+        if ($quantity <= 0) {
+            $_SESSION['error'] = 'Số lượng phải lớn hơn 0';
+            header('Location: ' . ROOT_URL . 'product/detail/' . $id);
+            exit;
+        }
+
+        // Nếu không gửi variant_id, cố gắng chọn variant đầu tiên còn hàng
+        if ($variantId <= 0) {
+            $variants = $variantModel->getByProductId($id);
+            if (!empty($variants)) {
+                $first = $variants[0];
+                $variantId = (int)($first['Variant_Id'] ?? $first['id'] ?? 0);
+            } else {
+                $variantId = 0;
+            }
+        }
+
+        // Kiểm tra variant hợp lệ nếu variant_id > 0, ngược lại dùng tồn kho/giá trên product
+        $maxQuantity = (int)($product['quantity'] ?? 0);
+        if ($variantId > 0) {
+            $variant = $variantModel->getById($variantId);
+            if (!$variant || ($variant['product_id'] ?? $variant['Product_Id'] ?? null) !== $id) {
+                $_SESSION['error'] = 'Biến thể không hợp lệ';
+                header('Location: ' . ROOT_URL . 'product/detail/' . $id);
+                exit;
+            }
+            $maxQuantity = (int)($variant['stock'] ?? $variant['Quantity_In_Stock'] ?? 0);
+        }
+
+        if ($quantity > $maxQuantity) {
+            $_SESSION['error'] = 'Số lượng vượt quá tồn kho';
+            header('Location: ' . ROOT_URL . 'product/detail/' . $id);
+            exit;
+        }
+
+        // Lưu vào database
+        $userId = $_SESSION['user']['id'] ?? $_SESSION['user']['username'] ?? '';
+        try {
+            $cartModel->addToCart($userId, $id, $variantId, $quantity);
+            $_SESSION['message'] = 'Đã thêm sản phẩm vào giỏ hàng';
+        } catch (\Exception $e) {
+            $_SESSION['error'] = 'Lỗi khi thêm sản phẩm: ' . $e->getMessage();
+        }
+
+        header('Location: ' . ROOT_URL . 'product/detail/' . $id);
+        exit;
+    }
+
+    /**
+     * Xóa sản phẩm khỏi giỏ hàng
+        if (!isset($_SESSION['user'])) {
+            $_SESSION['error'] = 'Vui lòng đăng nhập để thêm sản phẩm vào giỏ hàng';
+            header('Location: ' . ROOT_URL . 'login');
+            exit;
+        }
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $productModel = new Product();
             $variantModel = new \Models\Product_Varirant();
-
             $product = $productModel->getById($id);
             if (!$product) {
                 $_SESSION['error'] = 'Sản phẩm không tồn tại';
                 header('Location: ' . ROOT_URL . 'product');
                 exit;
             }
-
             $quantity = isset($_POST['quantity']) ? (int) $_POST['quantity'] : 1;
             $variantId = isset($_POST['variant_id']) ? (int) trim($_POST['variant_id']) : 0;
-
             if ($quantity <= 0) {
                 $_SESSION['error'] = 'Số lượng phải lớn hơn 0';
                 header('Location: ' . ROOT_URL . 'product/detail/' . $id);
                 exit;
             }
-
-            // Nếu không gửi variant_id, cố gắng chọn variant đầu tiên còn hàng
             if ($variantId <= 0) {
                 $variants = $variantModel->getByProductId($id);
                 if (!empty($variants)) {
                     $first = $variants[0];
                     $variantId = (int)($first['Variant_Id'] ?? $first['id'] ?? 0);
                 } else {
-                    // Không có variant trong DB: đánh dấu là sản phẩm đơn lẻ bằng variant_id = 0
                     $variantId = 0;
                 }
             }
-
-            // Kiểm tra variant hợp lệ nếu variant_id > 0, ngược lại dùng tồn kho/giá trên product
             $maxQuantity = (int)($product['quantity'] ?? 0);
             if ($variantId > 0) {
                 $variant = $variantModel->getById($variantId);
@@ -255,118 +331,23 @@ class CartController extends Controller
                     header('Location: ' . ROOT_URL . 'product/detail/' . $id);
                     exit;
                 }
-
                 $maxQuantity = (int)($variant['stock'] ?? $variant['Quantity_In_Stock'] ?? 0);
             }
-
             if ($quantity > $maxQuantity) {
                 $_SESSION['error'] = 'Số lượng vượt quá tồn kho';
                 header('Location: ' . ROOT_URL . 'product/detail/' . $id);
                 exit;
             }
-
-            // Key giỏ hàng mới: luôn theo variant (với sản phẩm đơn lẻ sẽ là 'variant_0')
-            $cartKey = 'variant_' . $variantId;
-
-            // Thêm vào giỏ hàng hoặc cập nhật số lượng
-            if (isset($_SESSION['cart'][$cartKey])) {
-                $newQuantity = $_SESSION['cart'][$cartKey]['quantity'] + $quantity;
-                if ($newQuantity > $maxQuantity) {
-                    $_SESSION['error'] = 'Tổng số lượng vượt quá tồn kho';
-                } else {
-                    $_SESSION['cart'][$cartKey]['quantity'] = $newQuantity;
-                    $_SESSION['message'] = 'Đã cập nhật số lượng sản phẩm trong giỏ hàng';
-                }
-            } else {
-                $_SESSION['cart'][$cartKey] = [
-                    'product_id' => $id,
-                    'variant_id' => $variantId,
-                    'quantity' => $quantity
-                ];
-                $_SESSION['message'] = 'Đã thêm sản phẩm vào giỏ hàng';
-            }
-
+            // Lưu giỏ hàng vào DB
+            $userId = $_SESSION['user']['id'] ?? $_SESSION['user']['username'] ?? '';
+            $cartModel = new \Models\Cart();
+            $cartModel->addToCart($userId, $id, $variantId, $quantity);
+            $_SESSION['message'] = 'Đã thêm sản phẩm vào giỏ hàng';
             header('Location: ' . ROOT_URL . 'product/detail/' . $id);
             exit;
         }
-
         header('Location: ' . ROOT_URL . 'product');
         exit;
-    }
-
-    /**
-     * Xóa sản phẩm khỏi giỏ hàng
-     * URL: /cart/remove/{key}
-     */
-    public function remove($key)
-    {
-        $this->initCart();
-
-        $found = false;
-        // Trong chuẩn mới, key luôn là 'variant_{id}'.
-        if (isset($_SESSION['cart'][$key])) {
-            unset($_SESSION['cart'][$key]);
-            $found = true;
-        }
-
-        if ($found) {
-            $_SESSION['message'] = 'Đã xóa sản phẩm khỏi giỏ hàng';
-        }
-
-        header('Location: ' . ROOT_URL . 'cart');
-        exit;
-    }
-
-    /**
-     * Cập nhật số lượng sản phẩm trong giỏ hàng
-     * URL: /cart/update
-     */
-    public function update()
-    {
-        $this->initCart();
-
-        if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['quantity'])) {
-            $productModel = new Product();
-            $variantModel = new \Models\Product_Varirant();
-            $hasUpdate = false;
-
-            foreach ($_POST['quantity'] as $cartKey => $quantity) {
-                $quantity = (int) $quantity;
-
-                if ($quantity <= 0) {
-                    if (isset($_SESSION['cart'][$cartKey])) {
-                        unset($_SESSION['cart'][$cartKey]);
-                        $hasUpdate = true;
-                    }
-                } else {
-                    // Tìm item trong cart (chỉ hỗ trợ format mới)
-                    $cartData = $_SESSION['cart'][$cartKey] ?? null;
-                    if (!is_array($cartData) || !isset($cartData['product_id'], $cartData['variant_id'])) {
-                        continue;
-                    }
-
-                    $productId = $cartData['product_id'];
-                    $variantId = $cartData['variant_id'];
-
-                    $product = $productModel->getById($productId);
-                    if (!$product) {
-                        unset($_SESSION['cart'][$cartKey]);
-                        $hasUpdate = true;
-                        continue;
-                    }
-
-                    // Với chuẩn mới, tồn kho lấy từ variant
-                    $maxQuantity = $product['quantity'];
-                    $variant = $variantModel->getById($variantId);
-                    if ($variant && ($variant['product_id'] == $productId || ($variant['Product_Id'] ?? null) == $productId)) {
-                        $maxQuantity = (int)($variant['stock'] ?? $variant['Quantity_In_Stock'] ?? 0);
-                    }
-
-                    // Giới hạn số lượng theo tồn kho
-                    $quantity = min($quantity, $maxQuantity);
-
-                    if ($quantity > 0) {
-                        $_SESSION['cart'][$cartKey]['quantity'] = $quantity;
                         $hasUpdate = true;
                     } else {
                         unset($_SESSION['cart'][$cartKey]);
@@ -418,7 +399,7 @@ class CartController extends Controller
             exit;
         }
 
-        // Selected checkboxes trong giỏ dùng cart key dạng 'variant_{id}'.
+        // Selected checkboxes là cart_id từ database
         $selected = isset($_POST['selected']) ? (array) $_POST['selected'] : [];
         $quantities = isset($_POST['quantity']) ? (array) $_POST['quantity'] : [];
 
@@ -430,21 +411,40 @@ class CartController extends Controller
 
         $productModel = new \Models\Product();
         $variantModel = new \Models\Product_Varirant();
+        $cartModel = new \Models\Cart();
         $items = [];
         $total = 0;
 
-        foreach ($selected as $cartKey) {
-            $cartData = $_SESSION['cart'][$cartKey] ?? null;
-            if (!is_array($cartData) || !isset($cartData['product_id'], $cartData['variant_id'])) {
+        foreach ($selected as $cartId) {
+            // Lấy thông tin từ giỏ hàng trong database
+            $cartItems = $cartModel->getCartByUserId($_SESSION['user']['id'] ?? $_SESSION['user']['username'] ?? '');
+            $cartData = null;
+            foreach ($cartItems as $item) {
+                if ($item['_Cart_Id'] === $cartId) {
+                    $cartData = $item;
+                    break;
+                }
+            }
+
+            if (!$cartData) {
                 $_SESSION['error'] = 'Sản phẩm không tồn tại trong giỏ hàng';
                 header('Location: ' . ROOT_URL . 'cart');
                 exit;
             }
 
-            $productId = $cartData['product_id'];
-            $variantId = $cartData['variant_id'];
-            $qty = isset($quantities[$cartKey]) ? (int)$quantities[$cartKey] : ($cartData['quantity'] ?? 1);
+            $variantId = $cartData['Variant_Id'];
+            $qty = isset($quantities[$cartId]) ? (int)$quantities[$cartId] : ($cartData['Quantity'] ?? 1);
+            
+            // Lấy product_id từ variant
+            $variant = $variantModel->getById($variantId);
+            if (!$variant) {
+                $_SESSION['error'] = 'Biến thể không tồn tại';
+                header('Location: ' . ROOT_URL . 'cart');
+                exit;
+            }
+            $productId = $variant['product_id'] ?? $variant['Product_Id'] ?? null;
 
+            
             $product = $productModel->getById($productId);
             if (!$product) {
                 $_SESSION['error'] = 'Sản phẩm không tồn tại';
@@ -458,25 +458,8 @@ class CartController extends Controller
                 exit;
             }
 
-            $price = $product['price'];
-            $maxQuantity = $product['quantity'];
-
-            // Variant có thể là product-level (variant_id == 0). Nếu variant tồn tại thì dùng variant,
-            // nếu không và variant_id == 0 thì dùng giá/tồn kho của product.
-            $variant = $variantModel->getById($variantId);
-            if ($variant && ($variant['product_id'] == $productId || ($variant['Product_Id'] ?? null) == $productId)) {
-                $price = $variant['price'] ?? $price;
-                $maxQuantity = $variant['stock'] ?? $variant['Quantity_In_Stock'] ?? $maxQuantity;
-            } else {
-                if ((int)$variantId === 0) {
-                    $price = $product['price'];
-                    $maxQuantity = $product['quantity'];
-                } else {
-                    $_SESSION['error'] = 'Biến thể không hợp lệ';
-                    header('Location: ' . ROOT_URL . 'cart');
-                    exit;
-                }
-            }
+            $price = $variant['price'] ?? $product['price'];
+            $maxQuantity = $variant['stock'] ?? $variant['Quantity_In_Stock'] ?? 0;
 
             if ($maxQuantity < $qty) {
                 $qty = $maxQuantity;
@@ -492,7 +475,7 @@ class CartController extends Controller
                 'product' => $product,
                 'quantity' => $qty,
                 'subtotal' => $price * $qty,
-                'cart_key' => $cartKey
+                'cart_key' => $cartId
             ];
             $total += $price * $qty;
         }
@@ -665,18 +648,37 @@ class CartController extends Controller
         $productModel = new \Models\Product();
         $orderDetails = [];
         $totalAmount = 0;
-
         $variantModel = new \Models\Product_Varirant();
-        foreach ($selected as $cartKey) {
-            // Resolve cart entry from session (format mới)
-            $cartData = $_SESSION['cart'][$cartKey] ?? null;
-            if (!is_array($cartData) || !isset($cartData['product_id'], $cartData['variant_id'])) {
-                continue;
+        $cartModel = new \Models\Cart();
+
+        foreach ($selected as $cartId) {
+            // Lấy thông tin từ giỏ hàng trong database
+            $cartItems = $cartModel->getCartByUserId($_SESSION['user']['id'] ?? $_SESSION['user']['username'] ?? '');
+            $cartData = null;
+            foreach ($cartItems as $item) {
+                if ($item['_Cart_Id'] === $cartId) {
+                    $cartData = $item;
+                    break;
+                }
             }
 
-            $productId = $cartData['product_id'];
-            $variantId = $cartData['variant_id'];
-            $qty = isset($quantities[$cartKey]) ? (int)$quantities[$cartKey] : (int)($cartData['quantity'] ?? 1);
+            if (!$cartData) {
+                $_SESSION['error'] = 'Sản phẩm không tồn tại trong giỏ hàng';
+                header('Location: ' . ROOT_URL . 'cart');
+                exit;
+            }
+
+            $variantId = $cartData['Variant_Id'];
+            $qty = isset($quantities[$cartId]) ? (int)$quantities[$cartId] : ($cartData['Quantity'] ?? 1);
+
+            // Lấy product_id từ variant
+            $variant = $variantModel->getById($variantId);
+            if (!$variant) {
+                $_SESSION['error'] = 'Biến thể không tồn tại';
+                header('Location: ' . ROOT_URL . 'cart');
+                exit;
+            }
+            $productId = $variant['product_id'] ?? $variant['Product_Id'] ?? null;
 
             $product = $productModel->getById($productId);
             if (!$product) {
@@ -691,23 +693,8 @@ class CartController extends Controller
                 exit;
             }
 
-            $price = $product['price'];
-            $maxQuantity = $product['quantity'];
-
-            $variant = $variantModel->getById($variantId);
-            if ($variant && ($variant['product_id'] == $productId || ($variant['Product_Id'] ?? null) == $productId)) {
-                $price = $variant['price'] ?? $price;
-                $maxQuantity = (int)($variant['stock'] ?? $variant['Quantity_In_Stock'] ?? 0);
-            } else {
-                if ((int)$variantId === 0) {
-                    $price = $product['price'] ?? $price;
-                    $maxQuantity = (int)$product['quantity'];
-                } else {
-                    $_SESSION['error'] = 'Biến thể không hợp lệ';
-                    header('Location: ' . ROOT_URL . 'cart');
-                    exit;
-                }
-            }
+            $price = $variant['price'] ?? $product['price'];
+            $maxQuantity = $variant['stock'] ?? $variant['Quantity_In_Stock'] ?? 0;
 
             if ($maxQuantity < $qty) {
                 $_SESSION['error'] = 'Sản phẩm ' . $product['name'] . ' không đủ tồn kho';
@@ -733,8 +720,9 @@ class CartController extends Controller
         ], $orderDetails);
 
         if ($orderId) {
-            foreach ($selected as $cartKey) {
-                unset($_SESSION['cart'][$cartKey]);
+            // Xóa các sản phẩm đã đặt hàng khỏi DB cart
+            foreach ($selected as $cartId) {
+                $cartModel->deleteCart($cartId);
             }
             $_SESSION['message'] = 'Đặt hàng thành công. Mã đơn: ' . $orderId . '. Tổng tiền: ' . number_format($totalAmount, 0, ',', '.') . ' ₫';
             header('Location: ' . ROOT_URL . 'cart');
@@ -744,6 +732,52 @@ class CartController extends Controller
             header('Location: ' . ROOT_URL . 'cart');
             exit;
         }
+    }
+
+    /**
+     * Xem chi tiết đơn hàng
+     * URL: /cart/orderDetail/{orderId}
+     */
+    public function orderDetail($orderId = null)
+    {
+        if (!isset($_SESSION['user'])) {
+            $_SESSION['error'] = 'Vui lòng đăng nhập để xem chi tiết đơn hàng';
+            header('Location: ' . ROOT_URL . 'login');
+            exit;
+        }
+
+        if (!$orderId) {
+            $_SESSION['error'] = 'Không tìm thấy đơn hàng';
+            header('Location: ' . ROOT_URL . 'cart');
+            exit;
+        }
+
+        $orderModel = new \Models\Order();
+        $orderDetailModel = new \Models\OrderDetail();
+        
+        $order = $orderModel->getByIdWithUser($orderId);
+        if (!$order) {
+            $_SESSION['error'] = 'Không tìm thấy đơn hàng';
+            header('Location: ' . ROOT_URL . 'cart');
+            exit;
+        }
+
+        // Kiểm tra quyền: chỉ user sở hữu đơn hàng hoặc admin mới được xem
+        if ($order['_UserName_Id'] !== $_SESSION['user']['username'] && !isset($_SESSION['user']['is_admin'])) {
+            $_SESSION['error'] = 'Bạn không có quyền xem đơn hàng này';
+            header('Location: ' . ROOT_URL . 'cart');
+            exit;
+        }
+
+        $orderDetails = $orderDetailModel->getByOrderIdWithProduct($orderId);
+
+        $data = [
+            'title' => 'Chi tiết đơn hàng',
+            'order' => $order,
+            'orderDetails' => $orderDetails
+        ];
+
+        $this->renderView('OrderDetail', $data);
     }
 }
 ?>

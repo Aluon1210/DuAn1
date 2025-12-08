@@ -14,8 +14,6 @@ use Models\Dashboard;
 
 class AdminController extends Controller {
 
-    // Trong AdminController
-
 public function users() {
     $this->requireAdmin();
     $userModel = new User();
@@ -177,16 +175,62 @@ public function deleteUser($id) {
     exit;
 }
 
-public function orders() {
+public function orders($action = null, $param = null) {
+    // Nếu action là 'detail', xử lý API JSON
+    if ($action === 'detail' && $param) {
+        $this->orderDetail($param);
+        return;
+    }
+    
     // Delegate to AdminOrderController for full orders management
     $oc = new AdminOrderController();
     return $oc->index();
 }
 
-public function updateOrderStatus() {
-    // Delegate to AdminOrderController for status update
-    $oc = new AdminOrderController();
-    return $oc->updateStatus();
+private function orderDetail($orderId) {
+    // Kiểm tra admin
+    if (!isset($_SESSION['user']) || $_SESSION['user']['role'] !== 'admin') {
+        header('Content-Type: application/json');
+        echo json_encode(['error' => 'Unauthorized']);
+        exit;
+    }
+
+    if (!$orderId) {
+        header('Content-Type: application/json');
+        echo json_encode(['error' => 'Order ID not provided']);
+        exit;
+    }
+
+    $orderModel = new \Models\Order();
+    $orderDetailModel = new \Models\OrderDetail();
+
+    $order = $orderModel->getByIdWithUser($orderId);
+    if (!$order) {
+        header('Content-Type: application/json');
+        echo json_encode(['error' => 'Order not found']);
+        exit;
+    }
+
+    $orderDetails = $orderDetailModel->getByOrderIdWithProduct($orderId);
+
+    // Tính tổng
+    $total = 0;
+    $detailsArray = [];
+    if ($orderDetails) {
+        foreach ($orderDetails as $detail) {
+            $total += $detail['quantity'] * $detail['Price'];
+            $detailsArray[] = $detail;
+        }
+    }
+
+    header('Content-Type: application/json');
+    echo json_encode([
+        'success' => true,
+        'order' => $order,
+        'details' => $detailsArray,
+        'total' => $total
+    ]);
+    exit;
 }
 
 public function branch() {

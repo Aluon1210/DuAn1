@@ -392,7 +392,7 @@ table tr:hover td {
         <?php endif; ?>
 
         <!-- FORM THÊM / SỬA NGƯỜI DÙNG -->
-        <div class="form-section">
+        <!-- <div class="form-section">
             <h2><?php echo $data['editing'] ? 'Sửa người dùng' : 'Thêm người dùng mới'; ?></h2>
 
             <form method="POST" action="/DuAn1/admin/saveUser">
@@ -457,19 +457,19 @@ table tr:hover td {
                     <a href="/DuAn1/admin/users" class="btn btn-cancel">Hủy</a>
                 </div>
             </form>
-        </div>
+        </div> -->
 
         <!-- DANH SÁCH NGƯỜI DÙNG -->
         <section>
-            <div class="content-header">
+            <!-- <div class="content-header">
                 <h2>Danh sách người dùng</h2>
                 <a href="/DuAn1/admin/users" class="btn-add">+ Thêm người dùng</a>
-            </div>
+            </div> -->
 
             <!-- THỐNG KÊ -->
-            <div class="stats-box">
+            <!-- <div class="stats-box">
                 <p><strong>Tổng người dùng:</strong> <?= $totalUsers ?></p>
-            </div>
+            </div> -->
 
             <!-- BẢNG DANH SÁCH -->
             <div class="table-container">
@@ -487,19 +487,19 @@ table tr:hover td {
                         </thead>
                         <tbody>
                             <?php foreach ($data['users'] as $user): ?>
+                                <?php if ($user['role'] === 'admin') continue; ?>
                                 <tr>
                                     <td><code><?= htmlspecialchars($user['id']); ?></code></td>
                                     <td><?= htmlspecialchars($user['email']); ?></td>
                                     <td><?= htmlspecialchars($user['name']); ?></td>
                                     <td><?= htmlspecialchars($user['phone'] ?? '-'); ?></td>
                                     <td>
-                                        <span class="badge <?= $user['role'] === 'admin' ? 'badge-admin' : 'badge-user'; ?>">
-                                            <?= $user['role'] === 'admin' ? 'Admin' : 'User'; ?>
+                                        <span class="badge <?= $user['role'] === 'forbident' ? 'badge-admin' : 'badge-user'; ?>">
+                                            <?= $user['role'] === 'forbident' ? 'Bị chặn' : 'Người dùng'; ?>
                                         </span>
                                     </td>
                                     <td>
-                                        <a href="/DuAn1/admin/users?edit=<?= urlencode($user['id']); ?>" class="btn-small btn-edit">Sửa</a>
-                                        <a href="/DuAn1/admin/deleteUser/<?= urlencode($user['id']); ?>" class="btn-small btn-delete" onclick="return confirm('Bạn chắc chắn muốn xóa người dùng này?')">Xóa</a>
+                                        <button class="btn-small btn-edit" onclick="openEditUserModal('<?= urlencode($user['id']); ?>', '<?= htmlspecialchars($user['email'], ENT_QUOTES); ?>', '<?= htmlspecialchars($user['name'], ENT_QUOTES); ?>', '<?= $user['role']; ?>')">Sửa</button>
                                     </td>
                                 </tr>
                             <?php endforeach; ?>
@@ -515,6 +515,59 @@ table tr:hover td {
 
     </main>
 </div>
+
+<!-- EDIT USER MODAL -->
+<div id="editUserModal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.7);z-index:9999;justify-content:center;align-items:center;">
+    <div style="background:white;padding:30px;border-radius:12px;width:90%;max-width:500px;box-shadow:0 10px 40px rgba(0,0,0,0.3);">
+        <h3 style="margin-top:0;margin-bottom:20px;font-size:20px;font-weight:700;">Sửa Vai Trò Người Dùng</h3>
+        
+        <form id="editUserForm" method="POST" action="/DuAn1/admin/saveUser">
+            <input type="hidden" id="editUserId" name="id">
+            
+            <div class="form-group">
+                <label>Email</label>
+                <input type="text" id="editUserEmail" readonly style="background:#f5f5f5;cursor:not-allowed;">
+            </div>
+
+            <div class="form-group">
+                <label>Họ Tên</label>
+                <input type="text" id="editUserName" readonly style="background:#f5f5f5;cursor:not-allowed;">
+            </div>
+
+            <div class="form-group">
+                <label for="editUserRole">Vai Trò *</label>
+                <select id="editUserRole" name="role" required>
+                    <option value="user">Người dùng</option>
+                    <option value="forbident">Bị chặn</option>
+                </select>
+            </div>
+
+            <div style="display:flex;gap:10px;margin-top:25px;">
+                <button type="submit" class="btn btn-success">Cập nhật</button>
+                <button type="button" class="btn btn-cancel" onclick="closeEditUserModal()">Hủy</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+function openEditUserModal(userId, email, name, currentRole) {
+    document.getElementById('editUserId').value = decodeURIComponent(userId);
+    document.getElementById('editUserEmail').value = email;
+    document.getElementById('editUserName').value = name;
+    document.getElementById('editUserRole').value = currentRole;
+    document.getElementById('editUserModal').style.display = 'flex';
+}
+
+function closeEditUserModal() {
+    document.getElementById('editUserModal').style.display = 'none';
+}
+
+// Close modal when clicking backdrop
+document.getElementById('editUserModal').addEventListener('click', function(e) {
+    if (e.target === this) closeEditUserModal();
+});
+</script>
 
 </body>
 </html>

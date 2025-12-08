@@ -223,14 +223,21 @@ class AdminOrderController extends Controller
     }
 
     /**
-     * Xem chi tiết đơn hàng
-     * URL: /admin/orders/detail/{id}
+     * Lấy chi tiết đơn hàng dưới dạng JSON (cho modal popup)
+     * URL: /admin/orders/detail/{orderId}
      */
-    public function detail($orderId)
+    public function detail($orderId = null)
     {
         // Kiểm tra admin
         if (!isset($_SESSION['user']) || $_SESSION['user']['role'] !== 'admin') {
-            header('Location: ' . ROOT_URL . 'login');
+            header('Content-Type: application/json');
+            echo json_encode(['error' => 'Unauthorized']);
+            exit;
+        }
+
+        if (!$orderId) {
+            header('Content-Type: application/json');
+            echo json_encode(['error' => 'Order ID not provided']);
             exit;
         }
 
@@ -238,31 +245,32 @@ class AdminOrderController extends Controller
         $orderDetailModel = new OrderDetail();
 
         $order = $orderModel->getByIdWithUser($orderId);
-
         if (!$order) {
-            $_SESSION['error'] = 'Đơn hàng không tồn tại';
-            header('Location: ' . ROOT_URL . 'admin/orders');
+            header('Content-Type: application/json');
+            echo json_encode(['error' => 'Order not found']);
             exit;
         }
 
-        $items = $orderDetailModel->getByOrderIdWithProduct($orderId);
+        $orderDetails = $orderDetailModel->getByOrderIdWithProduct($orderId);
+
+        // Tính tổng
         $total = 0;
-        if ($items) {
-            foreach ($items as $item) {
-                $qty = (int)($item['quantity'] ?? 0);
-                $price = (float)($item['Price'] ?? 0);
-                $total += $qty * $price;
+        $detailsArray = [];
+        if ($orderDetails) {
+            foreach ($orderDetails as $detail) {
+                $total += $detail['quantity'] * $detail['Price'];
+                $detailsArray[] = $detail;
             }
         }
 
-        $data = [
-            'title' => 'Chi Tiết Đơn Hàng - Admin',
+        header('Content-Type: application/json');
+        echo json_encode([
+            'success' => true,
             'order' => $order,
-            'items' => $items ?? [],
+            'details' => $detailsArray,
             'total' => $total
-        ];
-
-        $this->renderView('admin/order', $data);
+        ]);
+        exit;
     }
 }
 ?>

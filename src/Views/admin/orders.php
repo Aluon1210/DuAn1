@@ -575,6 +575,195 @@
                 });
             });
         });
+
+        // Thêm event listener để mở modal khi nhấn vào hàng
+        document.querySelectorAll('tbody tr').forEach(row => {
+            row.style.cursor = 'pointer';
+            row.addEventListener('click', function(e) {
+                // Không mở modal nếu nhấn vào status select
+                if (e.target.classList.contains('status-select')) return;
+                
+                const orderId = this.querySelector('td:first-child strong').textContent;
+                openOrderDetailModal(orderId);
+            });
+        });
+
+        function openOrderDetailModal(orderId) {
+            const url = '<?php echo ROOT_URL; ?>admin/orders/detail/' + encodeURIComponent(orderId);
+            console.log('Fetching from:', url);
+            
+            fetch(url)
+                .then(res => {
+                    console.log('Response status:', res.status);
+                    if (!res.ok) {
+                        throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+                    }
+                    return res.text(); // Get text first to inspect
+                })
+                .then(text => {
+                    console.log('Response text:', text);
+                    try {
+                        const data = JSON.parse(text);
+                        if (data.success) {
+                            displayOrderDetailModal(data);
+                        } else {
+                            alert('Lỗi: ' + (data.error || 'Không tìm thấy đơn hàng'));
+                        }
+                    } catch(e) {
+                        console.error('JSON parse error:', e);
+                        alert('Lỗi: Dữ liệu không hợp lệ');
+                    }
+                })
+                .catch(err => {
+                    console.error('Fetch error:', err);
+                    alert('Lỗi: ' + err.message);
+                });
+        }
+
+        function displayOrderDetailModal(data) {
+            try {
+                const order = data.order || {};
+                const details = data.details || [];
+                const total = data.total || 0;
+
+                let productsHtml = '';
+                details.forEach(item => {
+                    const qty = parseInt(item.quantity) || 0;
+                    const price = parseFloat(item.Price) || 0;
+                    const subtotal = qty * price;
+                    const colorStr = item.color_name ? `<span style="display:inline-block;width:14px;height:14px;border-radius:50%;background-color:${item.color_hex||'#ccc'};border:1px solid #ddd;margin-right:6px;vertical-align:middle;"></span>${item.color_name}` : '';
+                    const sizeStr = item.size_name ? `Size: ${item.size_name}` : '';
+                    const variantInfo = [colorStr, sizeStr].filter(s => s).join(' | ');
+                    
+                    productsHtml += `
+                        <tr>
+                            <td style="padding:10px 6px;border-bottom:1px solid #f0f0f0;width:40%;word-break:break-word;font-size:12px;">${item.product_name || ''}</td>
+                            <td style="padding:10px 6px;text-align:center;border-bottom:1px solid #f0f0f0;width:15%;white-space:nowrap;font-size:12px;">${qty}</td>
+                            <td style="padding:10px 6px;text-align:right;border-bottom:1px solid #f0f0f0;width:22.5%;white-space:nowrap;font-size:12px;">${number_format(price)} ₫</td>
+                            <td style="padding:10px 6px;text-align:right;border-bottom:1px solid #f0f0f0;width:22.5%;white-space:nowrap;color:#d4af37;font-weight:700;font-size:12px;">${number_format(subtotal)} ₫</td>
+                        </tr>
+                        ${variantInfo ? `<tr><td colspan="4" style="padding:6px 6px;font-size:11px;color:#999;border-bottom:1px solid #f0f0f0;"><em>${variantInfo}</em></td></tr>` : ''}
+                    `;
+                });
+
+                const statusMap = {
+                    'pending': 'Chờ xác nhận',
+                    'confirmed': 'Chờ giao hàng',
+                    'shipping': 'Vận chuyển',
+                    'delivered': 'Hoàn thành',
+                    'cancelled': 'Đã hủy',
+                    'return': 'Trả hàng'
+                };
+
+                const modalHtml = `
+                    <div class="__ei_backdrop" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.7);display:flex;align-items:center;justify-content:center;z-index:9999;padding:20px;">
+                        <div class="__ei_modal" style="background:white;border-radius:12px;width:100%;max-width:850px;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.4);">
+                            
+                            <!-- HEADER GOLD -->
+                            <div style="background:linear-gradient(135deg, #d4af37 0%, #c9a327 100%);color:#1a1a1a;padding:20px 24px;border-radius:12px 12px 0 0;display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;z-index:10;">
+                                <h2 style="margin:0;font-size:22px;font-weight:700;text-transform:uppercase;letter-spacing:1px;">HÓA ĐƠN GIAO DỊCH #${order.Order_Id || 'N/A'}</h2>
+                                <button class="__ei_close" style="background:none;border:none;font-size:28px;cursor:pointer;color:#1a1a1a;padding:0;width:32px;height:32px;display:flex;align-items:center;justify-content:center;">×</button>
+                            </div>
+
+                            <div style="padding:24px;">
+                                
+                                <!-- INFO GRID -->
+                                <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:24px;background:#f9f9f9;padding:16px;border-radius:8px;">
+                                    <div>
+                                        <p style="margin:0 0 6px;font-size:11px;color:#999;text-transform:uppercase;font-weight:700;letter-spacing:0.5px;">Ngày đặt hàng</p>
+                                        <p style="margin:0;font-size:15px;font-weight:700;color:#222;">${new Date(order.Order_date).toLocaleDateString('vi-VN')}</p>
+                                    </div>
+                                    <div>
+                                        <p style="margin:0 0 6px;font-size:11px;color:#999;text-transform:uppercase;font-weight:700;letter-spacing:0.5px;">Trạng thái</p>
+                                        <p style="margin:0;font-size:15px;font-weight:700;color:#d4af37;">${statusMap[order.TrangThai] || order.TrangThai || 'N/A'}</p>
+                                    </div>
+                                    <div>
+                                        <p style="margin:0 0 6px;font-size:11px;color:#999;text-transform:uppercase;font-weight:700;letter-spacing:0.5px;">Khách hàng</p>
+                                        <p style="margin:0;font-size:15px;font-weight:700;color:#222;">${order.user_name || 'N/A'}</p>
+                                    </div>
+                                    <div>
+                                        <p style="margin:0 0 6px;font-size:11px;color:#999;text-transform:uppercase;font-weight:700;letter-spacing:0.5px;">Điện thoại</p>
+                                        <p style="margin:0;font-size:15px;font-weight:700;color:#222;">${order.user_phone || 'N/A'}</p>
+                                    </div>
+                                </div>
+
+                                <!-- ADDRESS & NOTE -->
+                                <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:24px;">
+                                    <div>
+                                        <p style="margin:0 0 8px;font-size:11px;color:#999;text-transform:uppercase;font-weight:700;letter-spacing:0.5px;">Địa chỉ nhận hàng</p>
+                                        <p style="margin:0;font-size:14px;background:#fff;border:2px solid #d4af37;padding:12px;border-radius:6px;line-height:1.6;color:#333;">${order.Adress || 'Không có'}</p>
+                                    </div>
+                                    <div>
+                                        <p style="margin:0 0 8px;font-size:11px;color:#999;text-transform:uppercase;font-weight:700;letter-spacing:0.5px;">Ghi chú</p>
+                                        <p style="margin:0;font-size:14px;background:#fff;border:2px solid #d4af37;padding:12px;border-radius:6px;line-height:1.6;color:${order.Note ? '#333' : '#999'};">${order.Note || '(Không có ghi chú)'}</p>
+                                    </div>
+                                </div>
+
+                                <!-- PRODUCTS TABLE -->
+                                <p style="margin:0 0 12px;font-size:13px;font-weight:700;text-transform:uppercase;color:#d4af37;letter-spacing:0.5px;">CHI TIẾT SẢN PHẨM</p>
+                                <div style="margin-bottom:24px;width:100%;overflow:hidden;">
+                                    <table style="width:100%;border-collapse:collapse;font-size:12px;table-layout:fixed;">
+                                        <thead>
+                                            <tr style="background:#000;color:#d4af37;text-transform:uppercase;font-weight:700;">
+                                                <th style="padding:12px 6px;text-align:left;width:40%;font-size:12px;">Sản phẩm</th>
+                                                <th style="padding:12px 6px;text-align:center;width:15%;font-size:12px;">SL</th>
+                                                <th style="padding:12px 6px;text-align:right;width:22.5%;white-space:nowrap;font-size:12px;">Đơn giá</th>
+                                                <th style="padding:12px 6px;text-align:right;width:22.5%;white-space:nowrap;font-size:12px;">Thành tiền</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>${productsHtml}</tbody>
+                                    </table>
+                                </div>
+
+                                <!-- TOTAL -->
+                                <div style="border-top:2px solid #d4af37;border-bottom:2px solid #d4af37;padding:20px;text-align:right;margin-bottom:20px;">
+                                    <p style="margin:0 0 8px;font-size:13px;color:#666;">Tổng giá trị đơn hàng:</p>
+                                    <p style="margin:0;font-size:28px;font-weight:700;color:#d4af37;font-family:'Playfair Display',serif;">${number_format(total)} ₫</p>
+                                </div>
+
+                                <!-- THANK YOU -->
+                                <div style="text-align:center;padding:16px 0;border-top:1px dashed #d4af37;">
+                                    <p style="margin:0;font-size:13px;color:#666;line-height:1.6;">Cảm ơn quý khách đã tin tưởng và mua sắm tại <strong>*LUXURY FASHION*</strong></p>
+                                    <p style="margin:6px 0 0 0;font-size:12px;color:#999;">Mọi thắc mắc vui lòng liên hệ Bộ phận Chăm sóc Khách hàng</p>
+                                </div>
+
+                            </div>
+                        </div>
+                    </div>
+                `;
+
+                // Thêm modal vào body
+                const modal = document.createElement('div');
+                modal.innerHTML = modalHtml;
+                document.body.appendChild(modal);
+
+                // Close modal when clicking on backdrop
+                const backdrop = modal.querySelector('.__ei_backdrop');
+                const closeBtn = modal.querySelector('.__ei_close');
+
+                function removeModal() {
+                    if (modal && modal.parentNode) modal.parentNode.removeChild(modal);
+                    document.removeEventListener('keydown', onKeyDown);
+                }
+
+                backdrop.addEventListener('click', function(e){
+                    if (e.target === backdrop) removeModal();
+                });
+
+                closeBtn.addEventListener('click', removeModal);
+
+                // Close on Escape
+                function onKeyDown(e){ if (e.key === 'Escape') removeModal(); }
+                document.addEventListener('keydown', onKeyDown);
+            } catch(err) {
+                console.error('Error displaying modal:', err);
+                alert('Lỗi: Không thể hiển thị chi tiết đơn hàng');
+            }
+        }
+
+        function number_format(n) {
+            return new Intl.NumberFormat('vi-VN').format(n);
+        }
     </script>
 </body>
 

@@ -233,9 +233,9 @@
                 </thead>
                 <tbody>
                     <?php foreach ($cartItems as $item): ?>
-                        <tr <?php echo ($item['variant'] ? $item['variant']['stock'] : $item['product']['quantity']) <= 0 ? 'style="opacity:0.5;"' : ''; ?> >
+                        <tr <?php echo ($item['variant'] ? ($item['variant']['stock'] ?? 0) : ($item['product']['quantity'] ?? 0)) <= 0 ? 'style="opacity:0.5;"' : ''; ?> >
                             <td style="text-align:center;">
-                                <input type="checkbox" name="selected[]" value="<?php echo htmlspecialchars($item['cart_key']); ?>" <?php echo ($item['variant'] ? $item['variant']['stock'] : $item['product']['quantity']) <= 0 ? 'disabled' : ''; ?> class="cart-select">
+                                <input type="checkbox" name="selected[]" value="<?php echo htmlspecialchars($item['cart_id']); ?>" <?php echo ($item['variant'] ? ($item['variant']['stock'] ?? 0) : ($item['product']['quantity'] ?? 0)) <= 0 ? 'disabled' : ''; ?> class="cart-select">
                             </td>
                             <td>
                                 <div style="display: flex; align-items: center;">
@@ -279,25 +279,25 @@
                             </td>
                             <td style="text-align: center;">
                                 <div style="display:inline-flex; align-items:center; gap:8px; justify-content:center;">
-                                    <button type="button" class="btn btn-primary qty-minus" data-id="<?php echo htmlspecialchars($item['cart_key']); ?>" <?php echo ($item['variant'] ? $item['variant']['stock'] : $item['product']['quantity']) <= 0 ? 'disabled' : ''; ?>>-</button>
+                                    <button type="button" class="btn btn-primary qty-minus" data-id="<?php echo htmlspecialchars($item['cart_id']); ?>" <?php echo ($item['variant'] ? ($item['variant']['stock'] ?? 0) : ($item['product']['quantity'] ?? 0)) <= 0 ? 'disabled' : ''; ?>>-</button>
                                     <input type="number" 
-                                           name="quantity[<?php echo htmlspecialchars($item['cart_key']); ?>]" 
+                                           name="quantity[<?php echo htmlspecialchars($item['cart_id']); ?>]" 
                                            value="<?php echo $item['quantity']; ?>" 
                                            min="1" 
-                                           max="<?php echo $item['variant'] ? $item['variant']['stock'] : $item['product']['quantity']; ?>" 
+                                           max="<?php echo $item['variant'] ? ($item['variant']['stock'] ?? 0) : ($item['product']['quantity'] ?? 0); ?>" 
                                            class="cart-quantity-input" 
                                            data-price="<?php echo $item['price']; ?>"
-                                           data-id="<?php echo htmlspecialchars($item['cart_key']); ?>"
-                                           <?php echo ($item['variant'] ? $item['variant']['stock'] : $item['product']['quantity']) <= 0 ? 'disabled' : ''; ?>
+                                           data-id="<?php echo htmlspecialchars($item['cart_id']); ?>"
+                                           <?php echo ($item['variant'] ? ($item['variant']['stock'] ?? 0) : ($item['product']['quantity'] ?? 0)) <= 0 ? 'disabled' : ''; ?>
                                            required>
-                                    <button type="button" class="btn btn-primary qty-plus" data-id="<?php echo htmlspecialchars($item['cart_key']); ?>" <?php echo ($item['variant'] ? $item['variant']['stock'] : $item['product']['quantity']) <= 0 ? 'disabled' : ''; ?>>+</button>
+                                    <button type="button" class="btn btn-primary qty-plus" data-id="<?php echo htmlspecialchars($item['cart_id']); ?>" <?php echo ($item['variant'] ? ($item['variant']['stock'] ?? 0) : ($item['product']['quantity'] ?? 0)) <= 0 ? 'disabled' : ''; ?>>+</button>
                                 </div>
                             </td>
                             <td style="text-align: right;">
-                                <div class="cart-subtotal" data-id="<?php echo htmlspecialchars($item['cart_key']); ?>"><?php echo number_format($item['subtotal'], 0, ',', '.'); ?> ₫</div>
+                                <div class="cart-subtotal" data-id="<?php echo htmlspecialchars($item['cart_id']); ?>"><?php echo number_format($item['subtotal'], 0, ',', '.'); ?> ₫</div>
                             </td>
                             <td style="text-align: center;">
-                                <a href="<?php echo ROOT_URL; ?>cart/remove/<?php echo htmlspecialchars($item['cart_key']); ?>" 
+                                <a href="<?php echo ROOT_URL; ?>cart/remove/<?php echo htmlspecialchars($item['cart_id']); ?>" 
                                    class="btn btn-danger" 
                                    style="padding: 10px 20px; font-size: 13px;">
                                     Xóa
@@ -410,5 +410,71 @@ document.querySelectorAll('.cart-select').forEach(chk => {
 });
 recalc();
 </script>
+
+<?php if (!empty($orders)): ?>
+<div style="margin-top: 60px;">
+  <h3 style="font-family: 'Playfair Display', serif; font-size: 28px; font-weight: 700; margin-bottom: 24px;">📋 Lịch Sử Đơn Hàng</h3>
+  
+  <div style="background: white; border-radius: 16px; box-shadow: var(--shadow-soft); overflow: hidden;">
+    <table style="width: 100%; border-collapse: collapse;">
+      <thead>
+        <tr style="background: linear-gradient(135deg, var(--primary-black) 0%, #2c2c2c 100%); color: white;">
+          <th style="padding: 16px 20px; text-align: left; font-weight: 600; font-size: 13px; text-transform: uppercase; letter-spacing: 1px;">Mã Đơn</th>
+          <th style="padding: 16px 20px; text-align: left; font-weight: 600; font-size: 13px; text-transform: uppercase; letter-spacing: 1px;">Ngày Đặt</th>
+          <th style="padding: 16px 20px; text-align: center; font-weight: 600; font-size: 13px; text-transform: uppercase; letter-spacing: 1px;">Trạng Thái</th>
+          <th style="padding: 16px 20px; text-align: right; font-weight: 600; font-size: 13px; text-transform: uppercase; letter-spacing: 1px;">Tổng Tiền</th>
+          <th style="padding: 16px 20px; text-align: center; font-weight: 600; font-size: 13px; text-transform: uppercase; letter-spacing: 1px;">Hành Động</th>
+        </tr>
+      </thead>
+      <tbody>
+        <?php foreach ($orders as $order): ?>
+          <tr style="border-bottom: 1px solid var(--border-light); transition: var(--transition-smooth);" onmouseover="this.style.background='var(--accent-gray)'" onmouseout="this.style.background='white'">
+            <td style="padding: 16px 20px; font-weight: 600; color: var(--primary-black);">
+              <?php echo htmlspecialchars($order['Order_Id']); ?>
+            </td>
+            <td style="padding: 16px 20px; color: var(--text-dark);">
+              <?php echo date('d/m/Y', strtotime($order['Order_date'])); ?>
+            </td>
+            <td style="padding: 16px 20px; text-align: center;">
+              <?php 
+                $statuses = [
+                  'pending' => ['text' => 'Chờ xác nhận', 'class' => 'pending'],
+                  'confirmed' => ['text' => 'Chờ giao', 'class' => 'confirmed'],
+                  'completed' => ['text' => 'Hoàn thành', 'class' => 'completed'],
+                  'cancelled' => ['text' => 'Đã hủy', 'class' => 'cancelled']
+                ];
+                $status = $statuses[$order['TrangThai']] ?? ['text' => $order['TrangThai'], 'class' => 'default'];
+              ?>
+              <span style="display: inline-block; padding: 6px 12px; border-radius: 16px; font-size: 12px; font-weight: 600;
+                <?php 
+                  if ($status['class'] === 'pending') echo 'background: #fff3cd; color: #856404;';
+                  elseif ($status['class'] === 'confirmed') echo 'background: #d1ecf1; color: #0c5460;';
+                  elseif ($status['class'] === 'completed') echo 'background: #d4edda; color: #155724;';
+                  else echo 'background: #f8d7da; color: #721c24;';
+                ?>
+              ">
+                <?php echo $status['text']; ?>
+              </span>
+            </td>
+            <td style="padding: 16px 20px; text-align: right; font-weight: 700; color: var(--primary-black);">
+              <!-- Tính tổng tiền từ order_detail -->
+              <?php 
+                // Note: Bạn có thể thêm method getOrderTotal() vào Order model để tính này
+                // Tạm thời hiển thị "Xem chi tiết" để khách click vào
+              ?>
+              <a href="<?php echo ROOT_URL; ?>cart/orderDetail/<?php echo htmlspecialchars($order['Order_Id']); ?>" style="color: var(--primary-gold); text-decoration: none; font-weight: 600;">Xem chi tiết →</a>
+            </td>
+            <td style="padding: 16px 20px; text-align: center;">
+              <a href="<?php echo ROOT_URL; ?>cart/orderDetail/<?php echo htmlspecialchars($order['Order_Id']); ?>" class="btn btn-primary" style="padding: 8px 16px; font-size: 12px; text-decoration: none; display: inline-block;">
+                📄 Chi Tiết
+              </a>
+            </td>
+          </tr>
+        <?php endforeach; ?>
+      </tbody>
+    </table>
+  </div>
+</div>
+<?php endif; ?>
 
 
