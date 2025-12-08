@@ -11,6 +11,25 @@ define('ROOT_URL', $rootUrl);
 define('ROOT_PATH', __DIR__); // Đường dẫn thư mục gốc
 
 // 2. Autoloader đơn giản cho cấu trúc /src
+// 2a. Load environment variables từ .env file
+if (file_exists(ROOT_PATH . '/.env')) {
+    $lines = file(ROOT_PATH . '/.env', FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+    foreach ($lines as $line) {
+        // Bỏ qua comment lines
+        if (strpos(trim($line), '#') === 0) continue;
+        // Parse KEY=VALUE
+        if (strpos($line, '=') !== false) {
+            list($key, $value) = explode('=', $line, 2);
+            $key = trim($key);
+            $value = trim($value);
+            // Set vào $_ENV và putenv
+            $_ENV[$key] = $value;
+            putenv("{$key}={$value}");
+        }
+    }
+}
+
+// 2b. Autoloader đơn giản cho cấu trúc /src
 // Tự động 'require' file khi bạn 'new' một class
 spl_autoload_register(function ($className) {
     // Ví dụ: new Core\App()
