@@ -9,6 +9,7 @@ class Order extends Model
 {
 
     protected $table = 'orders';
+    protected $primaryKey = 'Order_Id';
 
     /**
      * Lấy đơn hàng kèm thông tin user

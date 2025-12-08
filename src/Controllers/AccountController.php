@@ -7,6 +7,48 @@ use Models\User;
 use Models\Order;
 
 class AccountController extends Controller {
+        /**
+         * Hủy đơn hàng (chỉ khi trạng thái là 'pending')
+         * URL: /account/cancelOrder (POST)
+         */
+        public function cancelOrder() {
+            if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+                header('Location: ' . ROOT_URL . 'account');
+                exit;
+            }
+            if (!isset($_SESSION['user'])) {
+                $_SESSION['error'] = 'Vui lòng đăng nhập trước';
+                header('Location: ' . ROOT_URL . 'login');
+                exit;
+            }
+            $userId = $_SESSION['user']['id'];
+            $orderId = $_POST['order_id'] ?? '';
+            if (empty($orderId)) {
+                $_SESSION['error'] = 'Thiếu mã đơn hàng';
+                header('Location: ' . ROOT_URL . 'account');
+                exit;
+            }
+            $orderModel = new Order();
+            $order = $orderModel->getById($orderId);
+            if (!$order || $order['_UserName_Id'] != $userId) {
+                $_SESSION['error'] = 'Đơn hàng không tồn tại hoặc không thuộc về bạn';
+                header('Location: ' . ROOT_URL . 'account');
+                exit;
+            }
+            if ($order['TrangThai'] !== 'pending') {
+                $_SESSION['error'] = 'Chỉ có thể hủy đơn hàng khi đang chờ xác nhận';
+                header('Location: ' . ROOT_URL . 'account');
+                exit;
+            }
+            $success = $orderModel->updateStatus($orderId, 'cancelled');
+            if ($success) {
+                $_SESSION['message'] = 'Đã hủy đơn hàng thành công.';
+            } else {
+                $_SESSION['error'] = 'Không thể hủy đơn hàng.';
+            }
+            header('Location: ' . ROOT_URL . 'account');
+            exit;
+        }
     
     /**
      * Hiển thị trang tài khoản người dùng

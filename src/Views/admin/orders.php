@@ -416,13 +416,28 @@
                                     <td><strong><?php echo number_format((float)($order['total'] ?? 0), 0, ',', '.'); ?> ₫</strong></td>
                                     <td><?php echo (int)($order['items_count'] ?? 0); ?></td>
                                     <td>
-                                        <select class="status-select" data-order-id="<?php echo htmlspecialchars($order['Order_Id']); ?>" data-current-status="<?php echo htmlspecialchars($status); ?>">
-                                            <option value="pending" <?php echo ($status === 'pending') ? 'selected' : ''; ?>>Chờ xác nhận</option>
-                                            <option value="confirmed" <?php echo ($status === 'confirmed') ? 'selected' : ''; ?>>Chờ giao hàng</option>
-                                            <option value="shipping" <?php echo ($status === 'shipping') ? 'selected' : ''; ?>>Vận chuyển</option>
-                                            <option value="delivered" <?php echo ($status === 'delivered') ? 'selected' : ''; ?>>Hoàn thành</option>
-                                            <option value="cancelled" <?php echo ($status === 'cancelled') ? 'selected' : ''; ?>>Đã hủy</option>
-                                            <option value="return" <?php echo ($status === 'return') ? 'selected' : ''; ?>>Trả hàng</option>
+                                        <?php
+                                        // Chỉ cho phép chọn trạng thái kế tiếp, hủy khi chờ xác nhận, trả hàng khi đã hoàn thành
+                                        $nextStatus = [
+                                            'pending' => 'confirmed',
+                                            'confirmed' => 'shipping',
+                                            'shipping' => 'delivered',
+                                        ];
+                                        $canCancel = ($status === 'pending');
+                                        $canReturn = ($status === 'delivered');
+                                        $isFinal = ($status === 'delivered' || $status === 'cancelled');
+                                        ?>
+                                        <select class="status-select" data-order-id="<?php echo htmlspecialchars($order['Order_Id']); ?>" data-current-status="<?php echo htmlspecialchars($status); ?>" <?php echo $isFinal ? 'disabled' : ''; ?>>
+                                            <option value="<?php echo $status; ?>" selected><?php echo $statusLabel; ?></option>
+                                            <?php if (!$isFinal && isset($nextStatus[$status])): ?>
+                                                <option value="<?php echo $nextStatus[$status]; ?>"><?php echo $statusMap[$nextStatus[$status]][0]; ?></option>
+                                            <?php endif; ?>
+                                            <?php if ($canCancel): ?>
+                                                <option value="cancelled">Đã hủy</option>
+                                            <?php endif; ?>
+                                            <?php if ($canReturn): ?>
+                                                <option value="return">Trả hàng</option>
+                                            <?php endif; ?>
                                         </select>
                                     </td>
                                     <td><?php echo date('d/m/Y', strtotime($order['Order_date'])); ?></td>

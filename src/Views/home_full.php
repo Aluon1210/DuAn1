@@ -349,8 +349,9 @@
             <?php unset($_SESSION['error']); ?>
         <?php endif; ?>
 
-        <div id="heroBanner" style="position: relative; border-radius: 16px; overflow: hidden; margin-bottom: 40px; box-shadow: var(--shadow-hover);">
-            <img id="bannerImage" src="<?php echo ROOT_URL; ?>src/assets/vf000.webp" alt="Banner" style="width: 100%; height: 460px; object-fit: cover; display: block; filter: brightness(0.45);">
+        <div id="heroBanner" style="position: relative; border-radius: 16px; overflow: hidden; margin-bottom: 40px; box-shadow: var(--shadow-hover); height:460px;">
+            <img id="bannerA" src="<?php echo ROOT_URL; ?>src/assets/vf000.webp" alt="Banner A" style="position:absolute; inset:0; width:100%; height:100%; object-fit:cover; filter:brightness(0.45); transition:opacity .7s ease; opacity:1;">
+            <img id="bannerB" src="<?php echo ROOT_URL; ?>src/assets/mautrangvf.jpg" alt="Banner B" style="position:absolute; inset:0; width:100%; height:100%; object-fit:cover; filter:brightness(0.45); transition:opacity .7s ease; opacity:0;">
             <div style="position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; flex-direction: column; color: white; text-align: center; padding: 40px;">
                 <h1 style="font-family: 'Playfair Display', serif; font-size: 56px; font-weight: 700; margin-bottom: 24px; letter-spacing: 3px; text-shadow: 0 4px 20px rgba(0,0,0,0.3);">Luxury Fashion Store</h1>
                 <div style="width: 100px; height: 4px; background: linear-gradient(90deg, var(--primary-gold) 0%, #b8941f 100%); margin: 0 auto 30px; border-radius: 2px;"></div>
@@ -360,24 +361,164 @@
                     <a href="<?php echo ROOT_URL; ?>home/about" class="btn btn-primary" style="padding: 18px 40px; font-size: 16px;">ℹ️ Về Chúng Tôi</a>
                 </div>
             </div>
-            <button id="prevBanner" style="position: absolute; top: 50%; left: 16px; transform: translateY(-50%); background: rgba(0,0,0,0.4); color: var(--primary-gold); border: 2px solid var(--primary-gold); width: 44px; height: 44px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 22px;">‹</button>
-            <button id="nextBanner" style="position: absolute; top: 50%; right: 16px; transform: translateY(-50%); background: rgba(0,0,0,0.4); color: var(--primary-gold); border: 2px solid var(--primary-gold); width: 44px; height: 44px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 22px;">›</button>
+            <button id="prevBanner" aria-label="Previous" style="position: absolute; top: 50%; left: 16px; transform: translateY(-50%); background: rgba(0,0,0,0.4); color: var(--primary-gold); border: 2px solid var(--primary-gold); width: 44px; height: 44px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 22px;">‹</button>
+            <button id="nextBanner" aria-label="Next" style="position: absolute; top: 50%; right: 16px; transform: translateY(-50%); background: rgba(0,0,0,0.4); color: var(--primary-gold); border: 2px solid var(--primary-gold); width: 44px; height: 44px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 22px;">›</button>
+            <div id="bannerDots" style="position:absolute; left:50%; bottom:18px; transform:translateX(-50%); display:flex; gap:8px; z-index:30;"></div>
         </div>
         <script>
         (function(){
-            var images = [
-                '<?php echo ROOT_URL; ?>asset/img/maudenvf.webp',
-                '<?php echo ROOT_URL; ?>asset/img/mautrangvf.jpg',
-                '<?php echo ROOT_URL; ?>asset/img/vf000.webp'
+            <?php
+                // Load banner images from `asset/img/banner` if present, otherwise fall back to defaults
+                $bannerDir = ROOT_PATH . '/asset/img/banner';
+                $bannerFiles = [];
+                if (is_dir($bannerDir)) {
+                    $files = glob($bannerDir . '/*.{jpg,jpeg,png,webp,gif}', GLOB_BRACE);
+                    if ($files) {
+                        // sort files to have consistent order
+                        sort($files);
+                        foreach ($files as $f) {
+                            $bannerFiles[] = ROOT_URL . 'asset/img/banner/' . basename($f);
+                        }
+                    }
+                }
+                if (empty($bannerFiles)) {
+                    $bannerFiles = [
+                        ROOT_URL . 'asset/img/banner/abc.jpg',
+                        ROOT_URL . 'asset\img\banner\anhdep.jpg',
+                        ROOT_URL . 'src/assets/mautrangvf.jpg'
+                    ];
+                }
+            ?>
+            var images = <?php echo json_encode($bannerFiles, JSON_UNESCAPED_SLASHES); ?>;
+            var idx = 0; // current visible index (images[idx] is visible)
+            var a = document.getElementById('bannerA');
+            var b = document.getElementById('bannerB');
+            var topIsA = true; // which image element is currently on top (opacity 1)
+            var prevBtn = document.getElementById('prevBanner');
+            var nextBtn = document.getElementById('nextBanner');
+            var dotsContainer = document.getElementById('bannerDots');
+            var interval = null;
+            var delay = 3000; // 3s
+
+            // Debug element to show resolved images (visible on page)
+            (function(){
+                var dbg = document.createElement('pre');
+                dbg.id = 'banner-debug';
+                dbg.style.position = 'absolute';
+                dbg.style.top = '8px';
+                dbg.style.right = '8px';
+                dbg.style.background = 'rgba(0,0,0,0.5)';
+                dbg.style.color = '#fff';
+                dbg.style.padding = '6px 8px';
+                dbg.style.borderRadius = '6px';
+                dbg.style.fontSize = '12px';
+                dbg.style.zIndex = 60;
+                dbg.style.maxWidth = '300px';
+                dbg.style.display = 'none'; // hide by default, show when needed
+                document.getElementById('heroBanner').appendChild(dbg);
+            })();
+
+            // Preload images and filter out ones that fail to load
+            function preloadImages(list){
+                var checks = list.map(function(url){
+                    return new Promise(function(resolve){
+                        var im = new Image();
+                        im.onload = function(){ resolve({url: url, ok: true}); };
+                        im.onerror = function(){ resolve({url: url, ok: false}); };
+                        im.src = url + (url.indexOf('?') === -1 ? '?' : '&') + 'v=' + Date.now();
+                    });
+                });
+                return Promise.all(checks).then(function(results){
+                    var good = results.filter(function(r){ return r.ok; }).map(function(r){ return r.url; });
+                    return good;
+                });
+            }
+
+            var defaultImages = [
+                '<?php echo ROOT_URL; ?>src/assets/vf000.webp',
+                '<?php echo ROOT_URL; ?>src/assets/maudenvf.webp',
+                '<?php echo ROOT_URL; ?>src/assets/mautrangvf.jpg'
             ];
-            var idx = 0;
-            var img = document.getElementById('bannerImage');
-            var prev = document.getElementById('prevBanner');
-            var next = document.getElementById('nextBanner');
-            function show(i){ idx = (i + images.length) % images.length; img.src = images[idx]; }
-            prev.addEventListener('click', function(){ show(idx - 1); });
-            next.addEventListener('click', function(){ show(idx + 1); });
-            setInterval(function(){ show(idx + 1); }, 2000);
+
+            // Run preload then init carousel
+            preloadImages(images).then(function(valid){
+                if (!valid || valid.length === 0) {
+                    images = defaultImages;
+                    // show debug for fallback
+                    var dbg = document.getElementById('banner-debug'); dbg.textContent = 'Using fallback images'; dbg.style.display = 'block';
+                } else {
+                    images = valid;
+                }
+                // expose resolved images to debug (hidden by default)
+                var dbg = document.getElementById('banner-debug'); dbg.textContent = JSON.stringify(images, null, 2);
+                // proceed with initialization below
+                initializeCarousel();
+            });
+
+            function initializeCarousel(){
+                // create dots
+                dotsContainer.innerHTML = '';
+                images.forEach(function(_, i){
+                    var d = document.createElement('button');
+                    d.type = 'button';
+                    d.className = 'banner-dot';
+                    d.setAttribute('data-index', i);
+                    d.style.width = '10px'; d.style.height = '10px'; d.style.borderRadius = '50%'; d.style.border='none';
+                    d.style.background = i===0 ? 'var(--primary-gold)' : 'rgba(255,255,255,0.5)';
+                    d.style.cursor = 'pointer'; d.style.padding='0';
+                    d.addEventListener('click', function(){ show(parseInt(this.getAttribute('data-index')), true); });
+                    dotsContainer.appendChild(d);
+                });
+
+                function updateDots(){
+                    var dots = dotsContainer.children;
+                    for(var i=0;i<dots.length;i++){
+                        dots[i].style.background = (i===idx) ? 'var(--primary-gold)' : 'rgba(255,255,255,0.5)';
+                    }
+                }
+
+                function crossfadeTo(nextIndex){
+                    nextIndex = (nextIndex + images.length) % images.length;
+                    var top = topIsA ? a : b;
+                    var bottom = topIsA ? b : a;
+                    // set bottom to next image and bring it to visible by fading
+                    bottom.src = images[nextIndex];
+                    bottom.style.opacity = 1;
+                    top.style.opacity = 0;
+                    topIsA = !topIsA;
+                    idx = nextIndex;
+                    updateDots();
+                }
+
+                function show(i, userTriggered){
+                    if(typeof i !== 'number') return;
+                    if(i === idx) return;
+                    crossfadeTo(i);
+                    if(userTriggered) restartTimer();
+                }
+
+                prevBtn.addEventListener('click', function(){ show(idx - 1, true); });
+                nextBtn.addEventListener('click', function(){ show(idx + 1, true); });
+
+                function startTimer(){
+                    if(interval) return;
+                    interval = setInterval(function(){ crossfadeTo(idx + 1); }, delay);
+                }
+                function stopTimer(){ if(interval){ clearInterval(interval); interval = null; } }
+                function restartTimer(){ stopTimer(); startTimer(); }
+
+                // pause on hover
+                var hero = document.getElementById('heroBanner');
+                hero.addEventListener('mouseenter', stopTimer);
+                hero.addEventListener('mouseleave', startTimer);
+
+                // init
+                // ensure both images have initial sources
+                a.src = images[0];
+                b.src = images[1] || images[0];
+                a.style.opacity = 1; b.style.opacity = 0; topIsA = true; idx = 0; updateDots();
+                startTimer();
+            }
         })();
         </script>
 

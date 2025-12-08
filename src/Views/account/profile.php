@@ -891,6 +891,12 @@
                                         </div>
                                         <div class="order-actions">
                                             <a href="<?php echo ROOT_URL; ?>account/order/<?php echo urlencode($order['Order_Id']); ?>" class="order-btn order-btn-primary">Xem Chi Tiết</a>
+                                            <?php if ($status === 'pending'): ?>
+                                                <form method="POST" action="<?php echo ROOT_URL; ?>account/cancelOrder" style="display:inline;">
+                                                    <input type="hidden" name="order_id" value="<?php echo htmlspecialchars($order['Order_Id']); ?>">
+                                                    <button type="submit" class="order-btn order-btn-secondary" onclick="return confirm('Bạn chắc chắn muốn hủy đơn hàng này?');">Hủy đơn</button>
+                                                </form>
+                                            <?php endif; ?>
                                         </div>
                                     </div>
                                 </div>

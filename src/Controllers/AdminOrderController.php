@@ -120,15 +120,12 @@ class AdminOrderController extends Controller
 
         $orderId = $_POST['order_id'] ?? '';
         $newStatus = $_POST['status'] ?? '';
-
         if (empty($orderId) || empty($newStatus)) {
             header('HTTP/1.1 400 Bad Request');
             header('Content-Type: application/json');
             echo json_encode(['success' => false, 'error' => 'Thiếu tham số']);
             exit;
         }
-
-        // Validate status
         $validStatuses = ['pending', 'confirmed', 'shipping', 'delivered', 'cancelled', 'return'];
         if (!in_array($newStatus, $validStatuses)) {
             header('HTTP/1.1 400 Bad Request');
@@ -136,8 +133,35 @@ class AdminOrderController extends Controller
             echo json_encode(['success' => false, 'error' => 'Trạng thái không hợp lệ']);
             exit;
         }
-
         $orderModel = new Order();
+        $order = $orderModel->getById($orderId);
+        if (!$order) {
+            header('HTTP/1.1 404 Not Found');
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'error' => 'Không tìm thấy đơn hàng']);
+            exit;
+        }
+        $currentStatus = $order['TrangThai'];
+        // Không cho chuyển trạng thái nếu đã hoàn thành hoặc đã hủy
+        if ($currentStatus === 'delivered' || $currentStatus === 'cancelled') {
+            header('HTTP/1.1 400 Bad Request');
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'error' => 'Không thể thay đổi trạng thái này']);
+            exit;
+        }
+        // Chỉ cho phép chuyển trạng thái từng bước một
+        $stepOrder = ['pending', 'confirmed', 'shipping', 'delivered'];
+        $currentIdx = array_search($currentStatus, $stepOrder);
+        $newIdx = array_search($newStatus, $stepOrder);
+        $isNextStep = ($newIdx === $currentIdx + 1);
+        $isCancel = ($newStatus === 'cancelled' && $currentStatus === 'pending');
+        $isReturn = ($newStatus === 'return' && $currentStatus === 'delivered');
+        if (!($isNextStep || $isCancel || $isReturn)) {
+            header('HTTP/1.1 400 Bad Request');
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'error' => 'Chỉ được chuyển trạng thái kế tiếp, hủy khi chờ xác nhận hoặc trả hàng khi đã hoàn thành']);
+            exit;
+        }
         $success = $orderModel->updateStatus($orderId, $newStatus);
 
         // Detect AJAX (X-Requested-With) or Accept header

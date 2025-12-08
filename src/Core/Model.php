@@ -64,7 +64,9 @@ class Model {
      * @return array|false
      */
     public function getById($id) {
-        $sql = "SELECT * FROM {$this->table} WHERE id = :id";
+        // Xác định tên cột khóa chính
+        $primaryKey = property_exists($this, 'primaryKey') ? $this->primaryKey : 'id';
+        $sql = "SELECT * FROM {$this->table} WHERE {$primaryKey} = :id";
         $stmt = $this->db->prepare($sql);
         $stmt->execute(['id' => $id]);
         return $stmt->fetch(PDO::FETCH_ASSOC);
