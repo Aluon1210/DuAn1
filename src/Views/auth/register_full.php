@@ -227,6 +227,12 @@
         <span>HOẶC</span>
     </div>
 
+    <div style="text-align:center;">
+        <a href="<?php echo ROOT_URL; ?>auth/google" class="btn" style="display:inline-flex;align-items:center;gap:8px;padding:12px 18px;border-radius:10px;border:1px solid var(--border-light);background:white;color:var(--text-dark);text-decoration:none;box-shadow:var(--shadow-soft);">
+            <img src="https://developers.google.com/identity/images/g-logo.png" alt="Google" style="width:20px;height:20px;"> Đăng ký/Đăng nhập với Google
+        </a>
+    </div>
+
     <div class="auth-footer">
         Đã có tài khoản? 
         <a href="<?php echo ROOT_URL; ?>login">Đăng nhập ngay</a>

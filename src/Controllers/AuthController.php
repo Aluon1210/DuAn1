@@ -199,6 +199,165 @@ class AuthController extends Controller {
         header('Location: ' . ROOT_URL);
         exit;
     }
+
+    /**
+     * Redirect user to Google OAuth consent screen
+     * URL: /auth/google
+     */
+    public function google()
+    {
+        $config = require ROOT_PATH . '/src/Config/google_oauth.php';
+        $clientId = $config['client_id'] ?? '';
+        $redirectUri = $config['redirect_uri'] ?? (ROOT_URL . 'auth/google-callback');
+
+        if (empty($clientId)) {
+            $_SESSION['error'] = 'Google OAuth chưa được cấu hình.';
+            header('Location: ' . ROOT_URL . 'login');
+            exit;
+        }
+
+        $scope = urlencode('openid email profile');
+        $state = bin2hex(random_bytes(8));
+        $_SESSION['oauth2_state'] = $state;
+
+        $authUrl = $config['auth_url']
+            . '?response_type=code'
+            . '&client_id=' . urlencode($clientId)
+            . '&redirect_uri=' . urlencode($redirectUri)
+            . '&scope=' . $scope
+            . '&access_type=online'
+            . '&prompt=select_account'
+            . '&state=' . $state;
+
+        header('Location: ' . $authUrl);
+        exit;
+    }
+
+    /**
+     * Handle Google OAuth callback
+     * URL: /auth/google/callback
+     */
+    public function googleCallback()
+    {
+        // Basic validation
+        $config = require ROOT_PATH . '/src/Config/google_oauth.php';
+        $clientId = $config['client_id'] ?? '';
+        $clientSecret = $config['client_secret'] ?? '';
+        $tokenUrl = $config['token_url'] ?? 'https://oauth2.googleapis.com/token';
+        $userinfoUrl = $config['userinfo_url'] ?? 'https://www.googleapis.com/oauth2/v2/userinfo';
+        $redirectUri = $config['redirect_uri'] ?? (ROOT_URL . 'auth/google-callback');
+
+        // Check state
+        if (!isset($_GET['state']) || ($_GET['state'] ?? '') !== ($_SESSION['oauth2_state'] ?? '')) {
+            $_SESSION['error'] = 'State không hợp lệ. Vui lòng thử lại.';
+            header('Location: ' . ROOT_URL . 'login');
+            exit;
+        }
+
+        if (!isset($_GET['code'])) {
+            $_SESSION['error'] = 'Không có mã xác thực từ Google.';
+            header('Location: ' . ROOT_URL . 'login');
+            exit;
+        }
+
+        $code = $_GET['code'];
+
+        // Exchange code for tokens
+        $post = http_build_query([
+            'code' => $code,
+            'client_id' => $clientId,
+            'client_secret' => $clientSecret,
+            'redirect_uri' => $redirectUri,
+            'grant_type' => 'authorization_code'
+        ]);
+
+        $opts = [
+            'http' => [
+                'method' => 'POST',
+                'header' => "Content-Type: application/x-www-form-urlencoded\r\n",
+                'content' => $post,
+                'timeout' => 10
+            ]
+        ];
+
+        $context = stream_context_create($opts);
+        $response = @file_get_contents($tokenUrl, false, $context);
+        if ($response === false) {
+            $_SESSION['error'] = 'Lỗi khi trao đổi mã với Google.';
+            header('Location: ' . ROOT_URL . 'login');
+            exit;
+        }
+
+        $tokenData = json_decode($response, true);
+        if (empty($tokenData['access_token'])) {
+            $_SESSION['error'] = 'Không nhận được access token từ Google.';
+            header('Location: ' . ROOT_URL . 'login');
+            exit;
+        }
+
+        $accessToken = $tokenData['access_token'];
+
+        // Get user info
+        $optsGet = [
+            'http' => [
+                'method' => 'GET',
+                'header' => "Authorization: Bearer " . $accessToken . "\r\n",
+                'timeout' => 10
+            ]
+        ];
+        $ctx = stream_context_create($optsGet);
+        $ui = @file_get_contents($userinfoUrl, false, $ctx);
+        if ($ui === false) {
+            $_SESSION['error'] = 'Không thể lấy thông tin người dùng từ Google.';
+            header('Location: ' . ROOT_URL . 'login');
+            exit;
+        }
+
+        $userInfo = json_decode($ui, true);
+        $email = $userInfo['email'] ?? null;
+        $name = $userInfo['name'] ?? ($userInfo['given_name'] ?? '');
+
+        if (!$email) {
+            $_SESSION['error'] = 'Google không cung cấp email. Vui lòng sử dụng phương thức khác.';
+            header('Location: ' . ROOT_URL . 'login');
+            exit;
+        }
+
+        $userModel = new User();
+        $existing = $userModel->getByEmail($email);
+        if (!$existing) {
+            // Create a new user with random password
+            $randomPassword = bin2hex(random_bytes(8));
+            $created = $userModel->createUser([
+                'name' => $name,
+                'email' => $email,
+                'password' => $randomPassword,
+                'phone' => '',
+                'role' => 'user',
+                'address' => ''
+            ]);
+
+            if (!$created) {
+                $_SESSION['error'] = 'Không thể tạo tài khoản từ Google. Vui lòng thử lại.';
+                header('Location: ' . ROOT_URL . 'login');
+                exit;
+            }
+            $existing = $userModel->getByEmail($email);
+        }
+
+        // Login the user
+        if ($existing) {
+            unset($existing['password']);
+            $_SESSION['user'] = $existing;
+            $_SESSION['message'] = 'Đăng nhập thành công bằng Google';
+            header('Location: ' . ROOT_URL);
+            exit;
+        }
+
+        $_SESSION['error'] = 'Đăng nhập bằng Google thất bại.';
+        header('Location: ' . ROOT_URL . 'login');
+        exit;
+    }
 }
 ?>
 
