@@ -350,6 +350,10 @@ class AuthController extends Controller {
             unset($existing['password']);
             $_SESSION['user'] = $existing;
             $_SESSION['message'] = 'Đăng nhập thành công bằng Google';
+            // DEBUG: log session user after Google login
+            if (function_exists('error_log')) {
+                error_log('[DEBUG][AuthController::googleCallback] SESSION_USER_AFTER_GOOGLE_LOGIN: ' . print_r($_SESSION['user'], true));
+            }
             header('Location: ' . ROOT_URL);
             exit;
         }

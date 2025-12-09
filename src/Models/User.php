@@ -113,7 +113,8 @@ class User extends Model {
             'name' => $user['FullName'] ?? '',
             'full_name' => $user['FullName'] ?? '',
             'phone' => $user['Phone'] ?? '',
-            'role' => $user['Role'] ?? 'user',
+            // Normalize role to lowercase to avoid case-sensitivity issues
+            'role' => strtolower($user['Role'] ?? 'user'),
             'address' => $user['Address'] ?? '',
             'password' => $user['__PassWord'] ?? '' // Chỉ dùng khi authenticate
         ];
