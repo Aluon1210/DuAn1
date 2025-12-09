@@ -1,0 +1,14 @@
+832d4dafbf945d5d27cc6a061d4f4f6aff8932ab commit	refs/heads/backup-before-secret-removal
+c0e5713c26ac0642df2c17dd01d6ee0df2abaf6c commit	refs/heads/cong
+d0e596780eb89247d0407c388dc5ae21324feb04 commit	refs/heads/main
+832d4dafbf945d5d27cc6a061d4f4f6aff8932ab commit	refs/heads/master
+fa8d592f374d25226d8be38719e6e59d593df247 commit	refs/heads/phuc
+a28deb832ab8824b3b21b7799bcaf60e4d93ae16 commit	refs/heads/quan
+b6940d230e67011ea1863d0a5f5555a27eb71202 commit	refs/heads/tra
+c0e5713c26ac0642df2c17dd01d6ee0df2abaf6c commit	refs/remotes/origin/HEAD
+c0e5713c26ac0642df2c17dd01d6ee0df2abaf6c commit	refs/remotes/origin/cong
+d0e596780eb89247d0407c388dc5ae21324feb04 commit	refs/remotes/origin/main
+c0e5713c26ac0642df2c17dd01d6ee0df2abaf6c commit	refs/remotes/origin/master
+fa8d592f374d25226d8be38719e6e59d593df247 commit	refs/remotes/origin/phuc
+e03480e1a029c13ac28736080b89cc3d28ff5bb2 commit	refs/remotes/origin/quan
+81d4b7936865ec50c02af39733f52d097829c856 commit	refs/remotes/origin/tra

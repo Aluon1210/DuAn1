@@ -1,0 +1,480 @@
+<?php require_once ROOT_PATH . '/src/Views/includes/header.php'; ?>
+
+<style>
+    .cart-header {
+        margin-bottom: 40px;
+    }
+
+    .cart-header h2 {
+        font-family: 'Playfair Display', serif;
+        font-size: 42px;
+        font-weight: 700;
+        margin-bottom: 12px;
+        letter-spacing: 1px;
+    }
+
+    .cart-header p {
+        color: var(--text-light);
+        font-size: 16px;
+    }
+
+    .cart-table-container {
+        background: white;
+        border-radius: 16px;
+        padding: 40px;
+        box-shadow: var(--shadow-soft);
+        margin-top: 30px;
+    }
+
+    .cart-table {
+        width: 100%;
+        border-collapse: separate;
+        border-spacing: 0;
+    }
+
+    .cart-table thead tr {
+        background: linear-gradient(135deg, var(--primary-black) 0%, #2c2c2c 100%);
+        color: white;
+    }
+
+    .cart-table thead th {
+        padding: 20px;
+        text-align: left;
+        font-weight: 600;
+        font-size: 14px;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        border-bottom: 3px solid var(--primary-gold);
+    }
+
+    .cart-table thead th:nth-child(2),
+    .cart-table thead th:nth-child(3),
+    .cart-table thead th:nth-child(4),
+    .cart-table thead th:nth-child(5) {
+        text-align: center;
+    }
+
+    .cart-table tbody tr {
+        border-bottom: 1px solid var(--border-light);
+        transition: var(--transition-smooth);
+    }
+
+    .cart-table tbody tr:hover {
+        background: var(--accent-gray);
+    }
+
+    .cart-table tbody td {
+        padding: 24px 20px;
+        vertical-align: middle;
+    }
+
+    .cart-item-image {
+        width: 100px;
+        height: 100px;
+        border-radius: 12px;
+        overflow: hidden;
+        box-shadow: var(--shadow-soft);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: var(--accent-gray);
+    }
+
+    .cart-item-image img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+
+    .cart-item-info {
+        padding-left: 20px;
+    }
+
+    .cart-item-name {
+        font-weight: 600;
+        font-size: 16px;
+        color: var(--text-dark);
+        margin-bottom: 8px;
+    }
+
+    .cart-item-link {
+        color: var(--primary-gold);
+        text-decoration: none;
+        font-size: 13px;
+        transition: var(--transition-smooth);
+    }
+
+    .cart-item-link:hover {
+        color: var(--primary-black);
+        text-decoration: underline;
+    }
+
+    .cart-quantity-input {
+        width: 80px;
+        padding: 10px 14px;
+        border: 2px solid var(--border-light);
+        border-radius: 30px;
+        text-align: center;
+        font-weight: 600;
+        transition: var(--transition-smooth);
+    }
+
+    .cart-quantity-input:focus {
+        outline: none;
+        border-color: var(--primary-gold);
+        box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.1);
+    }
+
+    .cart-price {
+        font-size: 18px;
+        font-weight: 700;
+        color: var(--primary-black);
+        font-family: 'Playfair Display', serif;
+    }
+
+    .cart-subtotal {
+        font-size: 20px;
+        font-weight: 700;
+        color: var(--primary-black);
+        font-family: 'Playfair Display', serif;
+    }
+
+    .cart-actions {
+        margin-top: 40px;
+        padding-top: 30px;
+        border-top: 2px solid var(--border-light);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 20px;
+    }
+
+    .cart-total {
+        text-align: right;
+    }
+
+    .cart-total-label {
+        font-size: 14px;
+        color: var(--text-light);
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        margin-bottom: 8px;
+    }
+
+    .cart-total-amount {
+        font-family: 'Playfair Display', serif;
+        font-size: 36px;
+        font-weight: 700;
+        color: var(--primary-black);
+        letter-spacing: 1px;
+    }
+
+    .cart-total-amount::after {
+        content: ' ₫';
+        font-size: 24px;
+        color: var(--primary-gold);
+    }
+
+    .cart-buttons {
+        display: flex;
+        gap: 16px;
+        flex-wrap: wrap;
+    }
+
+    .cart-empty {
+        background: white;
+        border-radius: 16px;
+        padding: 80px 40px;
+        text-align: center;
+        box-shadow: var(--shadow-soft);
+        margin-top: 30px;
+    }
+
+    .cart-empty-icon {
+        font-size: 120px;
+        margin-bottom: 30px;
+        opacity: 0.3;
+    }
+
+    .cart-empty-title {
+        font-family: 'Playfair Display', serif;
+        font-size: 32px;
+        font-weight: 600;
+        color: var(--text-dark);
+        margin-bottom: 16px;
+    }
+
+    .cart-empty-text {
+        color: var(--text-light);
+        font-size: 16px;
+        margin-bottom: 40px;
+    }
+</style>
+
+<div class="cart-header">
+    <h2>🛒 Giỏ Hàng Của Bạn</h2>
+    <p><?php echo !empty($cartItems) ? count($cartItems) . ' sản phẩm trong giỏ hàng' : 'Giỏ hàng trống'; ?></p>
+</div>
+
+<?php if (!empty($cartItems)): ?>
+    <div class="cart-table-container">
+        <form method="POST" action="<?php echo ROOT_URL; ?>cart/update" id="cartForm">
+            <table class="cart-table">
+                <thead>
+                    <tr>
+                        <th style="width:40px; text-align:center;">Chọn</th>
+                        <th>Sản phẩm</th>
+                        <th>Giá</th>
+                        <th>Số lượng</th>
+                        <th>Thành tiền</th>
+                        <th>Hành động</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php foreach ($cartItems as $item): ?>
+                        <tr <?php echo ($item['variant'] ? ($item['variant']['stock'] ?? 0) : ($item['product']['quantity'] ?? 0)) <= 0 ? 'style="opacity:0.5;"' : ''; ?> >
+                            <td style="text-align:center;">
+                                <input type="checkbox" name="selected[]" value="<?php echo htmlspecialchars($item['cart_id']); ?>" <?php echo ($item['variant'] ? ($item['variant']['stock'] ?? 0) : ($item['product']['quantity'] ?? 0)) <= 0 ? 'disabled' : ''; ?> class="cart-select">
+                            </td>
+                            <td>
+                                <div style="display: flex; align-items: center;">
+                                    <div class="cart-item-image">
+                                        <?php if (!empty($item['product']['image'])): ?>
+                                            <img src="<?php echo ROOT_URL; ?>public/images/<?php echo htmlspecialchars($item['product']['image']); ?>" alt="<?php echo htmlspecialchars($item['product']['name']); ?>">
+                                        <?php else: ?>
+                                            <span style="font-size: 50px; opacity: 0.3;">✨</span>
+                                        <?php endif; ?>
+                                    </div>
+                                    <div class="cart-item-info">
+                                        <div class="cart-item-name"><?php echo htmlspecialchars($item['product']['name']); ?></div>
+                                        <?php if ($item['color'] || $item['size']): ?>
+                                            <div style="margin-top: 8px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
+                                                <?php if ($item['color']): ?>
+                                                    <div style="display: flex; align-items: center; gap: 6px;">
+                                                        <span style="font-size: 12px; color: var(--text-light);">Màu:</span>
+                                                        <div style="width: 20px; height: 20px; border-radius: 50%; background-color: <?php echo htmlspecialchars($item['color']['hex_code']); ?>; border: 2px solid #ddd; box-shadow: 0 1px 3px rgba(0,0,0,0.2);" title="<?php echo htmlspecialchars($item['color']['name']); ?>"></div>
+                                                        <span style="font-size: 13px; color: var(--text-dark);"><?php echo htmlspecialchars($item['color']['name']); ?></span>
+                                                    </div>
+                                                <?php endif; ?>
+                                                <?php if ($item['size']): ?>
+                                                    <div style="display: flex; align-items: center; gap: 6px;">
+                                                        <span style="font-size: 12px; color: var(--text-light);">Size:</span>
+                                                        <span style="font-size: 13px; color: var(--text-dark); font-weight: 600;"><?php echo htmlspecialchars($item['size']['value']); ?></span>
+                                                    </div>
+                                                <?php endif; ?>
+                                            </div>
+                                        <?php endif; ?>
+                                        <a href="<?php echo ROOT_URL; ?>product/detail/<?php echo $item['product']['id']; ?>" class="cart-item-link" style="margin-top: 8px; display: inline-block;">
+                                            Xem chi tiết →
+                                        </a>
+                                        <?php if ($item['product']['quantity'] <= 0): ?>
+                                            <div style="margin-top:8px; color:#e74c3c; font-weight:600;">Hết hàng</div>
+                                        <?php endif; ?>
+                                    </div>
+                                </div>
+                            </td>
+                            <td style="text-align: center;">
+                                <div class="cart-price"><?php echo number_format($item['price'], 0, ',', '.'); ?> ₫</div>
+                            </td>
+                            <td style="text-align: center;">
+                                <div style="display:inline-flex; align-items:center; gap:8px; justify-content:center;">
+                                    <button type="button" class="btn btn-primary qty-minus" data-id="<?php echo htmlspecialchars($item['cart_id']); ?>" <?php echo ($item['variant'] ? ($item['variant']['stock'] ?? 0) : ($item['product']['quantity'] ?? 0)) <= 0 ? 'disabled' : ''; ?>>-</button>
+                                    <input type="number" 
+                                           name="quantity[<?php echo htmlspecialchars($item['cart_id']); ?>]" 
+                                           value="<?php echo $item['quantity']; ?>" 
+                                           min="1" 
+                                           max="<?php echo $item['variant'] ? ($item['variant']['stock'] ?? 0) : ($item['product']['quantity'] ?? 0); ?>" 
+                                           class="cart-quantity-input" 
+                                           data-price="<?php echo $item['price']; ?>"
+                                           data-id="<?php echo htmlspecialchars($item['cart_id']); ?>"
+                                           <?php echo ($item['variant'] ? ($item['variant']['stock'] ?? 0) : ($item['product']['quantity'] ?? 0)) <= 0 ? 'disabled' : ''; ?>
+                                           required>
+                                    <button type="button" class="btn btn-primary qty-plus" data-id="<?php echo htmlspecialchars($item['cart_id']); ?>" <?php echo ($item['variant'] ? ($item['variant']['stock'] ?? 0) : ($item['product']['quantity'] ?? 0)) <= 0 ? 'disabled' : ''; ?>>+</button>
+                                </div>
+                            </td>
+                            <td style="text-align: right;">
+                                <div class="cart-subtotal" data-id="<?php echo htmlspecialchars($item['cart_id']); ?>"><?php echo number_format($item['subtotal'], 0, ',', '.'); ?> ₫</div>
+                            </td>
+                            <td style="text-align: center;">
+                                <a href="<?php echo ROOT_URL; ?>cart/remove/<?php echo htmlspecialchars($item['cart_id']); ?>" 
+                                   class="btn btn-danger" 
+                                   style="padding: 10px 20px; font-size: 13px;">
+                                    Xóa
+                                </a>
+                            </td>
+                        </tr>
+                    <?php endforeach; ?>
+                </tbody>
+            </table>
+
+            <div class="cart-actions">
+                <div class="cart-buttons">
+                    <button type="submit" class="btn btn-primary" style="padding: 14px 30px;">
+                        💾 Cập nhật giỏ hàng
+                    </button>
+                    <a href="<?php echo ROOT_URL; ?>product" class="btn btn-primary" style="padding: 14px 30px;">
+                        ← Tiếp tục mua hàng
+                    </a>
+                    <a href="<?php echo ROOT_URL; ?>cart/clear" class="btn btn-danger" style="padding: 14px 30px;">
+                        🗑️ Xóa tất cả
+                    </a>
+                </div>
+                <div class="cart-total">
+                    <div class="cart-total-label">Tổng tiền hàng đã chọn</div>
+                    <div class="cart-total-amount" id="selectedTotal">0</div>
+                    <div style="margin-top:8px; color: var(--text-light);">Đã chọn: <span id="selectedCount">0</span> sản phẩm</div>
+                </div>
+            </div>
+        </form>
+
+        <div style="margin-top: 30px; padding-top: 30px; border-top: 2px solid var(--border-light); display:flex; justify-content:center;">
+            <button type="submit" form="cartForm" formaction="<?php echo ROOT_URL; ?>cart/confirm" class="btn btn-success" style="padding: 18px 60px; font-size: 18px; text-transform: uppercase; letter-spacing: 1.5px;">
+                ✓ Thanh toán
+            </button>
+        </div>
+    </div>
+<?php else: ?>
+    <div class="cart-empty">
+        <div class="cart-empty-icon">🛒</div>
+        <h3 class="cart-empty-title">Giỏ hàng của bạn trống</h3>
+        <p class="cart-empty-text">Hãy khám phá bộ sưu tập của chúng tôi và thêm các sản phẩm yêu thích vào giỏ hàng</p>
+        <a href="<?php echo ROOT_URL; ?>product" class="btn btn-success" style="padding: 16px 40px; font-size: 16px; text-transform: uppercase; letter-spacing: 1.5px;">
+            🛍️ Khám phá ngay
+        </a>
+    </div>
+<?php endif; ?>
+
+<?php require_once ROOT_PATH . '/src/Views/includes/footer.php'; ?>
+
+<script>
+const fmt = v => new Intl.NumberFormat('vi-VN').format(v);
+function recalc() {
+  let total = 0; let count = 0;
+  document.querySelectorAll('.cart-select').forEach(chk => {
+    if (chk.checked && !chk.disabled) {
+      const id = chk.value;
+      const qtyInput = document.querySelector(`input[data-id="${id}"]`);
+      const price = parseInt(qtyInput.getAttribute('data-price')) || 0;
+      const qty = parseInt(qtyInput.value) || 0;
+      total += price * qty; count += 1;
+    }
+  });
+  document.getElementById('selectedTotal').textContent = fmt(total);
+  document.getElementById('selectedCount').textContent = count;
+}
+function clamp(input) {
+  const min = parseInt(input.min) || 1;
+  const max = parseInt(input.max) || 1;
+  let val = parseInt(input.value) || min;
+  if (val < min) val = min;
+  if (val > max) val = max;
+  input.value = val;
+}
+document.querySelectorAll('.qty-minus').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const id = btn.getAttribute('data-id');
+    const input = document.querySelector(`input[data-id="${id}"]`);
+    input.value = Math.max((parseInt(input.value)||1)-1, parseInt(input.min)||1);
+    clamp(input);
+    const price = parseInt(input.getAttribute('data-price'))||0;
+    const subtotal = document.querySelector(`.cart-subtotal[data-id="${id}"]`);
+    subtotal.textContent = fmt(price * parseInt(input.value)) + ' ₫';
+    recalc();
+  });
+});
+document.querySelectorAll('.qty-plus').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const id = btn.getAttribute('data-id');
+    const input = document.querySelector(`input[data-id="${id}"]`);
+    input.value = (parseInt(input.value)||1)+1;
+    clamp(input);
+    const price = parseInt(input.getAttribute('data-price'))||0;
+    const subtotal = document.querySelector(`.cart-subtotal[data-id="${id}"]`);
+    subtotal.textContent = fmt(price * parseInt(input.value)) + ' ₫';
+    recalc();
+  });
+});
+document.querySelectorAll('.cart-quantity-input').forEach(inp => {
+  inp.addEventListener('input', () => {
+    clamp(inp);
+    const id = inp.getAttribute('data-id');
+    const price = parseInt(inp.getAttribute('data-price'))||0;
+    const subtotal = document.querySelector(`.cart-subtotal[data-id="${id}"]`);
+    subtotal.textContent = fmt(price * parseInt(inp.value)) + ' ₫';
+    recalc();
+  });
+});
+document.querySelectorAll('.cart-select').forEach(chk => {
+  chk.addEventListener('change', recalc);
+});
+recalc();
+</script>
+
+<?php if (!empty($orders)): ?>
+<div style="margin-top: 60px;">
+  <h3 style="font-family: 'Playfair Display', serif; font-size: 28px; font-weight: 700; margin-bottom: 24px;">📋 Lịch Sử Đơn Hàng</h3>
+  
+  <div style="background: white; border-radius: 16px; box-shadow: var(--shadow-soft); overflow: hidden;">
+    <table style="width: 100%; border-collapse: collapse;">
+      <thead>
+        <tr style="background: linear-gradient(135deg, var(--primary-black) 0%, #2c2c2c 100%); color: white;">
+          <th style="padding: 16px 20px; text-align: left; font-weight: 600; font-size: 13px; text-transform: uppercase; letter-spacing: 1px;">Mã Đơn</th>
+          <th style="padding: 16px 20px; text-align: left; font-weight: 600; font-size: 13px; text-transform: uppercase; letter-spacing: 1px;">Ngày Đặt</th>
+          <th style="padding: 16px 20px; text-align: center; font-weight: 600; font-size: 13px; text-transform: uppercase; letter-spacing: 1px;">Trạng Thái</th>
+          <th style="padding: 16px 20px; text-align: right; font-weight: 600; font-size: 13px; text-transform: uppercase; letter-spacing: 1px;">Tổng Tiền</th>
+          <th style="padding: 16px 20px; text-align: center; font-weight: 600; font-size: 13px; text-transform: uppercase; letter-spacing: 1px;">Hành Động</th>
+        </tr>
+      </thead>
+      <tbody>
+        <?php foreach ($orders as $order): ?>
+          <tr style="border-bottom: 1px solid var(--border-light); transition: var(--transition-smooth);" onmouseover="this.style.background='var(--accent-gray)'" onmouseout="this.style.background='white'">
+            <td style="padding: 16px 20px; font-weight: 600; color: var(--primary-black);">
+              <?php echo htmlspecialchars($order['Order_Id']); ?>
+            </td>
+            <td style="padding: 16px 20px; color: var(--text-dark);">
+              <?php echo date('d/m/Y', strtotime($order['Order_date'])); ?>
+            </td>
+            <td style="padding: 16px 20px; text-align: center;">
+              <?php 
+                $statuses = [
+                  'pending' => ['text' => 'Chờ xác nhận', 'class' => 'pending'],
+                  'confirmed' => ['text' => 'Chờ giao', 'class' => 'confirmed'],
+                  'completed' => ['text' => 'Hoàn thành', 'class' => 'completed'],
+                  'cancelled' => ['text' => 'Đã hủy', 'class' => 'cancelled']
+                ];
+                $status = $statuses[$order['TrangThai']] ?? ['text' => $order['TrangThai'], 'class' => 'default'];
+              ?>
+              <span style="display: inline-block; padding: 6px 12px; border-radius: 16px; font-size: 12px; font-weight: 600;
+                <?php 
+                  if ($status['class'] === 'pending') echo 'background: #fff3cd; color: #856404;';
+                  elseif ($status['class'] === 'confirmed') echo 'background: #d1ecf1; color: #0c5460;';
+                  elseif ($status['class'] === 'completed') echo 'background: #d4edda; color: #155724;';
+                  else echo 'background: #f8d7da; color: #721c24;';
+                ?>
+              ">
+                <?php echo $status['text']; ?>
+              </span>
+            </td>
+            <td style="padding: 16px 20px; text-align: right; font-weight: 700; color: var(--primary-black);">
+              <!-- Tính tổng tiền từ order_detail -->
+              <?php 
+                // Note: Bạn có thể thêm method getOrderTotal() vào Order model để tính này
+                // Tạm thời hiển thị "Xem chi tiết" để khách click vào
+              ?>
+              <a href="<?php echo ROOT_URL; ?>cart/orderDetail/<?php echo htmlspecialchars($order['Order_Id']); ?>" style="color: var(--primary-gold); text-decoration: none; font-weight: 600;">Xem chi tiết →</a>
+            </td>
+            <td style="padding: 16px 20px; text-align: center;">
+              <a href="<?php echo ROOT_URL; ?>cart/orderDetail/<?php echo htmlspecialchars($order['Order_Id']); ?>" class="btn btn-primary" style="padding: 8px 16px; font-size: 12px; text-decoration: none; display: inline-block;">
+                📄 Chi Tiết
+              </a>
+            </td>
+          </tr>
+        <?php endforeach; ?>
+      </tbody>
+    </table>
+  </div>
+</div>
+<?php endif; ?>
+
+
