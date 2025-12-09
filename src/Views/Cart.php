@@ -329,7 +329,7 @@
         </form>
 
         <div style="margin-top: 30px; padding-top: 30px; border-top: 2px solid var(--border-light); display:flex; justify-content:center;">
-            <button type="submit" form="cartForm" formaction="<?php echo ROOT_URL; ?>cart/confirm" class="btn btn-success" style="padding: 18px 60px; font-size: 18px; text-transform: uppercase; letter-spacing: 1.5px;">
+            <button id="paySelectedBtn" type="submit" form="cartForm" formaction="<?php echo ROOT_URL; ?>cart/confirm" class="btn btn-success" style="padding: 18px 60px; font-size: 18px; text-transform: uppercase; letter-spacing: 1.5px;">
                 ✓ Thanh toán
             </button>
         </div>
@@ -371,6 +371,36 @@ function clamp(input) {
   if (val > max) val = max;
   input.value = val;
 }
+async function syncQty(id, qty) {
+  try {
+    const resp = await fetch('<?php echo ROOT_URL; ?>cart/update-quantity', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({ cart_id: id, quantity: String(qty) })
+    });
+    const data = await resp.json();
+    const input = document.querySelector(`input[data-id="${id}"]`);
+    if (!data || !input) return;
+    if (data.deleted) {
+      const tr = input.closest('tr');
+      if (tr) tr.remove();
+      recalc();
+      return;
+    }
+    if (typeof data.max !== 'undefined') {
+      input.max = String(data.max);
+    }
+    const newQty = parseInt(data.quantity || qty) || qty;
+    if ((parseInt(input.value) || 0) !== newQty) {
+      input.value = newQty;
+    }
+    const subtotal = document.querySelector(`.cart-subtotal[data-id="${id}"]`);
+    if (subtotal && typeof data.subtotal !== 'undefined') {
+      subtotal.textContent = fmt(data.subtotal) + ' ₫';
+    }
+    recalc();
+  } catch (e) {}
+}
 document.querySelectorAll('.qty-minus').forEach(btn => {
   btn.addEventListener('click', () => {
     const id = btn.getAttribute('data-id');
@@ -381,6 +411,7 @@ document.querySelectorAll('.qty-minus').forEach(btn => {
     const subtotal = document.querySelector(`.cart-subtotal[data-id="${id}"]`);
     subtotal.textContent = fmt(price * parseInt(input.value)) + ' ₫';
     recalc();
+    syncQty(id, parseInt(input.value));
   });
 });
 document.querySelectorAll('.qty-plus').forEach(btn => {
@@ -393,22 +424,36 @@ document.querySelectorAll('.qty-plus').forEach(btn => {
     const subtotal = document.querySelector(`.cart-subtotal[data-id="${id}"]`);
     subtotal.textContent = fmt(price * parseInt(input.value)) + ' ₫';
     recalc();
+    syncQty(id, parseInt(input.value));
   });
 });
 document.querySelectorAll('.cart-quantity-input').forEach(inp => {
-  inp.addEventListener('input', () => {
+  inp.addEventListener('change', () => {
     clamp(inp);
     const id = inp.getAttribute('data-id');
     const price = parseInt(inp.getAttribute('data-price'))||0;
     const subtotal = document.querySelector(`.cart-subtotal[data-id="${id}"]`);
     subtotal.textContent = fmt(price * parseInt(inp.value)) + ' ₫';
     recalc();
+    syncQty(id, parseInt(inp.value));
   });
 });
 document.querySelectorAll('.cart-select').forEach(chk => {
   chk.addEventListener('change', recalc);
 });
 recalc();
+
+// Yêu cầu phải chọn ít nhất 1 sản phẩm trước khi thanh toán
+const payBtn = document.getElementById('paySelectedBtn');
+if (payBtn) {
+  payBtn.addEventListener('click', function(e) {
+    const anySelected = Array.from(document.querySelectorAll('.cart-select')).some(chk => chk.checked && !chk.disabled);
+    if (!anySelected) {
+      e.preventDefault();
+      alert('Vui lòng chọn ít nhất 1 sản phẩm để thanh toán');
+    }
+  });
+}
 </script>
 
 <?php if (!empty($orders)): ?>

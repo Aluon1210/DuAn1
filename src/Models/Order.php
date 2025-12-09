@@ -249,10 +249,10 @@ class Order extends Model
                     'Price' => $price
                 ];
 
-                // Thực hiện insert, nếu lỗi thì log và quay lại false (không giữ transaction lâu)
+                // Thực hiện insert, nếu lỗi thì log và bỏ qua chi tiết này
                 if (!$orderDetailModel->create($detailData)) {
                     error_log("Order createWithDetails: failed to create order_detail " . print_r($detailData, true));
-                    return false;
+                    continue;
                 }
                 $createdAnyDetail = true;
 

@@ -384,6 +384,7 @@ class PaymentController extends Controller
                 'bank_id' => $bankId,
                 'timestamp' => date('Y-m-d H:i:s'),
                 'user_id' => isset($_SESSION['user']['id']) ? $_SESSION['user']['id'] : ($_SESSION['user']['username'] ?? '')
+<<<<<<< HEAD
             ]);
 
             $requestUrl = $gasUrl . (strpos($gasUrl, '?') === false ? '?' : '&') . $queryParams;
@@ -398,12 +399,39 @@ class PaymentController extends Controller
                 CURLOPT_HTTPHEADER => [
                     'Accept: application/json'
                 ]
+=======
+>>>>>>> payment-feature-new-temp
             ]);
 
-            $response = curl_exec($ch);
-            $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-            $error = curl_error($ch);
-            curl_close($ch);
+            $requestUrl = $gasUrl . (strpos($gasUrl, '?') === false ? '?' : '&') . $queryParams;
+
+            $maxRetries = 3;
+            $retryDelayMs = 250;
+            $response = '';
+            $httpCode = 0;
+            $error = '';
+            for ($attempt = 1; $attempt <= $maxRetries; $attempt++) {
+                $ch = curl_init($requestUrl);
+                curl_setopt_array($ch, [
+                    CURLOPT_RETURNTRANSFER => true,
+                    CURLOPT_TIMEOUT => 4,
+                    CURLOPT_CONNECTTIMEOUT => 3,
+                    CURLOPT_CUSTOMREQUEST => 'GET',
+                    CURLOPT_FOLLOWLOCATION => true,
+                    CURLOPT_USERAGENT => 'DuAn1-PaymentChecker/1.0',
+                    CURLOPT_SSL_VERIFYPEER => false,
+                    CURLOPT_SSL_VERIFYHOST => false,
+                    CURLOPT_HTTPHEADER => [
+                        'Accept: application/json'
+                    ]
+                ]);
+                $response = curl_exec($ch);
+                $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+                $error = curl_error($ch);
+                curl_close($ch);
+                if (!$error && !empty($response)) { break; }
+                usleep($retryDelayMs * 1000);
+            }
             
             // Ghi log request + response để debug
             try {
@@ -416,9 +444,15 @@ class PaymentController extends Controller
                 $logEntry .= "TIMESTAMP: " . date('Y-m-d H:i:s') . "\n";
                 $logEntry .= "REQUEST_URL: " . $requestUrl . "\n";
                 $logEntry .= "REQUEST_METHOD: GET\n";
+<<<<<<< HEAD
                 $logEntry .= "REQUEST_QUERY: " . $queryParams . "\n";
                 $logEntry .= "HTTP_CODE: " . $httpCode . "\n";
                 $logEntry .= "CURL_ERROR: " . $error . "\n";
+=======
+            $logEntry .= "REQUEST_QUERY: " . $queryParams . "\n";
+            $logEntry .= "HTTP_CODE: " . $httpCode . "\n";
+            $logEntry .= "CURL_ERROR: " . $error . "\n";
+>>>>>>> payment-feature-new-temp
                 $logEntry .= "RESPONSE_LENGTH: " . strlen($response) . "\n";
                 $logEntry .= "RESPONSE: " . (strlen($response) > 500 ? substr($response, 0, 500) . '...' : $response) . "\n";
                 $logEntry .= "---\n\n";
@@ -616,6 +650,11 @@ class PaymentController extends Controller
         $description = isset($data['description']) ? trim($data['description']) : '';
         $address = isset($data['address']) ? trim($data['address']) : '';
         $note = isset($data['note']) ? trim($data['note']) : '';
+<<<<<<< HEAD
+=======
+        $selected = isset($data['selected']) && is_array($data['selected']) ? array_values($data['selected']) : [];
+        $quantitiesOverride = isset($data['quantities']) && is_array($data['quantities']) ? $data['quantities'] : [];
+>>>>>>> payment-feature-new-temp
 
         // Validate
         if (empty($amount)) {
@@ -628,12 +667,25 @@ class PaymentController extends Controller
         }
 
         if (empty($address)) {
+<<<<<<< HEAD
             http_response_code(400);
             echo json_encode([
                 'success' => false,
                 'message' => 'address là bắt buộc'
             ]);
             return;
+=======
+            // Fallback: dùng địa chỉ từ session user nếu không gửi
+            $address = isset($_SESSION['user']['address']) ? trim($_SESSION['user']['address']) : '';
+            if (empty($address)) {
+                http_response_code(400);
+                echo json_encode([
+                    'success' => false,
+                    'message' => 'address là bắt buộc'
+                ]);
+                return;
+            }
+>>>>>>> payment-feature-new-temp
         }
 
         // Lấy giỏ hàng từ database
@@ -678,9 +730,29 @@ class PaymentController extends Controller
             $orderDetails = [];
             $totalCartAmount = 0;
 
+<<<<<<< HEAD
             foreach ($cartItems as $cartItem) {
                 $variantId = (int)$cartItem['Variant_Id'];
                 $quantity = (int)$cartItem['Quantity'];
+=======
+            // Nếu có danh sách selected, chỉ xử lý các item đó
+            $cartItemsToProcess = [];
+            if (!empty($selected)) {
+                $selectedMap = array_flip($selected);
+                foreach ($cartItems as $ci) {
+                    if (isset($selectedMap[$ci['_Cart_Id']])) {
+                        $cartItemsToProcess[] = $ci;
+                    }
+                }
+            } else {
+                $cartItemsToProcess = $cartItems;
+            }
+
+            foreach ($cartItemsToProcess as $cartItem) {
+                $variantId = (int)$cartItem['Variant_Id'];
+                $cartId = $cartItem['_Cart_Id'] ?? null;
+                $quantity = isset($cartId, $quantitiesOverride[$cartId]) ? (int)$quantitiesOverride[$cartId] : (int)$cartItem['Quantity'];
+>>>>>>> payment-feature-new-temp
 
                 // Lấy thông tin variant
                 $variant = $variantModel->getById($variantId);
@@ -749,9 +821,17 @@ class PaymentController extends Controller
                 return;
             }
 
+<<<<<<< HEAD
             // Xóa giỏ hàng sau khi tạo đơn hàng thành công
             foreach ($cartItems as $cartItem) {
                 $cartModel->deleteCart($cartItem['_Cart_Id']);
+=======
+            // Xóa giỏ hàng sau khi tạo đơn hàng thành công (chỉ xóa các item đã xử lý)
+            foreach ($cartItemsToProcess as $cartItem) {
+                if (!empty($cartItem['_Cart_Id'])) {
+                    $cartModel->deleteCart($cartItem['_Cart_Id']);
+                }
+>>>>>>> payment-feature-new-temp
             }
 
             // Lấy thông tin đơn hàng vừa tạo
