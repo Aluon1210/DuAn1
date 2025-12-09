@@ -44,7 +44,7 @@ return [
     
     // Google Apps Script API - Thanh toán
     'google_apps_script' => [
-        'payment_api_url' => 'http://localhost/DuAn1/tools/mock_gas_api.php',
+        'payment_api_url' => 'https://script.google.com/macros/s/AKfycbws4OsfsHFOPA-IwjBQYf3f1PItUhzMFgilTwyH_WqNgSuFtY9Egu5U7376PjIiujsJ/exec',
         'enabled' => true,
     ],
 ];
