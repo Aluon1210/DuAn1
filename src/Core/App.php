@@ -71,9 +71,19 @@ class App {
         // 2. Xử lý Method
         // Nếu method chưa được set từ route đặc biệt và còn phần tử trong $url
         if (isset($url[0]) && !empty($url[0])) {
+            // Convert dashes to camelCase for method names (check-payment -> checkPayment)
+            $methodName = $url[0];
+            if (strpos($methodName, '-') !== false) {
+                $parts = explode('-', $methodName);
+                $methodName = array_shift($parts);
+                foreach ($parts as $part) {
+                    $methodName .= ucfirst($part);
+                }
+            }
+            
             // Kiểm tra method có tồn tại không
-            if (method_exists($controllerInstance, $url[0])) {
-                $this->method = $url[0];
+            if (method_exists($controllerInstance, $methodName)) {
+                $this->method = $methodName;
                 unset($url[0]);
                 // Reindex lại
                 $url = array_values($url);

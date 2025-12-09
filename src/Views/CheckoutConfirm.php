@@ -696,9 +696,25 @@
           })
         });
 
-        const result = await response.json();
+        // Try to parse JSON; if not JSON, ignore this round and continue polling
+        let result = null;
+        const contentType = response.headers.get('content-type') || '';
+        if (contentType.indexOf('application/json') !== -1) {
+          try {
+            result = await response.json();
+          } catch (err) {
+            console.warn('Invalid JSON from check-payment:', err);
+            // continue polling
+            return;
+          }
+        } else {
+          // non-json response (could be HTML or text), log and continue polling
+          const txt = await response.text();
+          console.warn('Non-JSON response from check-payment:', txt.slice(0, 300));
+          return;
+        }
 
-        if (result.success) {
+        if (result && result.success) {
           // Thanh toán thành công
           clearInterval(paymentCheckInterval);
           paymentCheckInterval = null;
@@ -709,6 +725,7 @@
 
           // Chờ 1.5 giây rồi submit form để tạo đơn hàng
           setTimeout(() => {
+            paymentVerifiedInput.value = '1';
             hidePaymentModal();
             // Submit form
             checkoutForm.submit();
@@ -787,9 +804,33 @@
         })
       });
 
-      const result = await response.json();
+      // Parse response safely
+      let result = null;
+      const contentType = response.headers.get('content-type') || '';
+      if (contentType.indexOf('application/json') !== -1) {
+        try {
+          result = await response.json();
+        } catch (err) {
+          console.warn('Invalid JSON from check-payment:', err);
+          modalStatus.className = 'payment-modal-status failed';
+          modalStatusText.textContent = '✕ Lỗi phản hồi API. Vui lòng thử lại.';
+          modalCheckPaymentBtn.disabled = false;
+          modalCheckPaymentBtn.textContent = '↻ Thử Lại';
+          return;
+        }
+      } else {
+        // Show non-JSON response to user
+        const txt = await response.text();
+        modalStatus.className = 'payment-modal-status failed';
+        modalStatusText.textContent = '✕ Lỗi kết nối. Phản hồi API không hợp lệ.';
+        console.error('Non-JSON response from check-payment. Status:', response.status, 'Content-Type:', contentType);
+        console.error('Response text:', txt.slice(0, 500));
+        modalCheckPaymentBtn.disabled = false;
+        modalCheckPaymentBtn.textContent = '↻ Thử Lại';
+        return;
+      }
 
-      if (result.success) {
+      if (result && result.success) {
         // Thanh toán thành công
         modalStatus.className = 'payment-modal-status success';
         modalStatusText.innerHTML = '✓ Thanh toán thành công!<br>Đang tạo đơn hàng...';
@@ -803,6 +844,7 @@
 
         // Chờ 1.5 giây rồi submit form để tạo đơn hàng
         setTimeout(() => {
+          paymentVerifiedInput.value = '1';
           hidePaymentModal();
           // Submit form
           checkoutForm.submit();

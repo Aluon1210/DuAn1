@@ -276,6 +276,9 @@ class PaymentController extends Controller
      */
     public function checkPayment()
     {
+        // Set Content-Type header ở đầu
+        header('Content-Type: application/json; charset=utf-8');
+        
         // Kiểm tra request method
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
             http_response_code(405);
@@ -292,11 +295,39 @@ class PaymentController extends Controller
 
         // Lấy dữ liệu từ JSON request
         $contentType = isset($_SERVER['CONTENT_TYPE']) ? $_SERVER['CONTENT_TYPE'] : '';
+        $rawBody = file_get_contents('php://input');
+        
         if (strpos($contentType, 'application/json') !== false) {
-            $jsonData = json_decode(file_get_contents('php://input'), true);
+            $jsonData = json_decode($rawBody, true);
             $data = $jsonData ?? [];
         } else {
             $data = $_POST ?? [];
+        }
+
+        // Ghi log request đầu vào để debug (lưu request body và headers)
+        try {
+            $logDir = ROOT_PATH . '/storage';
+            if (!is_dir($logDir)) {
+                @mkdir($logDir, 0755, true);
+            }
+            $reqLog = $logDir . '/check_payment_requests.log';
+            $headers = '';
+            if (function_exists('getallheaders')) {
+                foreach (getallheaders() as $k => $v) {
+                    $headers .= "$k: $v\n";
+                }
+            }
+            $entry = "---\n";
+            $entry .= "TIME: " . date('Y-m-d H:i:s') . "\n";
+            $entry .= "REMOTE_ADDR: " . ($_SERVER['REMOTE_ADDR'] ?? '') . "\n";
+            $entry .= "METHOD: " . ($_SERVER['REQUEST_METHOD'] ?? '') . "\n";
+            $entry .= "HEADERS:\n" . $headers;
+            $entry .= "RAW_BODY:\n" . $rawBody . "\n";
+            $entry .= "PARSED_DATA:\n" . print_r($data, true) . "\n";
+            $entry .= "---\n\n";
+            @file_put_contents($reqLog, $entry, FILE_APPEND | LOCK_EX);
+        } catch (\Exception $e) {
+            // ignore
         }
 
         // Validate dữ liệu
@@ -318,7 +349,6 @@ class PaymentController extends Controller
         // ===== GỌI API CỦA BẠN (GOOGLE APPS SCRIPT) =====
         $result = $this->callPaymentCheckAPI($orderId, $amount, $description, $accountNo, $bankId);
 
-        header('Content-Type: application/json');
         echo json_encode($result);
     }
 
@@ -340,34 +370,21 @@ class PaymentController extends Controller
         if (empty($gasUrl)) {
             return [
                 'success' => false,
-                'message' => 'Payment API không được cấu hình'
+                'message' => 'Payment API chưa được cấu hình'
             ];
         }
 
-        // Chuẩn bị dữ liệu gửi đến API
-        $payload = [
-            'action' => 'checkPayment',
-            'data' => [
-                'order_id' => $orderId,
-                'amount' => $amount,
-                'description' => $description,
-                'account_no' => $accountNo,
-                'bank_id' => $bankId,
-                'timestamp' => date('Y-m-d H:i:s'),
-                'user_id' => $_SESSION['user']['id'] ?? $_SESSION['user']['username'] ?? ''
-            ]
-        ];
-
         try {
-            // Gọi API bằng cURL
+            // Gọi API bằng cURL - sử dụng GET request với timeout ngắn
             $ch = curl_init($gasUrl);
             curl_setopt_array($ch, [
                 CURLOPT_RETURNTRANSFER => true,
-                CURLOPT_TIMEOUT => 30,
-                CURLOPT_CUSTOMREQUEST => 'POST',
-                CURLOPT_POSTFIELDS => http_build_query($payload),
+                CURLOPT_TIMEOUT => 5, // Timeout ngắn 5 giây
+                CURLOPT_CUSTOMREQUEST => 'GET',
+                CURLOPT_FOLLOWLOCATION => true,
+                CURLOPT_USERAGENT => 'DuAn1-PaymentChecker/1.0',
                 CURLOPT_HTTPHEADER => [
-                    'Content-Type: application/x-www-form-urlencoded',
+                    'Accept: application/json'
                 ]
             ]);
 
@@ -375,6 +392,7 @@ class PaymentController extends Controller
             $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
             $error = curl_error($ch);
             curl_close($ch);
+            
             // Ghi log request + response để debug
             try {
                 $logDir = ROOT_PATH . '/storage';
@@ -385,10 +403,12 @@ class PaymentController extends Controller
                 $logEntry = "---\n";
                 $logEntry .= "TIMESTAMP: " . date('Y-m-d H:i:s') . "\n";
                 $logEntry .= "REQUEST_URL: " . $gasUrl . "\n";
-                $logEntry .= "REQUEST_PAYLOAD: " . print_r($payload, true) . "\n";
+                $logEntry .= "REQUEST_METHOD: GET\n";
+                $logEntry .= "SEARCH_PARAMS: amount=$amount, description=$description, account_no=$accountNo\n";
                 $logEntry .= "HTTP_CODE: " . $httpCode . "\n";
                 $logEntry .= "CURL_ERROR: " . $error . "\n";
-                $logEntry .= "RESPONSE: " . ($response === false ? 'false' : $response) . "\n";
+                $logEntry .= "RESPONSE_LENGTH: " . strlen($response) . "\n";
+                $logEntry .= "RESPONSE: " . (strlen($response) > 500 ? substr($response, 0, 500) . '...' : $response) . "\n";
                 $logEntry .= "---\n\n";
                 @file_put_contents($logFile, $logEntry, FILE_APPEND | LOCK_EX);
             } catch (\Exception $e) {
@@ -403,25 +423,39 @@ class PaymentController extends Controller
                 ];
             }
 
-            // Parse response
-            if (!empty($response)) {
-                $result = json_decode($response, true);
-                // Nếu API trả về JSON hợp lệ
-                if (is_array($result)) {
-                    return $result;
-                }
-
-                // Nếu API chỉ trả về text
+            // Parse response - nếu không có response hoặc không phải JSON, trả về lỗi
+            if (empty($response)) {
                 return [
-                    'success' => ($httpCode === 200),
-                    'message' => $response,
-                    'http_code' => $httpCode
+                    'success' => false,
+                    'message' => 'API không trả về dữ liệu'
                 ];
             }
 
+            $result = json_decode($response, true);
+            
+            // Nếu API trả về JSON hợp lệ
+            if (is_array($result)) {
+                // Kiểm tra nếu response chứa một data array (danh sách transactions)
+                if (isset($result['data']) && is_array($result['data'])) {
+                    // Tìm transaction phù hợp với amount, description, account_no
+                    return $this->matchPaymentTransaction($result['data'], $amount, $description, $accountNo);
+                }
+                // Nếu API trả về success flag trực tiếp
+                if (isset($result['success'])) {
+                    return $result;
+                }
+                // Mặc định nếu nhận được response JSON
+                return [
+                    'success' => true,
+                    'message' => 'Kiểm tra thanh toán thành công',
+                    'data' => $result
+                ];
+            }
+
+            // Nếu API chỉ trả về text (không phải JSON)
             return [
-                'success' => ($httpCode === 200),
-                'message' => 'API returned empty response',
+                'success' => false,
+                'message' => 'API trả về dữ liệu không hợp lệ (không phải JSON)',
                 'http_code' => $httpCode
             ];
 
@@ -431,5 +465,81 @@ class PaymentController extends Controller
                 'message' => 'Exception: ' . $e->getMessage()
             ];
         }
+    }
+
+    /**
+     * Tìm và so khớp transaction từ danh sách data của GAS
+     * 
+     * @param array $transactions - Danh sách transactions từ GAS
+     * @param int $amount - Số tiền cần tìm
+     * @param string $description - Nội dung cần tìm
+     * @param string $accountNo - Số tài khoản nhận
+     * @return array Kết quả so khớp
+     */
+    private function matchPaymentTransaction($transactions, $amount, $description, $accountNo)
+    {
+        if (!is_array($transactions) || empty($transactions)) {
+            return [
+                'success' => false,
+                'message' => 'Không tìm thấy giao dịch nào'
+            ];
+        }
+
+        // Chuẩn hóa description để so khớp (loại bỏ dấu cách thừa, chuyển về chữ hoa, loại dấu)
+        $descriptionNormalized = strtoupper(trim(preg_replace('/\s+/', ' ', $description)));
+        // Loại bỏ tất cả ký tự đặc biệt để so khớp
+        $descriptionSimple = preg_replace('/[^A-Z0-9]/i', '', $descriptionNormalized);
+
+        // Tìm giao dịch phù hợp
+        $matchedTransaction = null;
+        $bestMatch = null;
+        
+        foreach ($transactions as $trans) {
+            // Các trường có thể có trong transaction
+            $transAmount = isset($trans['Giá trị']) ? (int)$trans['Giá trị'] : 
+                          (isset($trans['amount']) ? (int)$trans['amount'] : 0);
+            $transDescription = isset($trans['Mô tả']) ? $trans['Mô tả'] : 
+                               (isset($trans['description']) ? $trans['description'] : '');
+            $transAccountNo = isset($trans['Số tài khoản']) ? trim($trans['Số tài khoản']) : 
+                             (isset($trans['account_no']) ? trim($trans['account_no']) : '');
+            
+            // Chuẩn hóa description từ transaction
+            $transDescriptionNormalized = strtoupper(trim(preg_replace('/\s+/', ' ', $transDescription)));
+            $transDescriptionSimple = preg_replace('/[^A-Z0-9]/i', '', $transDescriptionNormalized);
+            
+            // Tiêu chí so khớp:
+            // 1. Tiền phải chính xác
+            $amountMatch = ($transAmount === (int)$amount);
+            
+            // 2. Nội dung: kiểm tra xem có chứa các từ khóa hay không
+            $descMatch = false;
+            if (!empty($descriptionSimple) && !empty($transDescriptionSimple)) {
+                // Nếu description request là substring của transaction, hoặc ngược lại
+                $descMatch = (strpos($transDescriptionSimple, $descriptionSimple) !== false ||
+                             strpos($descriptionSimple, $transDescriptionSimple) !== false);
+            }
+            
+            // 3. Số tài khoản
+            $accountMatch = (empty($accountNo) || $transAccountNo === trim($accountNo));
+            
+            // Nếu tất cả điều kiện match
+            if ($amountMatch && $descMatch && $accountMatch) {
+                $matchedTransaction = $trans;
+                break; // Lấy giao dịch đầu tiên khớp
+            }
+        }
+
+        if ($matchedTransaction !== null) {
+            return [
+                'success' => true,
+                'message' => 'Thanh toán thành công - Giao dịch đã được xác nhận',
+                'transaction' => $matchedTransaction
+            ];
+        }
+
+        return [
+            'success' => false,
+            'message' => 'Giao dịch chưa được phát hiện. Vui lòng kiểm tra lại thông tin chuyển khoản.'
+        ];
     }
 }

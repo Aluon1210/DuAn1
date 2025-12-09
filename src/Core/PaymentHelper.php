@@ -240,15 +240,19 @@ class PaymentHelper
         ];
 
         try {
-            // Call API using cURL
+            // Call API using cURL (send JSON, follow redirects)
             $ch = curl_init($apiUrl);
+            $jsonPayload = json_encode($payload);
             curl_setopt_array($ch, [
                 CURLOPT_RETURNTRANSFER => true,
                 CURLOPT_TIMEOUT => 30,
                 CURLOPT_CUSTOMREQUEST => 'POST',
-                CURLOPT_POSTFIELDS => http_build_query($payload),
+                CURLOPT_POSTFIELDS => $jsonPayload,
+                CURLOPT_FOLLOWLOCATION => true,
+                CURLOPT_USERAGENT => 'DuAn1-PaymentHelper/1.0',
                 CURLOPT_HTTPHEADER => [
-                    'Content-Type: application/x-www-form-urlencoded',
+                    'Content-Type: application/json',
+                    'Accept: application/json'
                 ]
             ]);
 
@@ -256,6 +260,26 @@ class PaymentHelper
             $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
             $error = curl_error($ch);
             curl_close($ch);
+
+            // Logging request/response for debugging
+            try {
+                $logDir = ROOT_PATH . '/storage';
+                if (!is_dir($logDir)) {
+                    @mkdir($logDir, 0755, true);
+                }
+                $logFile = $logDir . '/payment_record.log';
+                $logEntry = "---\n";
+                $logEntry .= "TIME: " . date('Y-m-d H:i:s') . "\n";
+                $logEntry .= "API_URL: " . $apiUrl . "\n";
+                $logEntry .= "PAYLOAD: " . $jsonPayload . "\n";
+                $logEntry .= "HTTP_CODE: " . $httpCode . "\n";
+                $logEntry .= "CURL_ERROR: " . $error . "\n";
+                $logEntry .= "RESPONSE: " . ($response === false ? 'false' : $response) . "\n";
+                $logEntry .= "---\n\n";
+                @file_put_contents($logFile, $logEntry, FILE_APPEND | LOCK_EX);
+            } catch (\Exception $e) {
+                // ignore logging errors
+            }
 
             // Check for errors
             if ($error) {
@@ -265,7 +289,7 @@ class PaymentHelper
                 ];
             }
 
-            // Decode response
+            // Decode response JSON if possible
             if (!empty($response)) {
                 $result = json_decode($response, true);
                 return is_array($result) ? $result : [
