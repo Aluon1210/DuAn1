@@ -394,26 +394,22 @@ class CartController extends Controller
             exit;
         }
 
-        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-            header('Location: ' . ROOT_URL . 'cart');
-            exit;
-        }
-
-        // Selected checkboxes là cart_id từ database
-        $selected = isset($_POST['selected']) ? (array) $_POST['selected'] : [];
-        $quantities = isset($_POST['quantity']) ? (array) $_POST['quantity'] : [];
-
-        if (empty($selected)) {
-            $_SESSION['error'] = 'Vui lòng chọn sản phẩm để thanh toán';
-            header('Location: ' . ROOT_URL . 'cart');
-            exit;
-        }
+        $isPost = $_SERVER['REQUEST_METHOD'] === 'POST';
+        // Selected checkboxes là cart_id từ database (nếu POST)
+        $selected = $isPost ? (array)($_POST['selected'] ?? []) : [];
+        $quantities = $isPost ? (array)($_POST['quantity'] ?? []) : [];
 
         $productModel = new \Models\Product();
         $variantModel = new \Models\Product_Varirant();
         $cartModel = new \Models\Cart();
         $items = [];
         $total = 0;
+
+        if (empty($selected)) {
+            $_SESSION['error'] = 'Vui lòng chọn sản phẩm để xác nhận thanh toán';
+            header('Location: ' . ROOT_URL . 'cart');
+            exit;
+        }
 
         foreach ($selected as $cartId) {
             // Lấy thông tin từ giỏ hàng trong database
@@ -614,6 +610,104 @@ class CartController extends Controller
     }
 
     /**
+     * Đặt hàng COD: tạo đơn trực tiếp từ giỏ trong DB, không dùng API
+     * URL: /cart/placeOrderCOD (POST)
+     */
+    public function placeOrderCOD()
+    {
+        $this->initCart();
+
+        if (!isset($_SESSION['user'])) {
+            $redirect = ROOT_URL . 'cart';
+            header('Location: ' . ROOT_URL . 'login?redirect=' . urlencode($redirect));
+            exit;
+        }
+
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            header('Location: ' . ROOT_URL . 'cart');
+            exit;
+        }
+
+        $address = isset($_POST['address']) ? trim($_POST['address']) : '';
+        if ($address === '') {
+            $_SESSION['error'] = 'Vui lòng nhập địa chỉ nhận hàng';
+            header('Location: ' . ROOT_URL . 'cart');
+            exit;
+        }
+
+        $productModel = new \Models\Product();
+        $variantModel = new \Models\Product_Varirant();
+        $cartModel = new \Models\Cart();
+        $orderModel = new \Models\Order();
+
+        $userId = $_SESSION['user']['id'] ?? $_SESSION['user']['username'] ?? '';
+        $cartItems = $cartModel->getCartByUserId($userId);
+        if (empty($cartItems)) {
+            $_SESSION['error'] = 'Giỏ hàng trống - không thể đặt hàng';
+            header('Location: ' . ROOT_URL . 'cart');
+            exit;
+        }
+
+        $orderDetails = [];
+        $totalAmount = 0;
+        $processedCartIds = [];
+
+        foreach ($cartItems as $item) {
+            $variantId = $item['Variant_Id'];
+            $qty = (int)($item['Quantity'] ?? 1);
+            if ($qty <= 0) { continue; }
+
+            $variant = $variantModel->getById($variantId);
+            if (!$variant) { continue; }
+
+            $productId = $variant['product_id'] ?? $variant['Product_Id'] ?? null;
+            if (!$productId) { continue; }
+
+            $product = $productModel->getById($productId);
+            if (!$product) { continue; }
+
+            $price = (int)($variant['price'] ?? $product['price'] ?? 0);
+            $stock = (int)($variant['stock'] ?? $variant['Quantity_In_Stock'] ?? 0);
+            if ($stock <= 0) { continue; }
+            if ($qty > $stock) { $qty = $stock; }
+            if ($qty <= 0) { continue; }
+
+            $orderDetails[] = [
+                'Product_Id' => $productId,
+                'Variant_Id' => $variantId,
+                'quantity' => $qty
+            ];
+            $totalAmount += $price * $qty;
+            if (!empty($item['_Cart_Id'])) { $processedCartIds[] = $item['_Cart_Id']; }
+        }
+
+        if (empty($orderDetails)) {
+            $_SESSION['error'] = 'Không có sản phẩm hợp lệ để đặt hàng (hết hàng hoặc số lượng không hợp lệ)';
+            header('Location: ' . ROOT_URL . 'cart');
+            exit;
+        }
+
+        $user = $_SESSION['user'];
+        $orderId = $orderModel->createWithDetails([
+            'user_id' => $user['id'] ?? $user['username'] ?? '',
+            'address' => $address,
+            'note' => $_POST['note'] ?? 'Đặt hàng',
+            'status' => 'pending'
+        ], $orderDetails);
+
+        if ($orderId) {
+            foreach ($processedCartIds as $cid) { $cartModel->deleteCart($cid); }
+            $_SESSION['message'] = 'Đặt hàng thành công. Mã đơn: ' . $orderId . '. Tổng tiền: ' . number_format($totalAmount, 0, ',', '.') . ' ₫. Phương thức: OPT (Tiền mặt)';
+            header('Location: ' . ROOT_URL . 'cart');
+            exit;
+        } else {
+            $_SESSION['error'] = 'Đặt hàng thất bại. Vui lòng thử lại';
+            header('Location: ' . ROOT_URL . 'cart');
+            exit;
+        }
+    }
+
+    /**
      * Đặt hàng (bước 2 xác nhận cuối)
      * URL: /cart/placeOrder (POST)
      */
@@ -752,6 +846,92 @@ class CartController extends Controller
             header('Location: ' . ROOT_URL . 'cart');
             exit;
         }
+    }
+
+    public function updateQuantity()
+    {
+        header('Content-Type: application/json');
+        if (!isset($_SESSION['user'])) {
+            http_response_code(401);
+            echo json_encode(['success' => false, 'message' => 'unauthorized']);
+            return;
+        }
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            http_response_code(405);
+            echo json_encode(['success' => false, 'message' => 'method_not_allowed']);
+            return;
+        }
+
+        $cartId = isset($_POST['cart_id']) ? trim($_POST['cart_id']) : null;
+        $quantity = isset($_POST['quantity']) ? (int)$_POST['quantity'] : null;
+        if (!$cartId || $quantity === null) {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'message' => 'bad_request']);
+            return;
+        }
+
+        $userId = $_SESSION['user']['id'] ?? $_SESSION['user']['username'] ?? '';
+        $cartModel = new \Models\Cart();
+        $variantModel = new \Models\Product_Varirant();
+        $productModel = new \Models\Product();
+
+        $dbCartItems = $cartModel->getCartByUserId($userId);
+        $cartRow = null;
+        foreach ($dbCartItems as $row) {
+            if ($row['_Cart_Id'] == $cartId) {
+                $cartRow = $row;
+                break;
+            }
+        }
+
+        if (!$cartRow) {
+            http_response_code(404);
+            echo json_encode(['success' => false, 'message' => 'not_found']);
+            return;
+        }
+
+        $variantId = (int)$cartRow['Variant_Id'];
+        $variant = $variantModel->getById($variantId);
+        if (!$variant) {
+            $cartModel->deleteCart($cartId);
+            echo json_encode(['success' => true, 'deleted' => true, 'cart_id' => $cartId]);
+            return;
+        }
+        $productId = $variant['product_id'] ?? ($variant['Product_Id'] ?? null);
+        $product = $productModel->getById($productId);
+        if (!$product) {
+            $cartModel->deleteCart($cartId);
+            echo json_encode(['success' => true, 'deleted' => true, 'cart_id' => $cartId]);
+            return;
+        }
+
+        $price = $variant['price'] ?? $product['price'];
+        $max = (int)($variant['stock'] ?? ($variant['Quantity_In_Stock'] ?? 0));
+        if ($max <= 0) {
+            $cartModel->deleteCart($cartId);
+            echo json_encode(['success' => true, 'deleted' => true, 'cart_id' => $cartId]);
+            return;
+        }
+
+        if ($quantity > $max) {
+            $quantity = $max;
+        }
+        if ($quantity <= 0) {
+            $cartModel->deleteCart($cartId);
+            echo json_encode(['success' => true, 'deleted' => true, 'cart_id' => $cartId]);
+            return;
+        }
+
+        $cartModel->updateCartQuantity($cartId, $quantity);
+        $subtotal = $price * $quantity;
+        echo json_encode([
+            'success' => true,
+            'cart_id' => $cartId,
+            'quantity' => $quantity,
+            'price' => $price,
+            'subtotal' => $subtotal,
+            'max' => $max
+        ]);
     }
 
     /**

@@ -386,7 +386,7 @@
                   <img
                     src="<?php echo ROOT_URL; ?>public/images/<?php echo isset($p['image']) ? htmlspecialchars($p['image']) : 'placeholder.jpg'; ?>"
                     alt="" style="width:100%;height:100%;object-fit:cover;">
-                <?php else: ?><span>✨</span><?php endif; ?>
+                <?php else: ?><span>*</span><?php endif; ?>
               </div>
               <div>
                 <div style="font-weight:600;"><?php echo htmlspecialchars($p['name']); ?></div>
@@ -429,13 +429,13 @@
             <div class="payment-method">
               <label>
                 <input type="radio" name="payment_method" value="opt" checked required>
-                <span class="payment-method-text">💵 Thanh toán OPT (Tiền mặt)</span>
+                <span class="payment-method-text">Thanh toán OPT (Tiền mặt)</span>
               </label>
             </div>
             <div class="payment-method">
               <label>
                 <input type="radio" name="payment_method" value="online" required>
-                <span class="payment-method-text">📱 Thanh toán Online (QR Code)</span>
+                <span class="payment-method-text">Thanh toán Online (QR Code)</span>
               </label>
             </div>
           </div>
@@ -460,14 +460,13 @@
 <div class="payment-modal-overlay" id="paymentModal">
   <div class="payment-modal">
     <!-- Header -->
-    <div class="payment-modal-header">💳 Thông tin thanh toán</div>
+    <div class="payment-modal-header">Thông tin thanh toán</div>
 
     <!-- Content Grid -->
     <div class="payment-modal-content">
       <!-- LEFT SIDE: Account Info -->
       <div class="payment-modal-left">
-        <h3 style="margin-top:0; margin-bottom:16px; color:#333; font-size:16px;">Cách 1: Thanh toán chuyển khoản ngân
-          hàng</h3>
+        <h3 style="margin-top:0; margin-bottom:16px; color:#333; font-size:16px;">Cách 1: Thanh toán chuyển khoản ngân hàng</h3>
 
         <div class="payment-modal-info">
           <div class="payment-modal-info-row">
@@ -490,7 +489,7 @@
 
         <div class="payment-modal-amount">
           <div class="payment-modal-amount-label">Số tiền cần thanh toán</div>
-          <div class="payment-modal-amount-value" id="modalAmount">3.200 đ</div>
+          <div class="payment-modal-amount-value" id="modalAmount">3.200 ₫</div>
         </div>
       </div>
 
@@ -516,17 +515,17 @@
     <!-- Buttons -->
     <div class="payment-modal-buttons">
       <button type="button" class="payment-modal-btn payment-modal-btn-primary" id="modalCheckPaymentBtn">
-        ✓ Đã Chuyển Khoản Rồi
+        Đã chuyển khoản rồi
       </button>
       <button type="button" class="payment-modal-btn payment-modal-btn-secondary" id="modalCancelBtn">
-        ✕ Hủy
+        Hủy
       </button>
     </div>
 
     <!-- Footer Info -->
     <div class="payment-modal-footer">
-      ⏱️ Vui lòng chuyển khoản trong vòng 15 phút<br>
-      💬 Nhập nội dung ở trên để xác nhận thanh toán
+      Vui lòng chuyển khoản trong vòng 15 phút<br>
+      Nhập nội dung ở trên để xác nhận thanh toán
     </div>
   </div>
 </div>
@@ -540,21 +539,21 @@
   const paymentVerifiedInput = document.createElement('input');
   paymentVerifiedInput.type = 'hidden';
   paymentVerifiedInput.name = 'payment_verified';
-  paymentVerifiedInput.value = '0'; // mặc định chưa xác thực online
+  paymentVerifiedInput.value = '0'; // máº·c Ä‘á»‹nh chÆ°a xÃ¡c thá»±c online
   checkoutForm.appendChild(paymentVerifiedInput);
 
-  // Lấy tên sản phẩm từ trang
+  // Láº¥y tÃªn sáº£n pháº©m tá»« trang
   const productNames = [];
   <?php foreach ($items as $it): ?>
     productNames.push('<?php echo htmlspecialchars($it['product']['name']); ?>');
   <?php endforeach; ?>
 
-  // ===== CẤU HÌNH NGÂN HÀNG =====
-  // CÓ THỂ THAY ĐỔI TRỰC TIẾP DƯỚI ĐÂY
+  // ===== Cáº¤U HÃŒNH NGÃ‚N HÃ€NG =====
+  // CÃ“ THá»‚ THAY Äá»”I TRá»°C TIáº¾P DÆ¯á»šI ÄÃ‚Y
   const qrConfig = {
-    bankId: 'MB',           // Mã ngân hàng (MB, ACB, BIDV, v.v.)
-    accountNo: '0833268346', // Số tài khoản
-    accountName: 'DUONG THANH CONG', // Tên chủ tài khoản
+    bankId: 'MB',           // MÃ£ ngÃ¢n hÃ ng (MB, ACB, BIDV, v.v.)
+    accountNo: '0833268346', // Sá»‘ tÃ i khoáº£n
+    accountName: 'DUONG THANH CONG', // TÃªn chá»§ tÃ i khoáº£n
     template: 'print'       // Template (print, compact)
   };
 
@@ -569,12 +568,12 @@
   function updatePaymentDisplay() {
     const selectedMethod = document.querySelector('input[name="payment_method"]:checked').value;
 
-    // Không tải QR tại đây; QR chỉ hiển thị khi bấm "Đặt hàng"
+    // KhÃ´ng táº£i QR táº¡i Ä‘Ã¢y; QR chá»‰ hiá»ƒn thá»‹ khi báº¥m "Äáº·t hÃ ng"
     if (qrSection) {
       qrSection.style.display = selectedMethod === 'online' ? 'block' : 'none';
     }
 
-    // Reset flag xác thực khi đổi phương thức
+    // Reset flag xÃ¡c thá»±c khi Ä‘á»•i phÆ°Æ¡ng thá»©c
     paymentVerifiedInput.value = selectedMethod === 'online' ? '0' : '1';
   }
 
@@ -587,6 +586,8 @@
       e.preventDefault();
       paymentVerifiedInput.value = '0';
       showPaymentModal();
+    } else {
+      checkoutForm.action = '<?php echo ROOT_URL; ?>cart/placeOrderCOD';
     }
     // Nếu chọn OPT, cho phép submit bình thường
   });
@@ -598,33 +599,42 @@
   const modalStatus = document.getElementById('modalStatus');
   const modalStatusText = document.getElementById('modalStatusText');
 
-  // Variables để quản lý polling
+  // Variables Ä‘á»ƒ quáº£n lÃ½ polling
   let paymentCheckInterval = null;
   let currentOrderId = null;
+  let paymentAttempts = 0;
+  const pollingIntervalMs = 2500;
+  let isChecking = false;
+  const maxAttempts = 600;
+  let creatingOrder = false;
 
-  // Hiển thị payment modal
+  // Hiá»ƒn thá»‹ payment modal
   function showPaymentModal() {
-    // Lấy tên người nhận
+    // Táº¡o order ID duy nháº¥t cho session nÃ y (pháº£i táº¡o trÆ°á»›c khi táº¡o mÃ´ táº£/QR)
+    currentOrderId = 'ORD' + Date.now() + '' + Math.random().toString(36).substr(2, 9);
+
+    // Láº¥y tÃªn ngÆ°á»i nháº­n
     const fullName = '<?php echo isset($user['name']) ? htmlspecialchars($user['name']) : (isset($user['username']) ? htmlspecialchars($user['username']) : 'KHACH HANG'); ?>';
 
-    // Tạo description
-    let description = 'Thanh toan - ' + fullName;
+    // Táº¡o description chá»‰ chá»©a order id
+    let description = currentOrderId;
     if (productNames.length > 0) {
       if (productNames.length === 1) {
-        description += ' - ' + productNames[0];
+        // náº¿u muá»‘n váº«n kÃ¨m tÃªn sp sau order id, bá» comment phÃ­a dÆ°á»›i
+        // description += ' - ' + productNames[0];
       } else {
-        description += ' - ' + productNames[0] + ' (+' + (productNames.length - 1) + ')';
+        // description += ' - ' + productNames[0] + ' (+' + (productNames.length - 1) + ')';
       }
     }
 
-    // Cập nhật thông tin modal
+    // Cáº­p nháº­t thÃ´ng tin modal
     document.getElementById('modalBankName').textContent = 'MB Bank';
     document.getElementById('modalAccountNo').textContent = qrConfig.accountNo;
     document.getElementById('modalAccountName').textContent = qrConfig.accountName;
     document.getElementById('modalDescription').textContent = description;
-    document.getElementById('modalAmount').textContent = formatCurrency(totalAmount) + ' đ';
+    document.getElementById('modalAmount').textContent = formatCurrency(totalAmount) + ' ₫';
 
-    // Cập nhật QR
+    // Cáº­p nháº­t QR
     const qrUrl = generateQRUrl();
     const qrImage = document.getElementById('modalQRImage');
     const qrPlaceholder = document.getElementById('qrLoadingPlaceholder');
@@ -644,45 +654,53 @@
     modalStatus.className = 'payment-modal-status pending';
     modalStatusText.innerHTML = '<span class="payment-modal-spinner"></span> <span>Đang chờ thanh toán...</span>';
     modalCheckPaymentBtn.disabled = false;
-    modalCheckPaymentBtn.textContent = '✓ Đã Chuyển Khoản Rồi';
+    modalCheckPaymentBtn.textContent = 'Đã chuyển khoản rồi';
 
-    // Vô hiệu hóa nút "Đặt hàng"
+    // VÃ´ hiá»‡u hÃ³a nÃºt "Äáº·t hÃ ng"
     document.getElementById('placeOrderBtn').disabled = true;
     document.getElementById('placeOrderBtn').style.opacity = '0.5';
     document.getElementById('placeOrderBtn').style.cursor = 'not-allowed';
 
-    // Tạo order ID duy nhất cho session này
-    currentOrderId = 'ORD_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+    // order id Ä‘Ã£ Ä‘Æ°á»£c táº¡o á»Ÿ trÃªn
 
-    // Hiển thị modal
+    // Hiá»ƒn thá»‹ modal
     paymentModalOverlay.classList.add('active');
 
-    // Bắt đầu polling kiểm tra thanh toán
+    // Báº¯t Ä‘áº§u polling kiá»ƒm tra thanh toÃ¡n
+    console.log('[Payment] Open QR modal', { orderId: currentOrderId, amount: totalAmount });
     startPaymentPolling(description);
   }
 
-  // Ẩn payment modal
+  // áº¨n payment modal
   function hidePaymentModal() {
     paymentModalOverlay.classList.remove('active');
 
-    // Dừng polling
+    // Dá»«ng polling
     if (paymentCheckInterval) {
       clearInterval(paymentCheckInterval);
       paymentCheckInterval = null;
     }
 
-    // Bật lại nút "Đặt hàng"
+    // Báº­t láº¡i nÃºt "Äáº·t hÃ ng"
     document.getElementById('placeOrderBtn').disabled = false;
     document.getElementById('placeOrderBtn').style.opacity = '1';
     document.getElementById('placeOrderBtn').style.cursor = 'pointer';
   }
 
-  // Bắt đầu polling kiểm tra thanh toán (Chạy liên tục)
+  // Kiểm tra thanh toán liên tục và tạo đơn khi phát hiện giao dịch
   function startPaymentPolling(description) {
-    // Kiểm tra mỗi 2 giây
-    paymentCheckInterval = setInterval(async () => {
+    if (paymentCheckInterval) {
+      clearInterval(paymentCheckInterval);
+      paymentCheckInterval = null;
+    }
+    paymentAttempts = 0;
+
+    const pollOnce = async () => {
+      if (creatingOrder || isChecking) return;
+      isChecking = true;
       try {
-        const response = await fetch('<?php echo ROOT_URL; ?>payment/check-payment', {
+        console.log('[Polling] Calling /payment/check-payment');
+        const checkResp = await fetch('<?php echo ROOT_URL; ?>payment/check-payment', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json'
@@ -696,61 +714,136 @@
           })
         });
 
-        // Try to parse JSON; if not JSON, ignore this round and continue polling
-        let result = null;
-        const contentType = response.headers.get('content-type') || '';
-        if (contentType.indexOf('application/json') !== -1) {
-          try {
-            result = await response.json();
-          } catch (err) {
-            console.warn('Invalid JSON from check-payment:', err);
-            // continue polling
-            return;
-          }
+        let checkResult = null;
+        const ct1 = checkResp.headers.get('content-type') || '';
+        if (ct1.indexOf('application/json') !== -1) {
+          checkResult = await checkResp.json();
         } else {
-          // non-json response (could be HTML or text), log and continue polling
-          const txt = await response.text();
-          console.warn('Non-JSON response from check-payment:', txt.slice(0, 300));
+          // Không phải JSON, cứ tiếp tục thử lại ở lần kế tiếp
+          paymentAttempts++;
           return;
         }
 
-        if (result && result.success) {
-          // Thanh toán thành công
+        if (checkResult && checkResult.success) {
+          console.log('[Polling] check-payment success', checkResult);
+          creatingOrder = true;
+          if (paymentCheckInterval) {
+            clearInterval(paymentCheckInterval);
+            paymentCheckInterval = null;
+          }
+          modalStatus.className = 'payment-modal-status pending';
+          modalStatusText.innerHTML = '<span class="payment-modal-spinner"></span> <span>Đang tạo đơn hàng...</span>';
+          const addressVal = checkoutForm.querySelector('input[name="address"]').value.trim();
+          const noteVal = checkoutForm.querySelector('textarea[name="note"]').value.trim();
+
+          const selectedInputs = Array.from(checkoutForm.querySelectorAll('input[name="selected[]"]'));
+          const selectedIds = selectedInputs.map(i => i.value);
+          const qtyInputs = Array.from(checkoutForm.querySelectorAll('input[name^="quantity["]'));
+          const quantities = {};
+          qtyInputs.forEach(inp => {
+            const m = inp.name.match(/^quantity\[(.+)\]$/);
+            if (m) { quantities[m[1]] = parseInt(inp.value || '1', 10); }
+          });
+
+          console.log('[Polling] Calling /payment/create-order-on-payment');
+          const createResp = await fetch('<?php echo ROOT_URL; ?>payment/create-order-on-payment', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              amount: totalAmount,
+              description: currentOrderId,
+              address: addressVal,
+              note: noteVal,
+              selected: selectedIds,
+              quantities: quantities
+            })
+          });
+
+          const ct2 = createResp.headers.get('content-type') || '';
+          if (ct2.indexOf('application/json') !== -1) {
+            const createResult = await createResp.json();
+            console.log('[Polling] create-order-on-payment response', createResult);
+            if (createResult && createResult.success) {
+              paymentVerifiedInput.value = '1';
+              clearInterval(paymentCheckInterval);
+              paymentCheckInterval = null;
+              modalStatus.className = 'payment-modal-status success';
+              modalStatusText.innerHTML = 'Thanh toán thành công!<br>Đơn hàng đã được tạo.<br>Mã đơn: <strong>' + (createResult.order_id || '') + '</strong>';
+              modalCheckPaymentBtn.disabled = true;
+              setTimeout(() => {
+                hidePaymentModal();
+                window.location = '<?php echo ROOT_URL; ?>cart/orderDetail/' + (createResult.order_id || '');
+              }, 300);
+            } else {
+              // Nếu tạo đơn thất bại, tiếp tục polling để tránh tạo trùng
+              modalStatus.className = 'payment-modal-status failed';
+              modalStatusText.textContent = (createResult && createResult.message) ? createResult.message : 'Không thể tạo đơn hàng. Vui lòng thử lại.';
+              modalCheckPaymentBtn.disabled = false;
+              creatingOrder = false;
+              // Khởi động lại polling sau 2 giây
+              setTimeout(() => {
+                if (!paymentCheckInterval) {
+                  paymentCheckInterval = setInterval(pollOnce, pollingIntervalMs);
+                }
+              }, 2000);
+            }
+          } else {
+            // Phản hồi không hợp lệ, tiếp tục thử lại ở lần kế tiếp
+            paymentAttempts++;
+            creatingOrder = false;
+          }
+        } else {
+          console.log('[Polling] check-payment pending', checkResult);
+          // Chưa phát hiện giao dịch
+          modalStatus.className = 'payment-modal-status pending';
+          modalStatusText.innerHTML = '<span class="payment-modal-spinner"></span> <span>' + (checkResult && checkResult.message ? checkResult.message : 'Đang chờ thanh toán...') + '</span>';
+          modalCheckPaymentBtn.disabled = false;
+          paymentAttempts++;
+        }
+
+        if (paymentAttempts >= maxAttempts) {
           clearInterval(paymentCheckInterval);
           paymentCheckInterval = null;
-
-          modalStatus.className = 'payment-modal-status success';
-          modalStatusText.innerHTML = '✓ Thanh toán thành công!<br>Đang tạo đơn hàng...';
-          modalCheckPaymentBtn.disabled = true;
-
-          // Chờ 1.5 giây rồi submit form để tạo đơn hàng
-          setTimeout(() => {
-            paymentVerifiedInput.value = '1';
-            hidePaymentModal();
-            // Submit form
-            checkoutForm.submit();
-          }, 1500);
+          modalStatus.className = 'payment-modal-status failed';
+          modalStatusText.textContent = 'Quá thời gian chờ - Vui lòng thử lại.';
+          modalCheckPaymentBtn.disabled = false;
         }
       } catch (error) {
-        console.error('Lỗi trong polling:', error);
+        // Lỗi mạng, tiếp tục thử ở lần sau
+        paymentAttempts++;
+        if (paymentAttempts >= maxAttempts) {
+          clearInterval(paymentCheckInterval);
+          paymentCheckInterval = null;
+          modalStatus.className = 'payment-modal-status failed';
+          modalStatusText.textContent = 'Quá thời gian chờ - Vui lòng thử lại.';
+          modalCheckPaymentBtn.disabled = false;
+        }
       }
-    }, 2000);
+      isChecking = false;
+    };
+
+    // Gọi ngay một lần và sau đó lặp lại
+    pollOnce();
+    paymentCheckInterval = setInterval(pollOnce, pollingIntervalMs);
   }
 
-  // Tạo QR URL
+  // Táº¡o QR URL
   function generateQRUrl() {
     const bankId = qrConfig.bankId;
     const accountNo = qrConfig.accountNo;
     const accountName = qrConfig.accountName;
     const template = qrConfig.template;
-
     const fullName = '<?php echo isset($user['name']) ? htmlspecialchars($user['name']) : (isset($user['username']) ? htmlspecialchars($user['username']) : 'KHACH HANG'); ?>';
-    let description = 'Thanh toan - ' + fullName;
+    // Sá»­ dá»¥ng order id hiá»‡n táº¡i Ä‘á»ƒ lÃ m mÃ´ táº£; náº¿u chÆ°a cÃ³ thÃ¬ táº¡o táº¡m
+    const orderIdForDesc = currentOrderId || ('ORD' + Date.now() + '' + Math.random().toString(36).substr(2, 9));
+    let description = orderIdForDesc;
     if (productNames.length > 0) {
       if (productNames.length === 1) {
-        description += ' - ' + productNames[0];
+        // description += ' - ' + productNames[0];
       } else {
-        description += ' - ' + productNames[0] + ' (+' + (productNames.length - 1) + ')';
+        // description += ' - ' + productNames[0] + ' (+' + (productNames.length - 1) + ')';
       }
     }
 
@@ -770,15 +863,15 @@
     return amount.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
   }
 
-  // Gọi API kiểm tra thanh toán (Khi nhấn nút "Đã Chuyển Khoản Rồi")
+  // Gọi API kiểm tra thanh toán (Khi nhấn nút "Đã chuyển khoản rồi")
   async function checkPayment() {
-    const fullName = '<?php echo isset($user['name']) ? htmlspecialchars($user['name']) : (isset($user['username']) ? htmlspecialchars($user['username']) : 'KHACH HANG'); ?>';
-    let description = 'Thanh toan - ' + fullName;
+    // Mô tả khi chủ động check: chỉ gửi order id
+    const description = currentOrderId || ('ORD' + Date.now() + '' + Math.random().toString(36).substr(2, 9));
     if (productNames.length > 0) {
       if (productNames.length === 1) {
-        description += ' - ' + productNames[0];
+        // description += ' - ' + productNames[0];
       } else {
-        description += ' - ' + productNames[0] + ' (+' + (productNames.length - 1) + ')';
+        // description += ' - ' + productNames[0] + ' (+' + (productNames.length - 1) + ')';
       }
     }
 
@@ -789,7 +882,7 @@
     modalCheckPaymentBtn.disabled = true;
 
     try {
-      // Gọi API để xác nhận thanh toán
+      // 1) Kiểm tra thanh toán
       const response = await fetch('<?php echo ROOT_URL; ?>payment/check-payment', {
         method: 'POST',
         headers: {
@@ -811,57 +904,100 @@
         try {
           result = await response.json();
         } catch (err) {
-          console.warn('Invalid JSON from check-payment:', err);
+          console.warn('Invalid JSON từ check-payment:', err);
           modalStatus.className = 'payment-modal-status failed';
-          modalStatusText.textContent = '✕ Lỗi phản hồi API. Vui lòng thử lại.';
+          modalStatusText.textContent = 'Lỗi phản hồi API. Vui lòng thử lại.';
           modalCheckPaymentBtn.disabled = false;
-          modalCheckPaymentBtn.textContent = '↻ Thử Lại';
+          modalCheckPaymentBtn.textContent = 'Thử lại';
           return;
         }
       } else {
-        // Show non-JSON response to user
+        // Hiển thị non-JSON response
         const txt = await response.text();
         modalStatus.className = 'payment-modal-status failed';
-        modalStatusText.textContent = '✕ Lỗi kết nối. Phản hồi API không hợp lệ.';
+        modalStatusText.textContent = 'Lỗi kết nối. Phản hồi API không hợp lệ.';
         console.error('Non-JSON response from check-payment. Status:', response.status, 'Content-Type:', contentType);
         console.error('Response text:', txt.slice(0, 500));
         modalCheckPaymentBtn.disabled = false;
-        modalCheckPaymentBtn.textContent = '↻ Thử Lại';
+        modalCheckPaymentBtn.textContent = 'Thử lại';
         return;
       }
 
       if (result && result.success) {
-        // Thanh toán thành công
-        modalStatus.className = 'payment-modal-status success';
-        modalStatusText.innerHTML = '✓ Thanh toán thành công!<br>Đang tạo đơn hàng...';
-        modalCheckPaymentBtn.disabled = true;
+        // 2) Tạo đơn hàng
+        const addressVal = checkoutForm.querySelector('input[name="address"]').value.trim();
+        const noteVal = checkoutForm.querySelector('textarea[name="note"]').value.trim();
 
-        // Dừng polling
-        if (paymentCheckInterval) {
-          clearInterval(paymentCheckInterval);
-          paymentCheckInterval = null;
+        try {
+          const selectedInputs = Array.from(checkoutForm.querySelectorAll('input[name="selected[]"]'));
+          const selectedIds = selectedInputs.map(i => i.value);
+          const qtyInputs = Array.from(checkoutForm.querySelectorAll('input[name^="quantity["]'));
+          const quantities = {};
+          qtyInputs.forEach(inp => {
+            const m = inp.name.match(/^quantity\[(.+)\]$/);
+            if (m) { quantities[m[1]] = parseInt(inp.value || '1', 10); }
+          });
+
+          const createResp = await fetch('<?php echo ROOT_URL; ?>payment/create-order-on-payment', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              amount: totalAmount,
+              description: currentOrderId,
+              address: addressVal,
+              note: noteVal,
+              selected: selectedIds,
+              quantities: quantities
+            })
+          });
+
+          const createCT = createResp.headers.get('content-type') || '';
+          if (createCT.indexOf('application/json') !== -1) {
+            const createResult = await createResp.json();
+            if (createResult && createResult.success) {
+              paymentVerifiedInput.value = '1';
+              modalStatus.className = 'payment-modal-status success';
+              modalStatusText.innerHTML = 'Thanh toán thành công!<br>Đơn hàng đã được tạo.<br>Mã đơn: <strong>' + (createResult.order_id || '') + '</strong>';
+              modalCheckPaymentBtn.disabled = true;
+              setTimeout(() => {
+                hidePaymentModal();
+                window.location = '<?php echo ROOT_URL; ?>cart/orderDetail/' + (createResult.order_id || '');
+              }, 300);
+            } else {
+              modalStatus.className = 'payment-modal-status failed';
+              modalStatusText.textContent = (createResult && createResult.message) ? createResult.message : 'Không thể tạo đơn hàng. Vui lòng thử lại.';
+              modalCheckPaymentBtn.disabled = false;
+              modalCheckPaymentBtn.textContent = 'Thử lại';
+            }
+          } else {
+            const txt2 = await createResp.text();
+            console.warn('Non-JSON response từ create-order-on-payment:', txt2.slice(0, 500));
+            modalStatus.className = 'payment-modal-status failed';
+            modalStatusText.textContent = 'Phản hồi tạo đơn không hợp lệ. Vui lòng thử lại.';
+            modalCheckPaymentBtn.disabled = false;
+            modalCheckPaymentBtn.textContent = 'Thử lại';
+          }
+        } catch (errCreate) {
+          console.error('Lỗi tạo đơn hàng:', errCreate);
+          modalStatus.className = 'payment-modal-status failed';
+          modalStatusText.textContent = 'Lỗi tạo đơn hàng. Vui lòng thử lại.';
+          modalCheckPaymentBtn.disabled = false;
+          modalCheckPaymentBtn.textContent = 'Thử lại';
         }
-
-        // Chờ 1.5 giây rồi submit form để tạo đơn hàng
-        setTimeout(() => {
-          paymentVerifiedInput.value = '1';
-          hidePaymentModal();
-          // Submit form
-          checkoutForm.submit();
-        }, 1500);
       } else {
-        // Thanh toán thất bại
         modalStatus.className = 'payment-modal-status failed';
-        modalStatusText.textContent = '✕ ' + (result.message || 'Thanh toán thất bại. Vui lòng thử lại.');
+        modalStatusText.textContent = (result && result.message) ? result.message : 'Thanh toán thất bại. Vui lòng thử lại.';
         modalCheckPaymentBtn.disabled = false;
-        modalCheckPaymentBtn.textContent = '↻ Thử Lại';
+        modalCheckPaymentBtn.textContent = 'Thử lại';
       }
     } catch (error) {
       console.error('Lỗi kiểm tra thanh toán:', error);
       modalStatus.className = 'payment-modal-status failed';
-      modalStatusText.textContent = '✕ Lỗi kết nối. Vui lòng thử lại.';
+      modalStatusText.textContent = 'Lỗi kết nối. Vui lòng thử lại.';
       modalCheckPaymentBtn.disabled = false;
-      modalCheckPaymentBtn.textContent = '↻ Thử Lại';
+      modalCheckPaymentBtn.textContent = 'Thử lại';
     }
   }
 
@@ -878,3 +1014,4 @@
 </script>
 
 <?php require_once ROOT_PATH . '/src/Views/includes/footer.php'; ?>
+

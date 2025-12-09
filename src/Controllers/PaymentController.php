@@ -375,23 +375,46 @@ class PaymentController extends Controller
         }
 
         try {
-            // Gọi API bằng cURL - sử dụng GET request với timeout ngắn
-            $ch = curl_init($gasUrl);
-            curl_setopt_array($ch, [
-                CURLOPT_RETURNTRANSFER => true,
-                CURLOPT_TIMEOUT => 5, // Timeout ngắn 5 giây
-                CURLOPT_CUSTOMREQUEST => 'GET',
-                CURLOPT_FOLLOWLOCATION => true,
-                CURLOPT_USERAGENT => 'DuAn1-PaymentChecker/1.0',
-                CURLOPT_HTTPHEADER => [
-                    'Accept: application/json'
-                ]
+            $queryParams = http_build_query([
+                'action' => 'checkPayment',
+                'order_id' => $orderId,
+                'amount' => (int)$amount,
+                'description' => $description,
+                'account_no' => $accountNo,
+                'bank_id' => $bankId,
+                'timestamp' => date('Y-m-d H:i:s'),
+                'user_id' => isset($_SESSION['user']['id']) ? $_SESSION['user']['id'] : ($_SESSION['user']['username'] ?? '')
             ]);
 
-            $response = curl_exec($ch);
-            $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-            $error = curl_error($ch);
-            curl_close($ch);
+            $requestUrl = $gasUrl . (strpos($gasUrl, '?') === false ? '?' : '&') . $queryParams;
+
+            $maxRetries = 3;
+            $retryDelayMs = 250;
+            $response = '';
+            $httpCode = 0;
+            $error = '';
+            for ($attempt = 1; $attempt <= $maxRetries; $attempt++) {
+                $ch = curl_init($requestUrl);
+                curl_setopt_array($ch, [
+                    CURLOPT_RETURNTRANSFER => true,
+                    CURLOPT_TIMEOUT => 4,
+                    CURLOPT_CONNECTTIMEOUT => 3,
+                    CURLOPT_CUSTOMREQUEST => 'GET',
+                    CURLOPT_FOLLOWLOCATION => true,
+                    CURLOPT_USERAGENT => 'DuAn1-PaymentChecker/1.0',
+                    CURLOPT_SSL_VERIFYPEER => false,
+                    CURLOPT_SSL_VERIFYHOST => false,
+                    CURLOPT_HTTPHEADER => [
+                        'Accept: application/json'
+                    ]
+                ]);
+                $response = curl_exec($ch);
+                $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+                $error = curl_error($ch);
+                curl_close($ch);
+                if (!$error && !empty($response)) { break; }
+                usleep($retryDelayMs * 1000);
+            }
             
             // Ghi log request + response để debug
             try {
@@ -402,11 +425,11 @@ class PaymentController extends Controller
                 $logFile = $logDir . '/payment_check.log';
                 $logEntry = "---\n";
                 $logEntry .= "TIMESTAMP: " . date('Y-m-d H:i:s') . "\n";
-                $logEntry .= "REQUEST_URL: " . $gasUrl . "\n";
+                $logEntry .= "REQUEST_URL: " . $requestUrl . "\n";
                 $logEntry .= "REQUEST_METHOD: GET\n";
-                $logEntry .= "SEARCH_PARAMS: amount=$amount, description=$description, account_no=$accountNo\n";
-                $logEntry .= "HTTP_CODE: " . $httpCode . "\n";
-                $logEntry .= "CURL_ERROR: " . $error . "\n";
+            $logEntry .= "REQUEST_QUERY: " . $queryParams . "\n";
+            $logEntry .= "HTTP_CODE: " . $httpCode . "\n";
+            $logEntry .= "CURL_ERROR: " . $error . "\n";
                 $logEntry .= "RESPONSE_LENGTH: " . strlen($response) . "\n";
                 $logEntry .= "RESPONSE: " . (strlen($response) > 500 ? substr($response, 0, 500) . '...' : $response) . "\n";
                 $logEntry .= "---\n\n";
@@ -541,5 +564,881 @@ class PaymentController extends Controller
             'success' => false,
             'message' => 'Giao dịch chưa được phát hiện. Vui lòng kiểm tra lại thông tin chuyển khoản.'
         ];
+    }
+
+    /**
+     * ============================================================
+     * CREATE ORDER ON PAYMENT SUCCESS
+     * ============================================================
+     * URL: /payment/create-order-on-payment (POST)
+     * POST Parameters (JSON):
+     *   - amount: Số tiền thanh toán
+     *   - description: Nội dung chuyển khoản
+     *   - address: Địa chỉ giao hàng
+     *   - note: Ghi chú
+     * 
+     * Tự động tạo đơn hàng từ giỏ hàng khi thanh toán QR thành công
+     * 
+     * Response:
+     * {
+     *     "success": true,
+     *     "message": "Đơn hàng đã được tạo thành công",
+     *     "order_id": "Ord0000000001",
+     *     "order_data": {...}
+     * }
+     */
+    public function createOrderOnPayment()
+    {
+        // Set Content-Type header
+        header('Content-Type: application/json; charset=utf-8');
+        
+        // Kiểm tra request method
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            http_response_code(405);
+            echo json_encode([
+                'success' => false,
+                'message' => 'Method not allowed'
+            ]);
+            return;
+        }
+
+        // Kiểm tra user đã login
+        if (!isset($_SESSION['user'])) {
+            http_response_code(401);
+            echo json_encode([
+                'success' => false,
+                'message' => 'Unauthorized - Vui lòng đăng nhập'
+            ]);
+            return;
+        }
+
+        // Lấy dữ liệu từ JSON request
+        $contentType = isset($_SERVER['CONTENT_TYPE']) ? $_SERVER['CONTENT_TYPE'] : '';
+        
+        if (strpos($contentType, 'application/json') !== false) {
+            $jsonData = json_decode(file_get_contents('php://input'), true);
+            $data = $jsonData ?? [];
+        } else {
+            $data = $_POST ?? [];
+        }
+
+        // Lấy thông tin từ request
+        $amount = isset($data['amount']) ? (int)$data['amount'] : 0;
+        $description = isset($data['description']) ? trim($data['description']) : '';
+        $address = isset($data['address']) ? trim($data['address']) : '';
+        $note = isset($data['note']) ? trim($data['note']) : '';
+        $selected = isset($data['selected']) && is_array($data['selected']) ? array_values($data['selected']) : [];
+        $quantitiesOverride = isset($data['quantities']) && is_array($data['quantities']) ? $data['quantities'] : [];
+
+        // Validate
+        if (empty($amount)) {
+            http_response_code(400);
+            echo json_encode([
+                'success' => false,
+                'message' => 'amount là bắt buộc'
+            ]);
+            return;
+        }
+
+        if (empty($address)) {
+            // Fallback: dùng địa chỉ từ session user nếu không gửi
+            $address = isset($_SESSION['user']['address']) ? trim($_SESSION['user']['address']) : '';
+            if (empty($address)) {
+                http_response_code(400);
+                echo json_encode([
+                    'success' => false,
+                    'message' => 'address là bắt buộc'
+                ]);
+                return;
+            }
+        }
+
+        // Lấy giỏ hàng từ database
+        $userId = $_SESSION['user']['id'] ?? $_SESSION['user']['username'] ?? '';
+        if (empty($userId)) {
+            http_response_code(400);
+            echo json_encode([
+                'success' => false,
+                'message' => 'Không tìm thấy thông tin user'
+            ]);
+            return;
+        }
+
+        try {
+            $cartModel = new \Models\Cart();
+            $orderModel = new \Models\Order();
+            $orderDetailModel = new \Models\OrderDetail();
+            $variantModel = new \Models\Product_Varirant();
+            $productModel = new \Models\Product();
+
+            // Lấy các item trong giỏ hàng
+            $cartItems = $cartModel->getCartByUserId($userId);
+            if (empty($cartItems)) {
+                http_response_code(400);
+                echo json_encode([
+                    'success' => false,
+                    'message' => 'Giỏ hàng trống - không thể tạo đơn hàng'
+                ]);
+                return;
+            }
+
+            // Chuẩn bị dữ liệu để tạo đơn hàng
+            $orderData = [
+                'user_id' => $userId,
+                'address' => $address,
+                'note' => $note,
+                'status' => 'pending',
+                'order_date' => date('Y-m-d')
+            ];
+
+            // Chuẩn bị chi tiết đơn hàng
+            $orderDetails = [];
+            $totalCartAmount = 0;
+
+            // Nếu có danh sách selected, chỉ xử lý các item đó
+            $cartItemsToProcess = [];
+            if (!empty($selected)) {
+                $selectedMap = array_flip($selected);
+                foreach ($cartItems as $ci) {
+                    if (isset($selectedMap[$ci['_Cart_Id']])) {
+                        $cartItemsToProcess[] = $ci;
+                    }
+                }
+            } else {
+                $cartItemsToProcess = $cartItems;
+            }
+
+            foreach ($cartItemsToProcess as $cartItem) {
+                $variantId = (int)$cartItem['Variant_Id'];
+                $cartId = $cartItem['_Cart_Id'] ?? null;
+                $quantity = isset($cartId, $quantitiesOverride[$cartId]) ? (int)$quantitiesOverride[$cartId] : (int)$cartItem['Quantity'];
+
+                // Lấy thông tin variant
+                $variant = $variantModel->getById($variantId);
+                if (!$variant) {
+                    continue;
+                }
+
+                $productId = $variant['product_id'] ?? $variant['Product_Id'] ?? null;
+                if (!$productId) {
+                    continue;
+                }
+
+                // Lấy thông tin sản phẩm
+                $product = $productModel->getById($productId);
+                if (!$product) {
+                    continue;
+                }
+
+                $price = (int)($variant['price'] ?? $product['price'] ?? 0);
+                $stock = (int)($variant['stock'] ?? $variant['Quantity_In_Stock'] ?? 0);
+
+                // Kiểm tra tồn kho
+                if ($stock <= 0) {
+                    // Bỏ qua sản phẩm hết hàng
+                    continue;
+                }
+
+                if ($quantity > $stock) {
+                    $quantity = $stock;
+                }
+
+                $subtotal = $price * $quantity;
+                $totalCartAmount += $subtotal;
+
+                // Thêm vào chi tiết đơn hàng
+                $orderDetails[] = [
+                    'product_id' => $productId,
+                    'variant_id' => $variantId,
+                    'quantity' => $quantity,
+                    'price' => $price,
+                    'subtotal' => $subtotal
+                ];
+            }
+
+            // Kiểm tra tổng tiền có khớp không
+            if ($totalCartAmount !== $amount) {
+                http_response_code(400);
+                echo json_encode([
+                    'success' => false,
+                    'message' => 'Tổng tiền không khớp. Giỏ hàng: ' . $totalCartAmount . ' VND, thanh toán: ' . $amount . ' VND',
+                    'cart_total' => $totalCartAmount,
+                    'payment_amount' => $amount
+                ]);
+                return;
+            }
+
+            // Tạo đơn hàng với chi tiết
+            $orderId = $orderModel->createWithDetails($orderData, $orderDetails);
+
+            if (!$orderId) {
+                http_response_code(500);
+                echo json_encode([
+                    'success' => false,
+                    'message' => 'Không thể tạo đơn hàng - vui lòng thử lại'
+                ]);
+                return;
+            }
+
+            // Xóa giỏ hàng sau khi tạo đơn hàng thành công (chỉ xóa các item đã xử lý)
+            foreach ($cartItemsToProcess as $cartItem) {
+                if (!empty($cartItem['_Cart_Id'])) {
+                    $cartModel->deleteCart($cartItem['_Cart_Id']);
+                }
+            }
+
+            // Lấy thông tin đơn hàng vừa tạo
+            $order = $orderModel->getByIdWithUser($orderId);
+
+            // Return success response
+            http_response_code(201);
+            echo json_encode([
+                'success' => true,
+                'message' => 'Đơn hàng đã được tạo thành công',
+                'order_id' => $orderId,
+                'order_data' => $order,
+                'items_count' => count($orderDetails),
+                'total_amount' => $totalCartAmount
+            ]);
+
+        } catch (\Exception $e) {
+            error_log("Payment createOrderOnPayment Error: " . $e->getMessage());
+            http_response_code(500);
+            echo json_encode([
+                'success' => false,
+                'message' => 'Lỗi server - không thể tạo đơn hàng',
+                'error' => $e->getMessage()
+            ]);
+        }
+    }
+
+    /**
+     * ============================================================
+     * POLL LATEST PAYMENT - Kiểm tra thanh toán mới liên tục
+     * ============================================================
+     * URL: /payment/poll-latest-payment (POST)
+     * POST Parameters (JSON):
+     *   - order_id: Mã đơn hàng để theo dõi (tùy chọn)
+     *   - user_id: User ID để kiểm tra thanh toán của user
+     * 
+     * Lấy thanh toán mới nhất từ API, so sánh với hệ thống
+     * Nếu khớp: tự động tạo đơn hàng
+     * Nếu không khớp: thông báo lỗi
+     * 
+     * Response:
+     * {
+     *     "success": true/false,
+     *     "message": "...",
+     *     "payment": {...},
+     *     "order_id": "Ord0000000001" (nếu tạo thành công)
+     * }
+     */
+    public function pollLatestPayment()
+    {
+        header('Content-Type: application/json; charset=utf-8');
+        
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            http_response_code(405);
+            echo json_encode(['error' => 'Method not allowed']);
+            return;
+        }
+
+        if (!isset($_SESSION['user'])) {
+            http_response_code(401);
+            echo json_encode(['error' => 'Unauthorized']);
+            return;
+        }
+
+        $contentType = isset($_SERVER['CONTENT_TYPE']) ? $_SERVER['CONTENT_TYPE'] : '';
+        if (strpos($contentType, 'application/json') !== false) {
+            $jsonData = json_decode(file_get_contents('php://input'), true);
+            $data = $jsonData ?? [];
+        } else {
+            $data = $_POST ?? [];
+        }
+
+        $userId = $_SESSION['user']['id'] ?? $_SESSION['user']['username'] ?? '';
+        $orderId = isset($data['order_id']) ? trim($data['order_id']) : '';
+        
+        // Gọi API để lấy thanh toán mới nhất
+        $latestPayment = $this->getLatestPaymentFromAPI();
+
+        if (!$latestPayment['success']) {
+            http_response_code(400);
+            echo json_encode($latestPayment);
+            return;
+        }
+
+        $payment = $latestPayment['data'];
+        
+        // Kiểm tra xem thanh toán này đã được xử lý chưa
+        if ($this->isPaymentProcessed($payment)) {
+            echo json_encode([
+                'success' => false,
+                'message' => 'Thanh toán này đã được xử lý trước đó',
+                'payment' => $payment
+            ]);
+            return;
+        }
+
+        // Ghi lại thanh toán vào file để theo dõi
+        $this->recordPaymentForTracking($payment);
+
+        // Nếu có order_id, thực hiện so sánh và tạo đơn hàng
+        if (!empty($orderId)) {
+            // Lấy thông tin đơn hàng để so sánh
+            $systemOrderInfo = $this->getSystemOrderInfo($orderId);
+            
+            if (!$systemOrderInfo['found']) {
+                echo json_encode([
+                    'success' => false,
+                    'message' => 'Không tìm thấy thông tin đơn hàng trong hệ thống',
+                    'order_id' => $orderId
+                ]);
+                return;
+            }
+
+            // So sánh thông tin thanh toán
+            $comparison = $this->comparePaymentInfo($payment, $systemOrderInfo['data']);
+            
+            if (!$comparison['match']) {
+                // Thanh toán không khớp
+                http_response_code(400);
+                echo json_encode([
+                    'success' => false,
+                    'message' => 'Thanh toán không khớp với thông tin hệ thống: ' . $comparison['reason'],
+                    'payment' => $payment,
+                    'system_info' => $systemOrderInfo['data'],
+                    'comparison' => $comparison
+                ]);
+                return;
+            }
+
+            // Thanh toán khớp - tạo đơn hàng
+            $createResult = $this->autoCreateOrderFromPayment($payment, $userId);
+            
+            if ($createResult['success']) {
+                // Đánh dấu thanh toán đã được xử lý
+                $this->markPaymentAsProcessed($payment);
+                
+                http_response_code(201);
+                echo json_encode([
+                    'success' => true,
+                    'message' => 'Thanh toán khớp - Đơn hàng đã được tạo thành công',
+                    'payment' => $payment,
+                    'order_id' => $createResult['order_id'],
+                    'order_data' => $createResult['order_data']
+                ]);
+            } else {
+                http_response_code(500);
+                echo json_encode([
+                    'success' => false,
+                    'message' => 'Thanh toán khớp nhưng không thể tạo đơn hàng: ' . $createResult['message'],
+                    'payment' => $payment
+                ]);
+            }
+        } else {
+            // Chỉ trả về thông tin thanh toán mới nhất
+            echo json_encode([
+                'success' => true,
+                'message' => 'Thanh toán mới nhất',
+                'payment' => $payment
+            ]);
+        }
+    }
+
+    /**
+     * Lấy thanh toán mới nhất từ Google Apps Script API
+     * Với retry logic và fallback data
+     * @return array
+     */
+    private function getLatestPaymentFromAPI()
+    {
+        $gasUrl = PaymentHelper::getGoogleAppsScriptUrl();
+        
+        if (empty($gasUrl)) {
+            return [
+                'success' => false,
+                'message' => 'Payment API chưa được cấu hình',
+                'code' => 'NO_API_CONFIG'
+            ];
+        }
+
+        // Retry logic - thử 3 lần
+        $maxRetries = 3;
+        $retryDelay = 500; // milliseconds
+        $lastError = null;
+        
+        for ($attempt = 1; $attempt <= $maxRetries; $attempt++) {
+            try {
+                $ch = curl_init();
+                curl_setopt_array($ch, [
+                    CURLOPT_URL => $gasUrl . (strpos($gasUrl, '?') === false ? '?' : '&') . 'action=getLatestPayment&t=' . time(),
+                    CURLOPT_RETURNTRANSFER => true,
+                    CURLOPT_TIMEOUT => 15, // Tăng timeout lên 15 giây
+                    CURLOPT_CONNECTTIMEOUT => 10, // Connection timeout 10 giây
+                    CURLOPT_CUSTOMREQUEST => 'GET',
+                    CURLOPT_FOLLOWLOCATION => true,
+                    CURLOPT_MAXREDIRS => 5,
+                    CURLOPT_SSL_VERIFYPEER => false,
+                    CURLOPT_SSL_VERIFYHOST => false,
+                    CURLOPT_USERAGENT => 'DuAn1-PaymentPoller/1.0',
+                    CURLOPT_HTTPHEADER => [
+                        'Accept: application/json',
+                        'Accept-Encoding: gzip, deflate'
+                    ]
+                ]);
+
+                $response = curl_exec($ch);
+                $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+                $error = curl_error($ch);
+                $curlErrno = curl_errno($ch);
+                curl_close($ch);
+
+                // Ghi log chi tiết
+                $this->logPaymentPolling($gasUrl, $response, $httpCode, $error, $attempt, $maxRetries);
+
+                // Nếu có lỗi CURL
+                if ($error) {
+                    $lastError = $error;
+                    
+                    // Nếu là timeout hoặc connection error, retry
+                    if ($curlErrno === CURLE_OPERATION_TIMEDOUT || 
+                        $curlErrno === CURLE_COULDNT_CONNECT ||
+                        $curlErrno === CURLE_PARTIAL_FILE) {
+                        
+                        // Delay trước khi retry
+                        if ($attempt < $maxRetries) {
+                            usleep($retryDelay * 1000);
+                        }
+                        continue;
+                    }
+                    
+                    // Lỗi khác thì return ngay
+                    return [
+                        'success' => false,
+                        'message' => 'Lỗi kết nối API: ' . $error,
+                        'code' => 'CURL_ERROR',
+                        'errno' => $curlErrno,
+                        'attempt' => $attempt
+                    ];
+                }
+
+                // Nếu không có response
+                if (empty($response)) {
+                    $lastError = 'API không trả về dữ liệu';
+                    
+                    if ($attempt < $maxRetries) {
+                        usleep($retryDelay * 1000);
+                    }
+                    continue;
+                }
+
+                // Parse response
+                $result = json_decode($response, true);
+                
+                if (!is_array($result)) {
+                    $lastError = 'API trả về dữ liệu không hợp lệ (không phải JSON)';
+                    
+                    if ($attempt < $maxRetries) {
+                        usleep($retryDelay * 1000);
+                    }
+                    continue;
+                }
+
+                // Nếu API trả về data array (danh sách transactions)
+                if (isset($result['data']) && is_array($result['data']) && !empty($result['data'])) {
+                    // Lấy transaction cuối cùng (mới nhất)
+                    $latestPayment = end($result['data']);
+                    return [
+                        'success' => true,
+                        'data' => $latestPayment,
+                        'attempt' => $attempt,
+                        'http_code' => $httpCode
+                    ];
+                }
+
+                // Nếu API trả về single transaction
+                if (isset($result['Mã GD']) || isset($result['Giá trị']) || 
+                    isset($result['payment_id']) || isset($result['amount'])) {
+                    return [
+                        'success' => true,
+                        'data' => $result,
+                        'attempt' => $attempt,
+                        'http_code' => $httpCode
+                    ];
+                }
+
+                // Nếu response trống
+                $lastError = 'Không tìm thấy dữ liệu thanh toán từ API';
+                if ($attempt < $maxRetries) {
+                    usleep($retryDelay * 1000);
+                }
+                continue;
+
+            } catch (\Exception $e) {
+                $lastError = $e->getMessage();
+                
+                if ($attempt < $maxRetries) {
+                    usleep($retryDelay * 1000);
+                }
+                continue;
+            }
+        }
+
+        // Nếu tất cả retry đều thất bại
+        return [
+            'success' => false,
+            'message' => 'API timeout hoặc lỗi sau ' . $maxRetries . ' lần thử: ' . $lastError,
+            'code' => 'API_TIMEOUT',
+            'lastError' => $lastError,
+            'attempts' => $maxRetries
+        ];
+    }
+
+    /**
+     * Kiểm tra xem thanh toán đã được xử lý chưa
+     * @param array $payment
+     * @return bool
+     */
+    private function isPaymentProcessed($payment)
+    {
+        $stateFile = ROOT_PATH . '/storage/payment_polling_state.json';
+        
+        if (!file_exists($stateFile)) {
+            return false;
+        }
+
+        $state = json_decode(file_get_contents($stateFile), true) ?? [];
+        $lastCheckedId = $state['last_checked_payment_id'] ?? null;
+        $lastTimestamp = $state['last_payment_timestamp'] ?? null;
+
+        $paymentId = $payment['Mã GD'] ?? $payment['payment_id'] ?? null;
+        $paymentTime = $payment['Ngày diễn ra'] ?? $payment['timestamp'] ?? null;
+
+        // Nếu cùng ID hoặc cùng timestamp, thì đã được xử lý
+        return ($paymentId && $paymentId === $lastCheckedId) || 
+               ($paymentTime && $paymentTime === $lastTimestamp);
+    }
+
+    /**
+     * Ghi lại thanh toán vào file theo dõi
+     * @param array $payment
+     */
+    private function recordPaymentForTracking($payment)
+    {
+        $stateFile = ROOT_PATH . '/storage/payment_polling_state.json';
+        
+        $state = file_exists($stateFile) ? json_decode(file_get_contents($stateFile), true) : [];
+        
+        $state['last_checked_payment_id'] = $payment['Mã GD'] ?? $payment['payment_id'] ?? null;
+        $state['last_payment_timestamp'] = $payment['Ngày diễn ra'] ?? $payment['timestamp'] ?? date('Y-m-d H:i:s');
+        $state['last_polling_timestamp'] = date('Y-m-d H:i:s');
+
+        @file_put_contents($stateFile, json_encode($state, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+    }
+
+    /**
+     * Đánh dấu thanh toán đã được xử lý
+     * @param array $payment
+     */
+    private function markPaymentAsProcessed($payment)
+    {
+        $stateFile = ROOT_PATH . '/storage/payment_polling_state.json';
+        
+        $state = file_exists($stateFile) ? json_decode(file_get_contents($stateFile), true) : [];
+        
+        if (!isset($state['created_orders'])) {
+            $state['created_orders'] = [];
+        }
+
+        $state['created_orders'][] = [
+            'payment_id' => $payment['Mã GD'] ?? $payment['payment_id'] ?? null,
+            'payment_amount' => $payment['Giá trị'] ?? $payment['amount'] ?? 0,
+            'processed_at' => date('Y-m-d H:i:s')
+        ];
+
+        @file_put_contents($stateFile, json_encode($state, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+    }
+
+    /**
+     * Lấy thông tin đơn hàng từ hệ thống để so sánh
+     * @param string $orderId
+     * @return array
+     */
+    private function getSystemOrderInfo($orderId)
+    {
+        try {
+            $orderModel = new \Models\Order();
+            $order = $orderModel->getById($orderId);
+
+            if (!$order) {
+                return ['found' => false];
+            }
+
+            // Lấy chi tiết đơn hàng
+            $orderDetailModel = new \Models\OrderDetail();
+            $orderDetails = $orderDetailModel->getByOrderId($orderId);
+
+            $totalAmount = 0;
+            foreach ($orderDetails as $detail) {
+                $totalAmount += isset($detail['subtotal']) ? (int)$detail['subtotal'] : 0;
+            }
+
+            return [
+                'found' => true,
+                'data' => [
+                    'order_id' => $orderId,
+                    'amount' => $totalAmount,
+                    'description' => 'Thanh toan - ' . (isset($order['user_id']) ? $order['user_id'] : $order['User_Id'] ?? ''),
+                    'account_no' => PaymentHelper::getQRConfig()['account_no'],
+                    'status' => $order['status'] ?? $order['Status'] ?? 'pending'
+                ]
+            ];
+        } catch (\Exception $e) {
+            error_log("getSystemOrderInfo Error: " . $e->getMessage());
+            return ['found' => false];
+        }
+    }
+
+    /**
+     * So sánh thông tin thanh toán API với hệ thống
+     * @param array $apiPayment - Thanh toán từ API
+     * @param array $systemOrder - Thông tin từ hệ thống
+     * @return array
+     */
+    private function comparePaymentInfo($apiPayment, $systemOrder)
+    {
+        $apiAmount = (int)($apiPayment['Giá trị'] ?? $apiPayment['amount'] ?? 0);
+        $systemAmount = (int)($systemOrder['amount'] ?? 0);
+
+        $apiDescription = $apiPayment['Mô tả'] ?? $apiPayment['description'] ?? '';
+        $systemDescription = $systemOrder['description'] ?? '';
+
+        $apiAccountNo = trim($apiPayment['Số tài khoản'] ?? $apiPayment['account_no'] ?? '');
+        $systemAccountNo = trim($systemOrder['account_no'] ?? '');
+
+        // Chuẩn hóa để so sánh
+        $apiDescriptionSimple = preg_replace('/[^A-Z0-9]/i', '', strtoupper($apiDescription));
+        $systemDescriptionSimple = preg_replace('/[^A-Z0-9]/i', '', strtoupper($systemDescription));
+
+        // ===== SO SÁNH SỐ TIỀN =====
+        $amountMatch = $apiAmount === $systemAmount;
+
+        // ===== SO SÁNH NỘI DUNG =====
+        // Yêu cầu: Nếu API description chứa bất kỳ từ khóa nào từ hệ thống HOẶC
+        // Nếu hệ thống description đơn giản, chỉ cần API description chứa các ký tự quan trọng
+        $descriptionMatch = false;
+        
+        if (!empty($apiDescriptionSimple) && !empty($systemDescriptionSimple)) {
+            // Nếu API chứa hệ thống, hoặc hệ thống chứa API
+            $descriptionMatch = (strpos($apiDescriptionSimple, $systemDescriptionSimple) !== false ||
+                               strpos($systemDescriptionSimple, $apiDescriptionSimple) !== false);
+            
+            // HOẶC nếu API description chứa các từ khóa quan trọng từ hệ thống
+            if (!$descriptionMatch) {
+                // Extract keywords từ system description (bỏ các từ chung)
+                $systemKeywords = array_filter(explode(' ', $systemDescriptionSimple));
+                $apiKeywords = array_filter(explode(' ', $apiDescriptionSimple));
+                
+                // Nếu hơn 50% từ khóa hệ thống có trong API description
+                if (count($systemKeywords) > 0) {
+                    $matchCount = 0;
+                    foreach ($systemKeywords as $keyword) {
+                        if (strlen($keyword) > 2 && strpos($apiDescriptionSimple, $keyword) !== false) {
+                            $matchCount++;
+                        }
+                    }
+                    $matchPercentage = count($systemKeywords) > 0 ? ($matchCount / count($systemKeywords)) : 0;
+                    $descriptionMatch = $matchPercentage >= 0.5; // 50% match là ok
+                }
+            }
+        } else {
+            // Nếu một trong hai trống, chỉ match nếu cả hai trống hoặc không yêu cầu
+            $descriptionMatch = empty($systemDescriptionSimple) || !empty($apiDescriptionSimple);
+        }
+
+        // ===== SO SÁNH TÀI KHOẢN =====
+        $accountMatch = (empty($apiAccountNo) || empty($systemAccountNo) || $apiAccountNo === $systemAccountNo);
+
+        // Tất cả phải match
+        $allMatch = $amountMatch && $descriptionMatch && $accountMatch;
+
+        if (!$allMatch) {
+            $reasons = [];
+            if (!$amountMatch) {
+                $reasons[] = "Số tiền không khớp (API: {$apiAmount}, Hệ thống: {$systemAmount})";
+            }
+            if (!$descriptionMatch) {
+                $reasons[] = "Nội dung không khớp đủ từ khóa (API: {$apiDescription}, Hệ thống: {$systemDescription})";
+            }
+            if (!$accountMatch) {
+                $reasons[] = "Số tài khoản không khớp (API: {$apiAccountNo}, Hệ thống: {$systemAccountNo})";
+            }
+
+            return [
+                'match' => false,
+                'reason' => implode('; ', $reasons),
+                'details' => [
+                    'amount' => $amountMatch,
+                    'description' => $descriptionMatch,
+                    'account_no' => $accountMatch
+                ]
+            ];
+        }
+
+        return [
+            'match' => true,
+            'details' => [
+                'amount' => $amountMatch,
+                'description' => $descriptionMatch,
+                'account_no' => $accountMatch
+            ]
+        ];
+    }
+
+    /**
+     * Tự động tạo đơn hàng từ thông tin thanh toán
+     * @param array $payment
+     * @param string $userId
+     * @return array
+     */
+    private function autoCreateOrderFromPayment($payment, $userId)
+    {
+        try {
+            $cartModel = new \Models\Cart();
+            $orderModel = new \Models\Order();
+            $variantModel = new \Models\Product_Varirant();
+            $productModel = new \Models\Product();
+
+            // Lấy các item trong giỏ hàng
+            $cartItems = $cartModel->getCartByUserId($userId);
+            if (empty($cartItems)) {
+                return [
+                    'success' => false,
+                    'message' => 'Giỏ hàng trống'
+                ];
+            }
+
+            // Chuẩn bị dữ liệu
+            $orderData = [
+                'user_id' => $userId,
+                'address' => isset($_SESSION['user']['address']) ? $_SESSION['user']['address'] : 'Chưa cấp nhật địa chỉ',
+                'note' => 'Thanh toán tự động: ' . ($payment['Mã GD'] ?? $payment['payment_id'] ?? ''),
+                'status' => 'confirmed',
+                'payment_status' => 'completed',
+                'payment_id' => $payment['Mã GD'] ?? $payment['payment_id'] ?? '',
+                'order_date' => date('Y-m-d')
+            ];
+
+            $orderDetails = [];
+            $totalAmount = 0;
+
+            foreach ($cartItems as $cartItem) {
+                $variantId = (int)$cartItem['Variant_Id'];
+                $quantity = (int)$cartItem['Quantity'];
+
+                $variant = $variantModel->getById($variantId);
+                if (!$variant) continue;
+
+                $productId = $variant['product_id'] ?? $variant['Product_Id'] ?? null;
+                if (!$productId) continue;
+
+                $product = $productModel->getById($productId);
+                if (!$product) continue;
+
+                $price = (int)($variant['price'] ?? $product['price'] ?? 0);
+                $stock = (int)($variant['stock'] ?? $variant['Quantity_In_Stock'] ?? 0);
+
+                if ($stock <= 0 || $quantity > $stock) {
+                    $quantity = min($quantity, $stock);
+                }
+
+                if ($quantity <= 0) continue;
+
+                $subtotal = $price * $quantity;
+                $totalAmount += $subtotal;
+
+                $orderDetails[] = [
+                    'product_id' => $productId,
+                    'variant_id' => $variantId,
+                    'quantity' => $quantity,
+                    'price' => $price,
+                    'subtotal' => $subtotal
+                ];
+            }
+
+            if (empty($orderDetails)) {
+                return [
+                    'success' => false,
+                    'message' => 'Không có sản phẩm hợp lệ trong giỏ hàng'
+                ];
+            }
+
+            // Tạo đơn hàng
+            $orderId = $orderModel->createWithDetails($orderData, $orderDetails);
+
+            if (!$orderId) {
+                return [
+                    'success' => false,
+                    'message' => 'Không thể tạo đơn hàng'
+                ];
+            }
+
+            // Xóa giỏ hàng
+            foreach ($cartItems as $cartItem) {
+                $cartModel->deleteCart($cartItem['_Cart_Id']);
+            }
+
+            $order = $orderModel->getByIdWithUser($orderId);
+
+            return [
+                'success' => true,
+                'order_id' => $orderId,
+                'order_data' => $order,
+                'total_amount' => $totalAmount
+            ];
+
+        } catch (\Exception $e) {
+            error_log("autoCreateOrderFromPayment Error: " . $e->getMessage());
+            return [
+                'success' => false,
+                'message' => $e->getMessage()
+            ];
+        }
+    }
+
+    /**
+     * Ghi log polling activity với retry info
+     * @param string $apiUrl
+     * @param string $response
+     * @param int $httpCode
+     * @param string $error
+     * @param int $attempt
+     * @param int $maxRetries
+     */
+    private function logPaymentPolling($apiUrl, $response, $httpCode, $error, $attempt = 1, $maxRetries = 1)
+    {
+        try {
+            $logDir = ROOT_PATH . '/storage';
+            if (!is_dir($logDir)) {
+                @mkdir($logDir, 0755, true);
+            }
+            
+            $logFile = $logDir . '/payment_polling.log';
+            $logEntry = "---\n";
+            $logEntry .= "TIMESTAMP: " . date('Y-m-d H:i:s') . "\n";
+            $logEntry .= "API_URL: " . $apiUrl . "\n";
+            $logEntry .= "ATTEMPT: " . $attempt . "/" . $maxRetries . "\n";
+            $logEntry .= "HTTP_CODE: " . $httpCode . "\n";
+            $logEntry .= "CURL_ERROR: " . $error . "\n";
+            $logEntry .= "RESPONSE_LENGTH: " . strlen($response) . " bytes\n";
+            $logEntry .= "RESPONSE: " . (strlen($response) > 500 ? substr($response, 0, 500) . '...' : $response) . "\n";
+            $logEntry .= "---\n\n";
+            
+            @file_put_contents($logFile, $logEntry, FILE_APPEND | LOCK_EX);
+        } catch (\Exception $e) {
+            // Ignore logging errors
+        }
     }
 }

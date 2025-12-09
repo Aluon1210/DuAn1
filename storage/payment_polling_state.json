@@ -1,0 +1,9 @@
+{
+  "last_checked_payment_id": null,
+  "last_payment_timestamp": null,
+  "polling_enabled": true,
+  "polling_interval_seconds": 2,
+  "last_polling_timestamp": null,
+  "created_orders": [],
+  "failed_payments": []
+}
