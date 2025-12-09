@@ -632,8 +632,17 @@ class CartController extends Controller
 
         $selected = isset($_POST['selected']) ? (array) $_POST['selected'] : [];
         $quantities = isset($_POST['quantity']) ? (array) $_POST['quantity'] : [];
+        $paymentMethod = $_POST['payment_method'] ?? 'opt';
+        $paymentVerified = $_POST['payment_verified'] ?? '0';
         if (empty($selected)) {
             $_SESSION['error'] = 'Vui lòng chọn sản phẩm để đặt hàng';
+            header('Location: ' . ROOT_URL . 'cart');
+            exit;
+        }
+
+        // Nếu là thanh toán online mà chưa xác thực thì chặn tạo đơn
+        if ($paymentMethod === 'online' && $paymentVerified !== '1') {
+            $_SESSION['error'] = 'Thanh toán online chưa được xác nhận. Vui lòng hoàn tất thanh toán trước.';
             header('Location: ' . ROOT_URL . 'cart');
             exit;
         }
@@ -712,11 +721,19 @@ class CartController extends Controller
 
         $user = $_SESSION['user'];
         $orderModel = new \Models\Order();
+        
+        // Lấy phương thức thanh toán từ form
+        $paymentMethod = isset($_POST['payment_method']) ? trim($_POST['payment_method']) : 'opt';
+        if (!in_array($paymentMethod, ['opt', 'online'])) {
+            $paymentMethod = 'opt'; // Mặc định nếu không hợp lệ
+        }
+        
         $orderId = $orderModel->createWithDetails([
             'user_id' => $user['id'] ?? $user['username'] ?? '',
             'address' => $_POST['address'] ?? ($user['address'] ?? ''),
             'note' => $_POST['note'] ?? 'Đặt hàng',
-            'status' => 'completed'
+            'status' => ($paymentMethod === 'online') ? 'pending' : 'completed', // online: chờ xác nhận
+            'payment_method' => $paymentMethod
         ], $orderDetails);
 
         if ($orderId) {
@@ -724,7 +741,10 @@ class CartController extends Controller
             foreach ($selected as $cartId) {
                 $cartModel->deleteCart($cartId);
             }
-            $_SESSION['message'] = 'Đặt hàng thành công. Mã đơn: ' . $orderId . '. Tổng tiền: ' . number_format($totalAmount, 0, ',', '.') . ' ₫';
+            
+            // Tạo message thanh toán phù hợp
+            $paymentText = ($paymentMethod === 'online') ? 'Online (QR Code)' : 'OPT (Tiền mặt)';
+            $_SESSION['message'] = 'Đặt hàng thành công. Mã đơn: ' . $orderId . '. Tổng tiền: ' . number_format($totalAmount, 0, ',', '.') . ' ₫. Phương thức: ' . $paymentText;
             header('Location: ' . ROOT_URL . 'cart');
             exit;
         } else {
