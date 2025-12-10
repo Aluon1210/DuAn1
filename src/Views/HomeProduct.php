@@ -189,20 +189,98 @@
             margin-bottom: 30px;
         }
     }
+
+    .home-banner {
+        position: relative;
+        border-radius: 16px;
+        overflow: hidden;
+        margin-bottom: 40px;
+        box-shadow: var(--shadow-hover);
+        background: #000;
+    }
+
+    .home-banner .slides {
+        position: relative;
+        width: 100%;
+        height: 340px;
+    }
+
+    .home-banner .slide {
+        position: absolute;
+        inset: 0;
+        opacity: 0;
+        transition: opacity 0.6s ease;
+        background-size: cover;
+        background-position: center;
+    }
+
+    .home-banner .slide.active {
+        opacity: 1;
+    }
+
+    .home-banner .controls {
+        position: absolute;
+        bottom: 12px;
+        left: 50%;
+        transform: translateX(-50%);
+        display: flex;
+        gap: 6px;
+        z-index: 2;
+    }
+
+    .home-banner .dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        background: rgba(255,255,255,0.6);
+        cursor: pointer;
+        border: 2px solid rgba(0,0,0,0.2);
+    }
+
+    .home-banner .dot.active {
+        background: var(--primary-gold);
+    }
+
+    @media (max-width: 768px) {
+        .home-banner .slides { height: 220px; }
+    }
 </style>
 
-<!-- Hero Section đơn giản trên trang HomeProduct -->
-<div style="background: linear-gradient(135deg, #1a1a1a 0%, #2c2c2c 100%); color: white; padding: 50px 40px; border-radius: 16px; margin-bottom: 40px; position: relative; overflow: hidden; box-shadow: var(--shadow-hover);">
-    <div style="position: absolute; top: -50%; right: -10%; width: 500px; height: 500px; background: radial-gradient(circle, rgba(212,175,55,0.1) 0%, transparent 70%); border-radius: 50%;"></div>
-    <div style="position: relative; z-index: 1;">
-        <h1 style="font-family: 'Playfair Display', serif; font-size: 42px; font-weight: 700; margin-bottom: 16px; letter-spacing: 2px;">
-            Bộ Sưu Tập Sản Phẩm
-        </h1>
-        <p style="font-size: 16px; color: rgba(255,255,255,0.9); max-width: 520px;">
-            Khám phá các sản phẩm thời trang cao cấp được tuyển chọn dành riêng cho bạn.
-        </p>
+<?php 
+    $bannerDir = ROOT_PATH . '/asset/img/banner';
+    $bannerFiles = [];
+    if (is_dir($bannerDir)) {
+        $bannerFiles = glob($bannerDir . '/*.{jpg,jpeg,png,webp}', GLOB_BRACE);
+    }
+?>
+<?php if (!empty($bannerFiles)): ?>
+    <div class="home-banner">
+        <div class="slides" id="homeBannerSlides">
+            <?php foreach ($bannerFiles as $idx => $file): ?>
+                <div class="slide<?php echo $idx === 0 ? ' active' : ''; ?>" style="background-image: url('<?php echo ROOT_URL . 'asset/img/banner/' . basename($file); ?>');"></div>
+            <?php endforeach; ?>
+        </div>
+        <div class="controls" id="homeBannerDots">
+            <?php foreach ($bannerFiles as $idx => $_): ?>
+                <div class="dot<?php echo $idx === 0 ? ' active' : ''; ?>" data-index="<?php echo $idx; ?>"></div>
+            <?php endforeach; ?>
+        </div>
     </div>
-</div>
+    <script>
+        (function(){
+            var slides = Array.from(document.querySelectorAll('#homeBannerSlides .slide'));
+            var dots = Array.from(document.querySelectorAll('#homeBannerDots .dot'));
+            var i = 0;
+            function show(n){
+                slides.forEach(function(s, idx){ s.classList.toggle('active', idx === n); });
+                dots.forEach(function(d, idx){ d.classList.toggle('active', idx === n); });
+                i = n;
+            }
+            var timer = setInterval(function(){ show((i + 1) % slides.length); }, 3500);
+            dots.forEach(function(d){ d.addEventListener('click', function(){ show(parseInt(d.getAttribute('data-index'))); }); });
+        })();
+    </script>
+<?php endif; ?>
 
 <div style="display: grid; grid-template-columns: 280px 1fr; gap: 40px;">
     <!-- Sidebar -->
@@ -257,9 +335,9 @@
                             <a href="<?php echo ROOT_URL; ?>product/detail/<?php echo $product['id']; ?>" class="btn btn-primary" style="width: 100%; margin-bottom: 12px;">
                                 Xem Chi Tiết
                             </a>
-                            <form method="POST" action="<?php echo ROOT_URL; ?>cart/add/<?php echo $product['id']; ?>" style="display: flex; gap: 8px;">
-                                <input type="number" name="quantity" value="1" min="1" max="<?php echo $product['quantity']; ?>" class="product-quantity-input">
-                                <button type="submit" class="btn btn-success" style="flex: 1;">
+                            <form method="POST" action="<?php echo ROOT_URL; ?>cart/add/<?php echo $product['id']; ?>">
+                                <input type="hidden" name="quantity" value="1">
+                                <button type="submit" class="btn btn-success" style="width: 100%;">
                                     🛒 Thêm
                                 </button>
                             </form>
@@ -267,6 +345,26 @@
                     </div>
                 <?php endforeach; ?>
             </div>
+            <?php if (isset($pagination) && isset($pagination['totalPages']) && $pagination['totalPages'] > 1): ?>
+                <div style="display: flex; justify-content: center; gap: 8px; margin-top: 10px;">
+                    <?php 
+                        $current = (int)($pagination['page'] ?? 1);
+                        $totalPages = (int)$pagination['totalPages'];
+                        $base = isset($baseUrl) ? rtrim($baseUrl, '/') : ROOT_URL;
+                    ?>
+                    <?php if ($current > 1): ?>
+                        <a class="btn btn-primary" href="<?php echo $base; ?><?php echo strpos($base, '?') !== false ? '&' : '?'; ?>page=<?php echo $current - 1; ?>">←</a>
+                    <?php endif; ?>
+                    <?php for ($i = 1; $i <= $totalPages; $i++): ?>
+                        <a class="btn <?php echo $i === $current ? 'btn-success' : 'btn-primary'; ?>" href="<?php echo $base; ?><?php echo strpos($base, '?') !== false ? '&' : '?'; ?>page=<?php echo $i; ?>">
+                            <?php echo $i; ?>
+                        </a>
+                    <?php endfor; ?>
+                    <?php if ($current < $totalPages): ?>
+                        <a class="btn btn-primary" href="<?php echo $base; ?><?php echo strpos($base, '?') !== false ? '&' : '?'; ?>page=<?php echo $current + 1; ?>">→</a>
+                    <?php endif; ?>
+                </div>
+            <?php endif; ?>
         <?php else: ?>
             <div class="empty-state">
                 <div class="empty-state-icon">👗</div>

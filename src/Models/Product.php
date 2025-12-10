@@ -53,6 +53,51 @@ class Product extends Model
         }
     }
 
+    public function countAll()
+    {
+        try {
+            $sql = "SELECT COUNT(*) as cnt FROM {$this->table}";
+            $stmt = $this->db->prepare($sql);
+            $stmt->execute();
+            $row = $stmt->fetch(\PDO::FETCH_ASSOC);
+            return $row ? (int) $row['cnt'] : 0;
+        } catch (\Exception $e) {
+            error_log("Error in countAll: " . $e->getMessage());
+            return 0;
+        }
+    }
+
+    public function getAllWithCategoryPaginated($limit, $offset)
+    {
+        try {
+            $limit = max(1, (int) $limit);
+            $offset = max(0, (int) $offset);
+            $sql = "SELECT p.*, 
+                           c.Name as category_name,
+                           b.Name as branch_name,
+                           p.Product_Id as id,
+                           p.Name as name,
+                           p.Description as description,
+                           p.Price as price,
+                           p.Quantity as quantity,
+                           p.Image as image,
+                           p.Category_Id as category_id,
+                           p.Branch_Id as branch_id,
+                           p.Create_at as created_at,
+                           p.Product_View as product_view
+                    FROM {$this->table} p 
+                    LEFT JOIN catogory c ON p.Category_Id = c.Category_Id 
+                    LEFT JOIN branch b ON p.Branch_Id = b.Branch_Id 
+                    ORDER BY p.Create_at DESC
+                    LIMIT {$limit} OFFSET {$offset}";
+            $results = $this->query($sql);
+            return $results ? $results : [];
+        } catch (\Exception $e) {
+            error_log("Error in getAllWithCategoryPaginated: " . $e->getMessage());
+            return [];
+        }
+    }
+
     /**
      * Lấy sản phẩm theo danh mục
      * @param string $categoryId
@@ -84,6 +129,38 @@ class Product extends Model
             return $results ? $results : [];
         } catch (\Exception $e) {
             error_log("Error in getByCategory: " . $e->getMessage());
+            return [];
+        }
+    }
+
+    public function getByCategoryPaginated($categoryId, $limit, $offset)
+    {
+        try {
+            $limit = max(1, (int) $limit);
+            $offset = max(0, (int) $offset);
+            $sql = "SELECT p.*, 
+                           c.Name as category_name,
+                           b.Name as branch_name,
+                           p.Product_Id as id,
+                           p.Name as name,
+                           p.Description as description,
+                           p.Price as price,
+                           p.Quantity as quantity,
+                           p.Image as image,
+                           p.Category_Id as category_id,
+                           p.Branch_Id as branch_id,
+                           p.Create_at as created_at,
+                           p.Product_View as product_view
+                    FROM {$this->table} p 
+                    LEFT JOIN catogory c ON p.Category_Id = c.Category_Id 
+                    LEFT JOIN branch b ON p.Branch_Id = b.Branch_Id 
+                    WHERE p.Category_Id = :category_id 
+                    ORDER BY p.Create_at DESC
+                    LIMIT {$limit} OFFSET {$offset}";
+            $results = $this->query($sql, ['category_id' => $categoryId]);
+            return $results ? $results : [];
+        } catch (\Exception $e) {
+            error_log("Error in getByCategoryPaginated: " . $e->getMessage());
             return [];
         }
     }
@@ -121,6 +198,56 @@ class Product extends Model
             return $results ? $results : [];
         } catch (\Exception $e) {
             error_log("Error in search: " . $e->getMessage());
+            return [];
+        }
+    }
+
+    public function countSearch($keyword)
+    {
+        try {
+            $sql = "SELECT COUNT(*) as cnt FROM {$this->table} 
+                    WHERE Name LIKE :keyword OR Description LIKE :keyword";
+            $stmt = $this->db->prepare($sql);
+            $kw = "%{$keyword}%";
+            $stmt->execute(['keyword' => $kw]);
+            $row = $stmt->fetch(\PDO::FETCH_ASSOC);
+            return $row ? (int) $row['cnt'] : 0;
+        } catch (\Exception $e) {
+            error_log("Error in countSearch: " . $e->getMessage());
+            return 0;
+        }
+    }
+
+    public function searchPaginated($keyword, $limit, $offset)
+    {
+        try {
+            $limit = max(1, (int) $limit);
+            $offset = max(0, (int) $offset);
+            $sql = "SELECT p.*, 
+                           c.Name as category_name,
+                           b.Name as branch_name,
+                           p.Product_Id as id,
+                           p.Name as name,
+                           p.Description as description,
+                           p.Price as price,
+                           p.Quantity as quantity,
+                           p.Image as image,
+                           p.Category_Id as category_id,
+                           p.Branch_Id as branch_id,
+                           p.Create_at as created_at,
+                           p.Product_View as product_view
+                    FROM {$this->table} p 
+                    LEFT JOIN catogory c ON p.Category_Id = c.Category_Id 
+                    LEFT JOIN branch b ON p.Branch_Id = b.Branch_Id 
+                    WHERE p.Name LIKE :keyword 
+                       OR p.Description LIKE :keyword 
+                    ORDER BY p.Create_at DESC
+                    LIMIT {$limit} OFFSET {$offset}";
+            $kw = "%{$keyword}%";
+            $results = $this->query($sql, ['keyword' => $kw]);
+            return $results ? $results : [];
+        } catch (\Exception $e) {
+            error_log("Error in searchPaginated: " . $e->getMessage());
             return [];
         }
     }

@@ -57,17 +57,17 @@
             display: grid;
             grid-template-columns: 1fr 2fr 1fr;
             align-items: center;
-            padding: 15px 40px;
-            gap: 30px;
+            padding: 10px 24px;
+            gap: 20px;
             border-bottom: 1px solid rgba(255,255,255,0.1);
         }
 
         .header-top .logo {
             justify-self: start;
             font-family: 'Playfair Display', serif;
-            font-size: 28px;
+            font-size: 22px;
             font-weight: 600;
-            letter-spacing: 2px;
+            letter-spacing: 1.5px;
             text-transform: uppercase;
         }
 
@@ -85,7 +85,7 @@
         }
 
         .logo-icon {
-            font-size: 32px;
+            font-size: 24px;
             filter: drop-shadow(0 2px 4px rgba(212, 175, 55, 0.3));
         }
 
@@ -293,8 +293,8 @@
             display: flex;
             justify-content: center;
             align-items: center;
-            padding: 12px 40px;
-            gap: 10px;
+            padding: 6px 24px;
+            gap: 8px;
         }
 
         .nav-menu {
@@ -308,9 +308,9 @@
         .nav-menu a {
             color: white;
             text-decoration: none;
-            padding: 12px 20px;
-            border-radius: 30px;
-            font-size: 15px;
+            padding: 8px 14px;
+            border-radius: 24px;
+            font-size: 14px;
             font-weight: 500;
             transition: var(--transition-smooth);
             position: relative;
@@ -331,7 +331,7 @@
         .container {
             max-width: 1400px;
             margin: 0 auto;
-            padding: 40px;
+            padding: 24px;
         }
 
         /* Buttons */

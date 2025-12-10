@@ -89,9 +89,9 @@
                             <a href="<?php echo ROOT_URL; ?>product/detail/<?php echo $product['id']; ?>" class="btn btn-primary" style="width: 100%; margin-bottom: 12px;">
                                 Xem Chi Tiết
                             </a>
-                            <form method="POST" action="<?php echo ROOT_URL; ?>cart/add/<?php echo $product['id']; ?>" style="display: flex; gap: 8px;">
-                                <input type="number" name="quantity" value="1" min="1" max="<?php echo $product['quantity']; ?>" class="product-quantity-input">
-                                <button type="submit" class="btn btn-success" style="flex: 1;">
+                            <form method="POST" action="<?php echo ROOT_URL; ?>cart/add/<?php echo $product['id']; ?>">
+                                <input type="hidden" name="quantity" value="1">
+                                <button type="submit" class="btn btn-success" style="width: 100%;">
                                     🛒 Thêm
                                 </button>
                             </form>

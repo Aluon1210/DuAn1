@@ -179,17 +179,29 @@ class ProductController extends Controller
         $productModel = new Product();
         $categoryModel = new Category();
 
-        $products = $productModel->getAllWithCategory();
+        $limit = 15;
+        $page = isset($_GET['page']) ? max(1, (int) $_GET['page']) : 1;
+        $offset = ($page - 1) * $limit;
+
+        $total = $productModel->countAll();
+        $products = $productModel->getAllWithCategoryPaginated($limit, $offset);
         $categories = $categoryModel->getAll();
-        $name = isset($_GET['name']) ? trim($_GET['name']) : '';
+
+        $totalPages = $total > 0 ? (int) ceil($total / $limit) : 1;
 
         $data = [
             'title' => 'Sản phẩm',
             'products' => $products,
-            'categories' => $categories
+            'categories' => $categories,
+            'pagination' => [
+                'page' => $page,
+                'limit' => $limit,
+                'total' => $total,
+                'totalPages' => $totalPages
+            ],
+            'baseUrl' => ROOT_URL . 'product'
         ];
 
-        // Dùng chung HomeProduct cho danh sách sản phẩm
         $this->renderView('HomeProduct', $data);
     }
 
@@ -209,17 +221,29 @@ class ProductController extends Controller
             exit;
         }
 
-        $products = $productModel->getByCategory($id);
+        $limit = 15;
+        $page = isset($_GET['page']) ? max(1, (int) $_GET['page']) : 1;
+        $offset = ($page - 1) * $limit;
+
+        $total = $productModel->countByCategory($id);
+        $products = $productModel->getByCategoryPaginated($id, $limit, $offset);
         $categories = $categoryModel->getAll();
+        $totalPages = $total > 0 ? (int) ceil($total / $limit) : 1;
 
         $data = [
             'title' => $category['name'],
             'products' => $products,
             'categories' => $categories,
-            'currentCategory' => $category
+            'currentCategory' => $category,
+            'pagination' => [
+                'page' => $page,
+                'limit' => $limit,
+                'total' => $total,
+                'totalPages' => $totalPages
+            ],
+            'baseUrl' => ROOT_URL . 'product/category/' . $category['id']
         ];
 
-        // Render view đầy đủ HTML, không dùng layout
         $this->renderView('product/category_full', $data);
     }
 
@@ -388,24 +412,35 @@ class ProductController extends Controller
         $categoryModel = new Category();
 
         $keyword = isset($_GET['q']) ? trim($_GET['q']) : '';
-        $products = [];
+        $limit = 15;
+        $page = isset($_GET['page']) ? max(1, (int) $_GET['page']) : 1;
+        $offset = ($page - 1) * $limit;
 
         if (!empty($keyword)) {
-            $products = $productModel->search($keyword);
+            $total = $productModel->countSearch($keyword);
+            $products = $productModel->searchPaginated($keyword, $limit, $offset);
         } else {
-            $products = $productModel->getAllWithCategory();
+            $total = $productModel->countAll();
+            $products = $productModel->getAllWithCategoryPaginated($limit, $offset);
         }
 
         $categories = $categoryModel->getAll();
+        $totalPages = $total > 0 ? (int) ceil($total / $limit) : 1;
 
         $data = [
             'title' => 'Tìm kiếm: ' . htmlspecialchars($keyword),
             'products' => $products,
             'categories' => $categories,
-            'keyword' => $keyword
+            'keyword' => $keyword,
+            'pagination' => [
+                'page' => $page,
+                'limit' => $limit,
+                'total' => $total,
+                'totalPages' => $totalPages
+            ],
+            'baseUrl' => ROOT_URL . 'product/search?q=' . urlencode($keyword)
         ];
 
-        // Render view đầy đủ HTML, không dùng layout
         $this->renderView('product/search_full', $data);
     }
 }
