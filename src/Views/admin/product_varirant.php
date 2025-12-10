@@ -267,7 +267,7 @@
                         <div class="form-group">
                             <label for="variant-name">Tên biến thể</label>
                             <input id="variant-name" type="text" name="variant_name" placeholder="Ví dụ: Đen / Size 40"
-                                   value="<?php echo htmlspecialchars($data['editing'] && isset($data['variant']) ? $data['variant']['variant_name'] : ''); ?>">
+                                   value="<?php echo htmlspecialchars($data['editing'] && isset($data['variant']) ? ($data['variant']['variant_name'] ?? '') : ''); ?>">
                         </div>
 
                         <div class="form-group">
@@ -303,19 +303,19 @@
                         <div class="form-group">
                             <label for="variant-sku">SKU</label>
                             <input id="variant-sku" type="text" name="sku" placeholder="SKU riêng cho biến thể"
-                                   value="<?php echo htmlspecialchars($data['editing'] && isset($data['variant']) ? $data['variant']['sku'] : ''); ?>">
+                                   value="<?php echo htmlspecialchars($data['editing'] && isset($data['variant']) ? ($data['variant']['sku'] ?? '') : ''); ?>">
                         </div>
 
                         <div class="form-group">
                             <label for="variant-price">Giá (VNĐ)</label>
                             <input id="variant-price" type="number" name="price" min="0" step="1000"
-                                   value="<?php echo htmlspecialchars($data['editing'] && isset($data['variant']) ? $data['variant']['price'] : 0); ?>">
+                                   value="<?php echo htmlspecialchars($data['editing'] && isset($data['variant']) ? ($data['variant']['price'] ?? 0) : 0); ?>">
                         </div>
 
                         <div class="form-group">
                             <label for="variant-stock">Tồn kho</label>
                             <input id="variant-stock" type="number" name="stock" min="0"
-                                   value="<?php echo htmlspecialchars($data['editing'] && isset($data['variant']) ? $data['variant']['stock'] : 0); ?>">
+                                   value="<?php echo htmlspecialchars($data['editing'] && isset($data['variant']) ? ($data['variant']['stock'] ?? 0) : 0); ?>">
                         </div>
                     </div>
 

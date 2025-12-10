@@ -23,7 +23,7 @@ class Dashboard extends Model {
             FROM orders o
             JOIN order_detail od ON o.Order_Id = od.Order_Id
             JOIN users u ON o._UserName_Id = u._UserName_Id
-            WHERE YEAR(o.Order_date) = :year
+            WHERE YEAR(o.Order_date) = :year AND o.TrangThai = 'delivered'
             GROUP BY u._UserName_Id
             ORDER BY total_revenue DESC
             LIMIT :limit";
@@ -54,7 +54,7 @@ class Dashboard extends Model {
             JOIN product_variants pv ON od.Variant_Id = pv.Variant_Id
             JOIN products p ON pv.Product_Id = p.Product_Id
             JOIN orders o ON od.Order_Id = o.Order_Id
-            WHERE YEAR(o.Order_date) = :year
+            WHERE YEAR(o.Order_date) = :year AND o.TrangThai = 'delivered'
             GROUP BY p.Product_Id
             ORDER BY total_sold DESC
             LIMIT :limit";
@@ -80,7 +80,7 @@ class Dashboard extends Model {
         $sql = "SELECT MONTH(o.Order_date) as month, IFNULL(SUM(od.quantity * od.Price),0) as revenue
             FROM orders o
             JOIN order_detail od ON od.Order_Id = o.Order_Id
-            WHERE YEAR(o.Order_date) = :year
+            WHERE YEAR(o.Order_date) = :year AND o.TrangThai = 'delivered'
             GROUP BY MONTH(o.Order_date)";
 
         $stmt = $this->db->prepare($sql);
@@ -114,7 +114,7 @@ class Dashboard extends Model {
         $sql = "SELECT YEAR(o.Order_date) as yr, WEEK(o.Order_date,1) as wk, IFNULL(SUM(od.quantity * od.Price),0) as revenue
                 FROM orders o
                 JOIN order_detail od ON od.Order_Id = o.Order_Id
-                WHERE o.Order_date BETWEEN :start AND :end
+                WHERE o.Order_date BETWEEN :start AND :end AND o.TrangThai = 'delivered'
                 GROUP BY yr, wk
                 ORDER BY yr ASC, wk ASC";
 
@@ -159,7 +159,7 @@ class Dashboard extends Model {
                 FROM products p
                 LEFT JOIN product_variants pv ON pv.Product_Id = p.Product_Id
                 LEFT JOIN order_detail od ON od.Variant_Id = pv.Variant_Id
-                LEFT JOIN orders o ON od.Order_Id = o.Order_Id AND YEAR(o.Order_date) = :year
+                LEFT JOIN orders o ON od.Order_Id = o.Order_Id AND YEAR(o.Order_date) = :year AND o.TrangThai = 'delivered'
                 GROUP BY p.Product_Id
                 ORDER BY total_sold ASC
                 LIMIT :limit";
@@ -255,6 +255,38 @@ class Dashboard extends Model {
         return $res;
     }
 
+    public function revenueByRangePerDay($start, $end)
+    {
+        $start = trim($start);
+        $end = trim($end);
+        if ($start === '' || $end === '') { return []; }
+
+        $sql = "SELECT DATE(o.Order_date) as day, IFNULL(SUM(od.quantity * od.Price),0) as revenue
+                FROM orders o
+                JOIN order_detail od ON od.Order_Id = o.Order_Id
+                WHERE o.Order_date BETWEEN :start AND :end AND o.TrangThai = 'delivered'
+                GROUP BY DATE(o.Order_date)
+                ORDER BY DATE(o.Order_date) ASC";
+
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([':start' => $start, ':end' => $end]);
+        $rows = $stmt->fetchAll(\PDO::FETCH_ASSOC);
+
+        $map = [];
+        foreach ($rows as $r) { $map[$r['day']] = (float)$r['revenue']; }
+
+        $res = [];
+        $d = new \DateTime($start);
+        $endDt = new \DateTime($end);
+        while ($d <= $endDt) {
+            $key = $d->format('Y-m-d');
+            $res[$key] = $map[$key] ?? 0.0;
+            $d->modify('+1 day');
+        }
+
+        return $res;
+    }
+
     /**
      * Top products for an arbitrary date range (start/end inclusive)
      * @param string $start 'YYYY-MM-DD'
@@ -271,7 +303,7 @@ class Dashboard extends Model {
                 JOIN orders o ON od.Order_Id = o.Order_Id
                 JOIN product_variants pv ON od.Variant_Id = pv.Variant_Id
                 JOIN products p ON pv.Product_Id = p.Product_Id
-                WHERE o.Order_date BETWEEN :start AND :end
+                WHERE o.Order_date BETWEEN :start AND :end AND o.TrangThai = 'delivered'
                 GROUP BY p.Product_Id
                 ORDER BY total_sold DESC
                 LIMIT :limit";
@@ -299,7 +331,7 @@ class Dashboard extends Model {
                 FROM orders o
                 JOIN order_detail od ON od.Order_Id = o.Order_Id
                 JOIN users u ON o._UserName_Id = u._UserName_Id
-                WHERE o.Order_date BETWEEN :start AND :end
+                WHERE o.Order_date BETWEEN :start AND :end AND o.TrangThai = 'delivered'
                 GROUP BY u._UserName_Id
                 ORDER BY total_revenue DESC
                 LIMIT :limit";

@@ -374,6 +374,93 @@
                 </div>
             </div>
 
+            <!-- Voucher Management -->
+            <div class="filter-section" id="voucherAdmin">
+                <h2 style="margin-top:0;margin-bottom:12px;">Kho Voucher</h2>
+                <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;align-items:end;">
+                    <div class="form-group">
+                        <label>Mã voucher</label>
+                        <input type="text" id="vCode" placeholder="VD: NEWYEAR" />
+                    </div>
+                    <div class="form-group">
+                        <label>Loại giảm</label>
+                        <select id="vType">
+                            <option value="fixed">Giảm số tiền</option>
+                            <option value="percent">Giảm theo %</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Giá trị</label>
+                        <input type="number" id="vValue" min="1" placeholder="VD: 50000 hoặc 10" />
+                    </div>
+                    <div class="form-group">
+                        <label>Giảm tối đa (nếu %)</label>
+                        <input type="number" id="vMax" min="0" placeholder="VD: 100000" />
+                    </div>
+
+                    <div class="form-group">
+                        <label>Đơn tối thiểu</label>
+                        <input type="number" id="vMin" min="0" placeholder="VD: 300000" />
+                    </div>
+                    <div class="form-group">
+                        <label>Hạn sử dụng</label>
+                        <input type="date" id="vExpiry" />
+                    </div>
+                    <div class="form-group">
+                        <label>Phạm vi áp dụng</label>
+                        <select id="vScope">
+                            <option value="all">Toàn bộ đơn hàng</option>
+                            <option value="category">Theo danh mục</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Kích hoạt</label>
+                        <select id="vActive">
+                            <option value="1">Đang hoạt động</option>
+                            <option value="0">Tạm tắt</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group" style="grid-column:1 / -1">
+                        <label>Danh mục áp dụng (khi chọn Theo danh mục)</label>
+                        <select id="vCategories" multiple style="min-height:100px">
+                            <?php foreach (($data['categories'] ?? []) as $cat): ?>
+                                <option value="<?php echo htmlspecialchars($cat['id']); ?>">
+                                    <?php echo htmlspecialchars($cat['name']); ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                        <small style="color:#666;margin-top:6px;">Giữ Ctrl (Windows) hoặc Command (Mac) để chọn nhiều danh mục.</small>
+                    </div>
+
+                    <div class="form-group" style="grid-column:1 / -1;display:flex;gap:10px;justify-content:flex-end;">
+                        <button type="button" class="btn btn-success" id="vSaveBtn">Lưu/ cập nhật voucher</button>
+                        <button type="button" class="btn btn-info" id="vResetBtn">Reset form</button>
+                    </div>
+                </div>
+
+                <div class="table-container" style="margin-top:16px;">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th style="width:12%">Mã</th>
+                                <th style="width:10%">Loại</th>
+                                <th style="width:10%">Giá trị</th>
+                                <th style="width:12%">Phạm vi</th>
+                                <th style="width:26%">Danh mục</th>
+                                <th style="width:12%">Hạn dùng</th>
+                                <th style="width:10%">Đơn tối thiểu</th>
+                                <th style="width:8%">Trạng thái</th>
+                                <th style="width:10%">Hành động</th>
+                            </tr>
+                        </thead>
+                        <tbody id="voucherTbody">
+                            <tr><td colspan="9" style="text-align:center;color:#666;">Đang tải dữ liệu...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
             <!-- Orders Table -->
             <div class="table-container">
                 <?php if (!empty($data['orders'])): ?>
@@ -387,8 +474,9 @@
                                 <th width="8%">Số lượng</th>
                                 <th width="13%">Trạng thái</th>
                                 <th width="10%">Ngày đặt hàng</th>
-                                <th width="12%">Ghi chú</th>
-                                <th width="13%">Địa chỉ giao hàng</th>
+                                <th width="10%">Thanh toán</th>
+                                <th width="14%">Ghi chú</th>
+                                <th width="11%">Địa chỉ giao hàng</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -408,6 +496,13 @@
                                     $customerName = $order['user_name'] ?? 'Không xác định';
                                     $customerPhone = $order['user_phone'] ?? 'N/A';
                                     $address = $order['Adress'] ?? 'Không có địa chỉ';
+                                    $rawNote = (string)($order['Note'] ?? '');
+                                    $noteTmp = preg_replace('/^\[Receiver:[^\]]+\]\s*/', '', $rawNote);
+                                    $noteTmp = explode(' | Voucher', $noteTmp)[0];
+                                    $noteTmp = trim($noteTmp);
+                                    $noteDisplay = ($noteTmp === '' || $noteTmp === 'Đặt hàng' || $noteTmp === 'Thanh toán Online') ? 'Không có ghi chú' : $noteTmp;
+                                    $pm = $order['PaymentMethod'] ?? '';
+                                    $paymentText = ($pm === 'online' || stripos($rawNote, 'Thanh toán Online') !== false) ? 'Online' : 'Tiền mặt';
                                 ?>
                                 <tr>
                                     <td><strong><?php echo htmlspecialchars($order['Order_Id']); ?></strong></td>
@@ -441,7 +536,8 @@
                                         </select>
                                     </td>
                                     <td><?php echo date('d/m/Y', strtotime($order['Order_date'])); ?></td>
-                                    <td><small><?php echo htmlspecialchars($order['Note'] ?? 'Không có ghi chú'); ?></small></td>
+                                    <td><small><?php echo htmlspecialchars($paymentText); ?></small></td>
+                                    <td><small><?php echo htmlspecialchars($noteDisplay); ?></small></td>
                                     <td><small><?php echo htmlspecialchars($address); ?></small></td>
                                 </tr>
                             <?php endforeach; ?>
@@ -537,7 +633,7 @@
                 this.disabled = true;
                 this.parentElement.style.opacity = '0.6';
 
-                fetch('<?php echo ROOT_URL; ?>admin/updateOrderStatus', {
+                fetch('<?php echo ROOT_URL; ?>admin/orders/updateStatus', {
                     method: 'POST',
                     body: formData,
                     headers: {
@@ -584,40 +680,12 @@
                 if (e.target.classList.contains('status-select')) return;
                 
                 const orderId = this.querySelector('td:first-child strong').textContent;
-                openOrderDetailModal(orderId);
+                openInvoiceModal(orderId);
             });
         });
 
         function openOrderDetailModal(orderId) {
-            const url = '<?php echo ROOT_URL; ?>admin/orders/detail/' + encodeURIComponent(orderId);
-            console.log('Fetching from:', url);
-            
-            fetch(url)
-                .then(res => {
-                    console.log('Response status:', res.status);
-                    if (!res.ok) {
-                        throw new Error(`HTTP ${res.status}: ${res.statusText}`);
-                    }
-                    return res.text(); // Get text first to inspect
-                })
-                .then(text => {
-                    console.log('Response text:', text);
-                    try {
-                        const data = JSON.parse(text);
-                        if (data.success) {
-                            displayOrderDetailModal(data);
-                        } else {
-                            alert('Lỗi: ' + (data.error || 'Không tìm thấy đơn hàng'));
-                        }
-                    } catch(e) {
-                        console.error('JSON parse error:', e);
-                        alert('Lỗi: Dữ liệu không hợp lệ');
-                    }
-                })
-                .catch(err => {
-                    console.error('Fetch error:', err);
-                    alert('Lỗi: ' + err.message);
-                });
+            openInvoiceModal(orderId);
         }
 
         function displayOrderDetailModal(data) {
@@ -764,7 +832,197 @@
         function number_format(n) {
             return new Intl.NumberFormat('vi-VN').format(n);
         }
+        function openInvoiceModal(orderId){
+            var url = '<?php echo ROOT_URL; ?>admin/orders/view/' + encodeURIComponent(orderId);
+            var m = document.getElementById('invoiceModal');
+            var f = document.getElementById('invoiceIframe');
+            var btn = document.getElementById('invoicePrintBtn');
+            f.src = url; m.classList.add('active');
+            if(btn){ btn.onclick = function(){ try{ f.contentWindow.focus(); f.contentWindow.print(); }catch(e){} }; }
+        }
+        function closeInvoiceModal(){
+            var m = document.getElementById('invoiceModal');
+            var f = document.getElementById('invoiceIframe');
+            f.src = 'about:blank'; m.classList.remove('active');
+        }
     </script>
+    <script>
+        (function(){
+            const root = '<?php echo ROOT_URL; ?>';
+            const tbody = document.getElementById('voucherTbody');
+            const codeEl = document.getElementById('vCode');
+            const typeEl = document.getElementById('vType');
+            const valueEl = document.getElementById('vValue');
+            const maxEl = document.getElementById('vMax');
+            const minEl = document.getElementById('vMin');
+            const expiryEl = document.getElementById('vExpiry');
+            const scopeEl = document.getElementById('vScope');
+            const activeEl = document.getElementById('vActive');
+            const catsEl = document.getElementById('vCategories');
+            const saveBtn = document.getElementById('vSaveBtn');
+            const resetBtn = document.getElementById('vResetBtn');
+
+            function fmt(n){ try{ return new Intl.NumberFormat('vi-VN').format(n); }catch(e){ return n; } }
+
+            async function loadList(){
+                try{
+                    const r = await fetch(root + 'admin/voucher/list');
+                    const arr = await r.json();
+                    renderList(Array.isArray(arr)?arr:[]);
+                }catch(e){
+                    tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:#c00;">Lỗi tải dữ liệu: '+ (e.message||e) +'</td></tr>';
+                }
+            }
+
+            function renderList(list){
+                if(!list.length){
+                    tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:#666;">Chưa có voucher nào</td></tr>';
+                    return;
+                }
+                tbody.innerHTML = list.map(v => {
+                    const cats = Array.isArray(v.categories)?v.categories:[];
+                    const catsStr = cats.map(c => String(c)).join(', ');
+                    const valStr = v.type==='percent' ? (parseFloat(v.value||0)+'%'+(v.max_discount?(' (tối đa '+fmt(v.max_discount)+' ₫)'):'') ) : (fmt(v.value||0)+' ₫');
+                    const actStr = (v.active===false)?'Tắt':'Bật';
+                    const expStr = v.expiry ? v.expiry : '';
+                    return `
+                        <tr>
+                            <td><strong>${(v.code||'').toString().toUpperCase()}</strong></td>
+                            <td>${v.type||''}</td>
+                            <td>${valStr}</td>
+                            <td>${v.scope||'all'}</td>
+                            <td>${catsStr||'-'}</td>
+                            <td>${expStr||'-'}</td>
+                            <td>${fmt(v.min_order||0)} ₫</td>
+                            <td>${actStr}</td>
+                            <td>
+                                <button type="button" class="btn btn-info btn-small" data-code="${v.code||''}" onclick="(function(btn){prefillVoucher(btn.getAttribute('data-code'));})(this)">Sửa</button>
+                                <button type="button" class="btn btn-danger btn-small" onclick="deleteVoucher('${(v.code||'').toString().toUpperCase()}')">Xóa</button>
+                            </td>
+                        </tr>
+                    `;
+                }).join('');
+            }
+
+            function getSelectedCategories(){
+                return Array.from(catsEl.selectedOptions).map(o => o.value);
+            }
+
+            function resetForm(){
+                codeEl.value = '';
+                typeEl.value = 'fixed';
+                valueEl.value = '';
+                maxEl.value = '';
+                minEl.value = '';
+                expiryEl.value = '';
+                scopeEl.value = 'all';
+                activeEl.value = '1';
+                Array.from(catsEl.options).forEach(o => o.selected = false);
+            }
+
+            async function saveVoucher(){
+                const payload = {
+                    code: (codeEl.value||'').trim().toUpperCase(),
+                    type: typeEl.value,
+                    value: parseFloat(valueEl.value||'0'),
+                    max_discount: maxEl.value?parseInt(maxEl.value,10):null,
+                    min_order: minEl.value?parseInt(minEl.value,10):0,
+                    expiry: (expiryEl.value||'').trim(),
+                    active: activeEl.value==='1',
+                    scope: scopeEl.value,
+                    categories: scopeEl.value==='category' ? getSelectedCategories() : []
+                };
+                if(!payload.code || payload.value<=0 || (payload.type!=='fixed' && payload.type!=='percent')){
+                    alert('Vui lòng nhập dữ liệu hợp lệ');
+                    return;
+                }
+                saveBtn.disabled = true; saveBtn.textContent = 'Đang lưu...';
+                try{
+                    const r = await fetch(root + 'admin/voucher/save', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+                    const data = await r.json();
+                    if(data && data.success){
+                        alert('Đã lưu voucher');
+                        resetForm();
+                        loadList();
+                    }else{
+                        alert('Lỗi lưu voucher: ' + (data.error||'Không xác định'));
+                    }
+                }catch(e){ alert('Lỗi: '+(e.message||e)); }
+                finally{ saveBtn.disabled=false; saveBtn.textContent='Lưu/ cập nhật voucher'; }
+            }
+
+            window.prefillVoucher = function(code){
+                if(!code) return;
+                fetch(root + 'admin/voucher/list')
+                    .then(r => r.json())
+                    .then(list => {
+                        const v = (Array.isArray(list)?list:[]).find(x => String(x.code||'').toUpperCase()===String(code).toUpperCase());
+                        if(!v){ alert('Không tìm thấy voucher'); return; }
+                        codeEl.value = (v.code||'').toString().toUpperCase();
+                        typeEl.value = v.type||'fixed';
+                        valueEl.value = v.value||'';
+                        maxEl.value = v.max_discount||'';
+                        minEl.value = v.min_order||'';
+                        expiryEl.value = v.expiry||'';
+                        scopeEl.value = v.scope||'all';
+                        activeEl.value = (v.active===false)?'0':'1';
+                        Array.from(catsEl.options).forEach(o => { o.selected = Array.isArray(v.categories) && v.categories.map(String).includes(String(o.value)); });
+                    })
+                    .catch(e => alert('Lỗi tải voucher: '+(e.message||e)));
+            };
+
+            window.deleteVoucher = async function(code){
+                if(!code) return;
+                if(!confirm('Xóa voucher '+code+'?')) return;
+                try{
+                    const r = await fetch(root + 'admin/voucher/delete', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ code })
+                    });
+                    const data = await r.json();
+                    if(data && data.success){
+                        loadList();
+                    }else{
+                        alert('Lỗi xóa voucher: ' + (data.error||'Không xác định'));
+                    }
+                }catch(e){ alert('Lỗi: '+(e.message||e)); }
+            };
+
+            saveBtn.addEventListener('click', saveVoucher);
+            resetBtn.addEventListener('click', resetForm);
+            loadList();
+        })();
+    </script>
+    <style>
+        .invoice-modal-overlay{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.6);z-index:9999}
+        .invoice-modal-overlay.active{display:flex;align-items:center;justify-content:center}
+        .invoice-modal{background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 10px 40px rgba(0,0,0,0.3);width:90%;max-width:960px;max-height:85vh;display:flex;flex-direction:column}
+        .invoice-modal-header{display:flex;justify-content:space-between;align-items:center;padding:12px 16px;border-bottom:1px solid #eee}
+        .invoice-modal-title{font-weight:700}
+        .invoice-modal-close{border:none;background:#e74c3c;color:#fff;padding:8px 12px;border-radius:8px;cursor:pointer}
+        .invoice-modal-body{flex:1}
+        .invoice-iframe{width:100%;height:70vh;border:0}
+        .invoice-modal-footer{padding:10px 16px;border-top:1px solid #eee;text-align:right}
+    </style>
+    <div id="invoiceModal" class="invoice-modal-overlay" aria-hidden="true">
+      <div class="invoice-modal" role="dialog" aria-modal="true">
+        <div class="invoice-modal-header">
+          <div class="invoice-modal-title">Hóa đơn A4</div>
+          <button class="invoice-modal-close" type="button" onclick="closeInvoiceModal()">Đóng</button>
+        </div>
+        <div class="invoice-modal-body">
+          <iframe id="invoiceIframe" class="invoice-iframe"></iframe>
+        </div>
+        <div class="invoice-modal-footer">
+          <button id="invoicePrintBtn" class="btn btn-primary" type="button">In hóa đơn</button>
+        </div>
+      </div>
+    </div>
 </body>
 
 </html>

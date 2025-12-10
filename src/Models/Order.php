@@ -89,6 +89,26 @@ class Order extends Model
                 '_UserName_Id' => $data['user_id'] ?? $data['_UserName_Id'] ?? ''
             ];
 
+            // Bổ sung các trường tùy chọn theo schema hiện có
+            $cols = $this->getTableColumns();
+
+            if (in_array('PaymentMethod', $cols, true)) {
+                $dbData['PaymentMethod'] = $data['payment_method'] ?? $data['PaymentMethod'] ?? '';
+            }
+            if (!empty($data['voucher_code']) || !empty($data['Voucher_Code'])) {
+                $code = strtoupper(trim($data['voucher_code'] ?? $data['Voucher_Code'] ?? ''));
+                $discount = (int)($data['voucher_discount'] ?? $data['Voucher_Discount'] ?? 0);
+                if (in_array('Voucher_Code', $cols, true)) {
+                    $dbData['Voucher_Code'] = $code;
+                }
+                if (in_array('Voucher_Discount', $cols, true)) {
+                    $dbData['Voucher_Discount'] = $discount;
+                }
+                if (!empty($code)) {
+                    $dbData['Note'] = trim(($dbData['Note'] ?? '') . ' | Voucher: ' . $code . ' - ' . $discount);
+                }
+            }
+
             if (empty($dbData['_UserName_Id'])) {
                 error_log("Order creation failed: Missing user_id");
                 return false;
@@ -285,6 +305,21 @@ class Order extends Model
         } catch (\Exception $e) {
             error_log("Order createWithDetails Error: " . $e->getMessage());
             return false;
+        }
+    }
+
+    private function getTableColumns()
+    {
+        try {
+            $stmt = $this->db->query("DESCRIBE `{$this->table}`");
+            $rows = $stmt->fetchAll(\PDO::FETCH_ASSOC);
+            $cols = [];
+            foreach ($rows as $r) {
+                if (isset($r['Field'])) { $cols[] = $r['Field']; }
+            }
+            return $cols;
+        } catch (\Exception $e) {
+            return [];
         }
     }
 }

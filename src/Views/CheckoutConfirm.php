@@ -377,7 +377,11 @@
   <form id="checkoutForm" method="POST" action="<?php echo ROOT_URL; ?>cart/placeOrder">
     <div class="checkout-grid">
       <div class="checkout-section">
-        <?php foreach ($items as $it):
+        <?php
+          $orderSubtotal = isset($total) ? (int)$total : 0;
+          $serviceFee = (int)round($orderSubtotal * 0.05);
+          $shippingFee = 50000;
+          foreach ($items as $it):
           $p = $it['product']; ?>
           <div class="item-row">
             <div class="item-info">
@@ -395,7 +399,14 @@
             </div>
             <div style="text-align:right;">
               <div>Số lượng: <strong><?php echo (int) $it['quantity']; ?></strong></div>
-              <div>Thành tiền: <strong><?php echo number_format($it['subtotal'], 0, ',', '.'); ?> ₫</strong></div>
+              <?php
+                $base = (int)$it['subtotal'];
+                $weight = $orderSubtotal > 0 ? ($base / $orderSubtotal) : 1;
+                $allocService = (int)round($serviceFee * $weight);
+                $allocShip = (int)round($shippingFee * $weight);
+                $lineTotal = $base + $allocService + $allocShip;
+              ?>
+              <div>Thành tiền: <strong><?php echo number_format($lineTotal, 0, ',', '.'); ?> ₫</strong></div>
             </div>
             <?php $cartKey = $it['cart_key'] ?? ($p['id'] ?? ''); ?>
             <input type="hidden" name="selected[]" value="<?php echo htmlspecialchars($cartKey); ?>">
@@ -403,9 +414,25 @@
               value="<?php echo (int) $it['quantity']; ?>">
           </div>
         <?php endforeach; ?>
+
+        <?php /* Khối tính tiền và voucher được chuyển xuống dưới grid */ ?>
       </div>
 
       <div class="checkout-section">
+        <div style="margin-bottom:16px;">
+          <label style="font-weight:600; display:block; margin-bottom:6px;">Tên người nhận <span style="color:red;">*</span></label>
+          <input type="text" name="recipient_name"
+            value="<?php echo isset($user['name']) ? htmlspecialchars($user['name']) : (isset($user['username']) ? htmlspecialchars($user['username']) : ''); ?>" required
+            placeholder="Nhập tên người nhận"
+            style="width:100%; padding:12px 14px; border:2px solid var(--border-light); border-radius:8px;">
+        </div>
+        <div style="margin-bottom:16px;">
+          <label style="font-weight:600; display:block; margin-bottom:6px;">Số điện thoại <span style="color:red;">*</span></label>
+          <input type="tel" name="recipient_phone"
+            value="<?php echo isset($user['phone']) ? htmlspecialchars($user['phone']) : ''; ?>" required
+            placeholder="Nhập số điện thoại người nhận"
+            style="width:100%; padding:12px 14px; border:2px solid var(--border-light); border-radius:8px;">
+        </div>
         <div style="margin-bottom:16px;">
           <label style="font-weight:600; display:block; margin-bottom:6px;">Địa chỉ nhận hàng <span
               style="color:red;">*</span></label>
@@ -446,13 +473,50 @@
           </div>
         </div>
 
-        <div class="total-box">Tổng: <?php echo number_format($total, 0, ',', '.'); ?> ₫</div>
         <button type="submit" class="btn btn-success" id="placeOrderBtn"
           style="margin-top:16px; padding:14px 24px; width:100%;">Đặt hàng</button>
         <a href="<?php echo ROOT_URL; ?>cart" class="btn btn-primary"
           style="margin-top:10px; padding:12px 24px; width:100%;">Quay lại giỏ hàng</a>
       </div>
     </div>
+
+    <?php
+      $vatAmount = (int)round($orderSubtotal * 0.05);
+      $voucherDiscount = 0;
+      $grandTotal = $orderSubtotal + $vatAmount + $shippingFee - $voucherDiscount;
+    ?>
+
+    <div class="checkout-section" style="grid-column: 1 / -1; margin-top: 16px;">
+      <div style="margin-top:0;">
+        <label style="font-weight:600; display:block; margin-bottom:6px;">Mã Voucher</label>
+        <div style="display:flex; gap:8px;">
+          <input type="text" id="voucherCodeInput" placeholder="Nhập mã voucher" style="flex:1; padding:10px 12px; border:2px solid var(--border-light); border-radius:8px;">
+          <button type="button" id="applyVoucherBtn" class="btn btn-primary" style="padding:10px 16px;">Áp dụng</button>
+        </div>
+        <div id="voucherStatus" style="margin-top:8px; font-size:13px; color:#666;"></div>
+        <input type="hidden" name="voucher_code" id="voucherCodeHidden" value="">
+        <input type="hidden" name="voucher_discount" id="voucherDiscountHidden" value="0">
+      </div>
+
+      <div style="background:#fff; border:1px solid var(--border-light); border-radius:8px; padding:14px; margin-top:10px;">
+        <div style="display:flex; justify-content:space-between; margin-bottom:8px; color:#555;">
+          <span>Tổng tiền hàng</span><span id="orderSubtotalValue"><?php echo number_format($orderSubtotal, 0, ',', '.'); ?> ₫</span>
+        </div>
+        <div style="display:flex; justify-content:space-between; margin-bottom:8px; color:#555;">
+          <span>VAT (5%)</span><span id="vatValue"><?php echo number_format($vatAmount, 0, ',', '.'); ?> ₫</span>
+        </div>
+        <div style="display:flex; justify-content:space-between; margin-bottom:8px; color:#555;">
+          <span>Tổng tiền phí vận chuyển</span><span id="shippingFeeValue"><?php echo number_format($shippingFee, 0, ',', '.'); ?> ₫</span>
+        </div>
+        <div style="display:flex; justify-content:space-between; margin-bottom:10px; color:#555;">
+          <span>Tổng cộng Voucher giảm giá</span><span id="voucherDiscountValue">- 0 ₫</span>
+        </div>
+        <div style="display:flex; justify-content:space-between; font-weight:700; font-size:18px;">
+          <span>Tổng thanh toán</span><span id="grandTotalValue"><?php echo number_format($grandTotal, 0, ',', '.'); ?> ₫</span>
+        </div>
+      </div>
+    </div>
+
   </form>
 </div>
 
@@ -534,7 +598,7 @@
   // Payment Method Toggle Logic
   const paymentRadios = document.querySelectorAll('input[name="payment_method"]');
   const qrSection = document.getElementById('qrSection');
-  const totalAmount = <?php echo (int) $total; ?>;
+  let totalAmount = <?php echo (int) $grandTotal; ?>;
   const checkoutForm = document.getElementById('checkoutForm');
   const paymentVerifiedInput = document.createElement('input');
   paymentVerifiedInput.type = 'hidden';
@@ -546,6 +610,14 @@
   const productNames = [];
   <?php foreach ($items as $it): ?>
     productNames.push('<?php echo htmlspecialchars($it['product']['name']); ?>');
+  <?php endforeach; ?>
+
+  const orderItems = [];
+  <?php foreach ($items as $it): ?>
+    orderItems.push({
+      cat: '<?php echo htmlspecialchars($it['product']['category_id'] ?? ''); ?>',
+      subtotal: <?php echo (int)($it['subtotal'] ?? 0); ?>
+    });
   <?php endforeach; ?>
 
   // ===== Cáº¤U HÃŒNH NGÃ‚N HÃ€NG =====
@@ -576,6 +648,85 @@
     // Reset flag xÃ¡c thá»±c khi Ä‘á»•i phÆ°Æ¡ng thá»©c
     paymentVerifiedInput.value = selectedMethod === 'online' ? '0' : '1';
   }
+
+  let voucherList = [];
+  let appliedVoucher = null;
+  const orderSubtotal = <?php echo (int)$orderSubtotal; ?>;
+  let voucherDiscount = 0;
+
+  async function loadVouchers(){
+    if(voucherList.length) return voucherList;
+    try{
+      const resp = await fetch('<?php echo ROOT_URL; ?>public/data/vouchers.json');
+      const data = await resp.json();
+      voucherList = Array.isArray(data) ? data : [];
+    }catch(e){ voucherList = []; }
+    return voucherList;
+  }
+
+  function formatNumber(n){ return n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.'); }
+
+  function setTotals(){
+    const vat = <?php echo (int)$vatAmount; ?>;
+    const ship = <?php echo (int)$shippingFee; ?>;
+    const grand = orderSubtotal + vat + ship - voucherDiscount;
+    totalAmount = grand;
+    document.getElementById('voucherDiscountValue').textContent = '- ' + formatNumber(voucherDiscount) + ' ₫';
+    document.getElementById('grandTotalValue').textContent = formatNumber(grand) + ' ₫';
+    const modalAmountEl = document.getElementById('modalAmount');
+    if(modalAmountEl){ modalAmountEl.textContent = formatNumber(grand) + ' ₫'; }
+    document.getElementById('voucherDiscountHidden').value = voucherDiscount;
+  }
+
+  function subtotalForCategories(catIds){
+    if(!Array.isArray(catIds) || !catIds.length) return 0;
+    const set = catIds.map(String);
+    return orderItems.filter(it => set.includes(String(it.cat))).reduce((s,it)=>s+ (parseInt(it.subtotal||0,10)||0),0);
+  }
+
+  function computeDiscount(v, baseAmount){
+    if(!v) return 0;
+    const base = Math.max(0, parseInt(baseAmount||0,10));
+    if(base <= 0) return 0;
+    if(v.type === 'fixed'){
+      const val = Math.max(0, parseInt(v.value||0,10));
+      return Math.min(val, base);
+    }
+    if(v.type === 'percent'){
+      const pct = Math.max(0, parseFloat(v.value||0));
+      let d = Math.round((pct/100) * base);
+      const maxD = v.max_discount ? parseInt(v.max_discount,10) : null;
+      if(maxD && d > maxD) d = maxD;
+      return Math.max(0, d);
+    }
+    return 0;
+  }
+
+  document.getElementById('applyVoucherBtn').addEventListener('click', async function(){
+    const code = (document.getElementById('voucherCodeInput').value||'').trim();
+    const statusEl = document.getElementById('voucherStatus');
+    if(!code){ statusEl.textContent = 'Vui lòng nhập mã voucher'; return; }
+    await loadVouchers();
+    const cUpper = code.toUpperCase();
+    const today = new Date();
+    const found = voucherList.find(v => String(v.code||'').toUpperCase() === cUpper && v.active !== false);
+    if(!found){ statusEl.textContent = 'Mã voucher không hợp lệ'; return; }
+    const exp = new Date(found.expiry||found.expired||today.toISOString().slice(0,10));
+    if(isNaN(exp.getTime()) || exp < today){ statusEl.textContent = 'Voucher đã hết hạn'; return; }
+    const minOrder = parseInt(found.min_order||0,10);
+    if(orderSubtotal < minOrder){ statusEl.textContent = 'Chưa đạt giá trị tối thiểu'; return; }
+    let base = orderSubtotal;
+    if((found.scope||'all') === 'category'){
+      const cats = Array.isArray(found.categories) ? found.categories : [];
+      base = subtotalForCategories(cats);
+      if(base <= 0){ statusEl.textContent = 'Voucher không áp dụng cho danh mục trong đơn'; return; }
+    }
+    appliedVoucher = found;
+    voucherDiscount = computeDiscount(found, base);
+    document.getElementById('voucherCodeHidden').value = found.code;
+    statusEl.textContent = 'Đã áp dụng: ' + found.code + ' (-' + formatNumber(voucherDiscount) + ' ₫)';
+    setTotals();
+  });
 
   // Handle form submission - Show payment modal
   checkoutForm.addEventListener('submit', async function (e) {
@@ -734,6 +885,8 @@
           modalStatus.className = 'payment-modal-status pending';
           modalStatusText.innerHTML = '<span class="payment-modal-spinner"></span> <span>Đang tạo đơn hàng...</span>';
           const addressVal = checkoutForm.querySelector('input[name="address"]').value.trim();
+          const recipientName = (checkoutForm.querySelector('input[name="recipient_name"]')?.value || '').trim();
+          const recipientPhone = (checkoutForm.querySelector('input[name="recipient_phone"]')?.value || '').trim();
           const noteVal = checkoutForm.querySelector('textarea[name="note"]').value.trim();
 
           const selectedInputs = Array.from(checkoutForm.querySelectorAll('input[name="selected[]"]'));
@@ -748,14 +901,16 @@
           console.log('[Polling] Calling /payment/create-order-on-payment');
           const createResp = await fetch('<?php echo ROOT_URL; ?>payment/create-order-on-payment', {
             method: 'POST',
-            headers: {
-              'Content-Type': 'application/json'
-            },
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               amount: totalAmount,
               description: currentOrderId,
               address: addressVal,
               note: noteVal,
+              recipient_name: recipientName,
+              recipient_phone: recipientPhone,
+              voucher_code: (document.getElementById('voucherCodeHidden')?.value||'').toString().trim(),
+              voucher_discount: parseInt(document.getElementById('voucherDiscountHidden')?.value||'0',10)||0,
               selected: selectedIds,
               quantities: quantities
             })
@@ -774,8 +929,8 @@
               modalCheckPaymentBtn.disabled = true;
               setTimeout(() => {
                 hidePaymentModal();
-                window.location = '<?php echo ROOT_URL; ?>cart/orderDetail/' + (createResult.order_id || '');
-              }, 300);
+                window.location = '<?php echo ROOT_URL; ?>cart?invoice=' + encodeURIComponent(createResult.order_id || '') + '&print=1';
+               }, 300);
             } else {
               // Nếu tạo đơn thất bại, tiếp tục polling để tránh tạo trùng
               modalStatus.className = 'payment-modal-status failed';
@@ -940,14 +1095,14 @@
 
           const createResp = await fetch('<?php echo ROOT_URL; ?>payment/create-order-on-payment', {
             method: 'POST',
-            headers: {
-              'Content-Type': 'application/json'
-            },
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               amount: totalAmount,
               description: currentOrderId,
               address: addressVal,
               note: noteVal,
+              voucher_code: (document.getElementById('voucherCodeHidden')?.value||'').toString().trim(),
+              voucher_discount: parseInt(document.getElementById('voucherDiscountHidden')?.value||'0',10)||0,
               selected: selectedIds,
               quantities: quantities
             })
@@ -963,7 +1118,7 @@
               modalCheckPaymentBtn.disabled = true;
               setTimeout(() => {
                 hidePaymentModal();
-                window.location = '<?php echo ROOT_URL; ?>cart/orderDetail/' + (createResult.order_id || '');
+                window.location = '<?php echo ROOT_URL; ?>cart?invoice=' + encodeURIComponent(createResult.order_id || '') + '&print=1';
               }, 300);
             } else {
               modalStatus.className = 'payment-modal-status failed';
@@ -1011,6 +1166,49 @@
       hidePaymentModal();
     }
   });
+</script>
+
+<style>
+  .invoice-modal-overlay{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.6);z-index:9999}
+  .invoice-modal-overlay.active{display:flex;align-items:center;justify-content:center}
+  .invoice-modal{background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 10px 40px rgba(0,0,0,0.3);width:90%;max-width:960px;max-height:85vh;display:flex;flex-direction:column}
+  .invoice-modal-header{display:flex;justify-content:space-between;align-items:center;padding:12px 16px;border-bottom:1px solid #eee}
+  .invoice-modal-title{font-weight:700}
+  .invoice-modal-close{border:none;background:#e74c3c;color:#fff;padding:8px 12px;border-radius:8px;cursor:pointer}
+  .invoice-modal-body{flex:1}
+  .invoice-iframe{width:100%;height:70vh;border:0}
+  .invoice-modal-footer{padding:10px 16px;border-top:1px solid #eee;text-align:right}
+</style>
+
+<div id="invoiceModal" class="invoice-modal-overlay" aria-hidden="true">
+  <div class="invoice-modal" role="dialog" aria-modal="true">
+    <div class="invoice-modal-header">
+      <div class="invoice-modal-title">Hóa đơn A4</div>
+      <button class="invoice-modal-close" type="button" onclick="closeInvoiceModal()">Đóng</button>
+    </div>
+    <div class="invoice-modal-body">
+      <iframe id="invoiceIframe" class="invoice-iframe"></iframe>
+    </div>
+    <div class="invoice-modal-footer">
+      <button id="invoicePrintBtn" class="btn btn-primary" type="button">In hóa đơn</button>
+    </div>
+  </div>
+ </div>
+
+<script>
+  function openInvoiceModal(orderId){
+    var url = '<?php echo ROOT_URL; ?>cart/invoice/' + encodeURIComponent(orderId);
+    var m = document.getElementById('invoiceModal');
+    var f = document.getElementById('invoiceIframe');
+    var btn = document.getElementById('invoicePrintBtn');
+    f.src = url; m.classList.add('active');
+    if(btn){ btn.onclick = function(){ try{ f.contentWindow.focus(); f.contentWindow.print(); }catch(e){} }; }
+  }
+  function closeInvoiceModal(){
+    var m = document.getElementById('invoiceModal');
+    var f = document.getElementById('invoiceIframe');
+    f.src = 'about:blank'; m.classList.remove('active');
+  }
 </script>
 
 <?php require_once ROOT_PATH . '/src/Views/includes/footer.php'; ?>

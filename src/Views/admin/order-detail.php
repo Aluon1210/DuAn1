@@ -33,21 +33,59 @@
 </style>
 
 <?php
-  $order = $data['order'] ?? [];
-  $items = $data['items'] ?? [];
+  $order = isset($order) ? $order : [];
+  $items = isset($items) ? $items : [];
   $subtotal = 0;
   foreach ($items as $it) {
     $subtotal += (float)($it['Price'] ?? 0) * (int)($it['quantity'] ?? 0);
   }
-  $taxRate = 0.10; // 10% VAT for example
-  $taxAmount = round($subtotal * $taxRate);
-  $grandTotal = $subtotal + $taxAmount;
+  $serviceFeeRate = 0.05;
+  $serviceFee = round($subtotal * $serviceFeeRate);
+  $shippingFee = 50000;
+  $voucherCode = '';
+  $voucherDiscount = (int)($order['Voucher_Discount'] ?? ($order['voucher_discount'] ?? 0));
+  if ($voucherDiscount <= 0) {
+    $noteStr = (string)($order['Note'] ?? '');
+    if ($noteStr !== '') {
+      if (preg_match('/Voucher:\s*([A-Z0-9_-]+)\s*-\s*(\d+)/i', $noteStr, $m)) {
+        $voucherCode = strtoupper($m[1] ?? '');
+        $voucherDiscount = (int)($m[2] ?? 0);
+      }
+    }
+  } else {
+    $voucherCode = strtoupper((string)($order['Voucher_Code'] ?? ($order['voucher_code'] ?? '')));
+  }
+  // Nếu vẫn chưa có số tiền giảm nhưng có mã voucher, thử tra cứu từ file vouchers.json
+  if ($voucherDiscount <= 0 && $voucherCode !== '') {
+    try {
+      $file = ROOT_PATH . '/public/data/vouchers.json';
+      if (file_exists($file)) {
+        $list = json_decode(file_get_contents($file), true) ?: [];
+        foreach ($list as $v) {
+          if (strtoupper((string)($v['code'] ?? '')) === $voucherCode) {
+            $type = $v['type'] ?? 'fixed';
+            $value = (float)($v['value'] ?? 0);
+            $maxD = isset($v['max_discount']) ? (int)$v['max_discount'] : null;
+            if ($type === 'fixed') {
+              $voucherDiscount = (int)min(max(0, $value), max(0, $subtotal));
+            } else {
+              $calc = (int)round((max(0, $value) / 100) * max(0, $subtotal));
+              if ($maxD && $calc > $maxD) { $calc = $maxD; }
+              $voucherDiscount = max(0, $calc);
+            }
+            break;
+          }
+        }
+      }
+    } catch (\Exception $e) { /* ignore */ }
+  }
+  $grandTotal = $subtotal + $serviceFee + $shippingFee - max(0, $voucherDiscount);
 ?>
 
 <div class="ei-container">
   <div class="ei-top">
     <div class="ei-company">
-      <h2>NGÂN HÀNG THƯƠNG MẠI CỔ PHẦN A CHÂU (ACB)</h2>
+      <h2>Luxury Fashion</h2>
       <div class="small">Địa chỉ: 06 Tân Kỳ Tân Quý, P.15, Q. Tân Bình, HCM</div>
       <div class="small">MST: 030xxxxx • Điện thoại: 028 xxxxxx</div>
     </div>
@@ -95,7 +133,11 @@
       <?php $i = 1; foreach ($items as $it):
         $qty = (int)($it['quantity'] ?? 0);
         $price = (float)($it['Price'] ?? 0);
-        $line = $qty * $price;
+        $lineBase = $qty * $price;
+        $weight = $subtotal > 0 ? ($lineBase / $subtotal) : 1;
+        $allocService = (int)round($serviceFee * $weight);
+        $allocShip = (int)round($shippingFee * $weight);
+        $lineTotal = $lineBase + $allocService + $allocShip;
       ?>
       <tr>
         <td><?php echo $i++; ?></td>
@@ -112,7 +154,7 @@
         <td>cái</td>
         <td style="text-align:right"><?php echo $qty; ?></td>
         <td style="text-align:right"><?php echo number_format($price,0,',','.'); ?></td>
-        <td style="text-align:right"><?php echo number_format($line,0,',','.'); ?></td>
+        <td style="text-align:right"><?php echo number_format($lineTotal,0,',','.'); ?></td>
       </tr>
       <?php endforeach; ?>
     </tbody>
@@ -120,12 +162,15 @@
 
   <div class="ei-totals">
     <div class="inner">
-      <div class="row"><span>Tổng cộng hàng hóa, dịch vụ:</span><span><?php echo number_format($subtotal,0,',','.'); ?> ₫</span></div>
-      <div class="row"><span>Thuế suất GTGT:</span><span><?php echo ($taxRate*100); ?>%</span></div>
-      <div class="row"><span>Tiền thuế GTGT:</span><span><?php echo number_format($taxAmount,0,',','.'); ?> ₫</span></div>
+      <div class="row"><span>VAT (5%):</span><span><?php echo number_format($serviceFee,0,',','.'); ?> ₫</span></div>
+      <div class="row"><span>Phí vận chuyển:</span><span><?php echo number_format($shippingFee,0,',','.'); ?> ₫</span></div>
+      <?php if ($voucherDiscount > 0): ?>
+      <div class="row"><span>Giảm voucher<?php echo $voucherCode ? ' ('.$voucherCode.')' : ''; ?>:</span><span>- <?php echo number_format($voucherDiscount,0,',','.'); ?> ₫</span></div>
+      <?php endif; ?>
       <div class="row total"><span>Tổng thanh toán:</span><span><?php echo number_format($grandTotal,0,',','.'); ?> ₫</span></div>
     </div>
   </div>
+
 
   <div class="ei-footer">
     <div class="ei-bank">
@@ -145,5 +190,3 @@
   </div>
 
 </div>
-
-<?php require_once ROOT_PATH . '/src/Views/includes/footer.php'; ?>

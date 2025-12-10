@@ -332,6 +332,9 @@
             <button id="paySelectedBtn" type="submit" form="cartForm" formaction="<?php echo ROOT_URL; ?>cart/confirm" class="btn btn-success" style="padding: 18px 60px; font-size: 18px; text-transform: uppercase; letter-spacing: 1.5px;">
                 ✓ Thanh toán
             </button>
+            <button id="paySelectedOnlineBtn" type="button" class="btn btn-success" style="padding: 18px 60px; font-size: 18px; text-transform: uppercase; letter-spacing: 1.5px; margin-left: 16px;">
+                Thanh toán Online (Pop-up)
+            </button>
         </div>
     </div>
 <?php else: ?>
@@ -456,6 +459,232 @@ if (payBtn) {
 }
 </script>
 
+<style>
+  .invoice-modal-overlay{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.6);z-index:9999}
+  .invoice-modal-overlay.active{display:flex;align-items:center;justify-content:center}
+  .invoice-modal{background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 10px 40px rgba(0,0,0,0.3);width:90%;max-width:960px;max-height:85vh;display:flex;flex-direction:column}
+  .invoice-modal-header{display:flex;justify-content:space-between;align-items:center;padding:12px 16px;border-bottom:1px solid #eee}
+  .invoice-modal-title{font-weight:700}
+  .invoice-modal-close{border:none;background:#e74c3c;color:#fff;padding:8px 12px;border-radius:8px;cursor:pointer}
+  .invoice-modal-body{flex:1}
+  .invoice-iframe{width:100%;height:70vh;border:0}
+  .invoice-modal-footer{padding:10px 16px;border-top:1px solid #eee;text-align:right}
+</style>
+
+<div id="invoiceModal" class="invoice-modal-overlay" aria-hidden="true">
+  <div class="invoice-modal" role="dialog" aria-modal="true">
+    <div class="invoice-modal-header">
+      <div class="invoice-modal-title">Hóa đơn A4</div>
+      <button class="invoice-modal-close" type="button" onclick="closeInvoiceModal()">Đóng</button>
+    </div>
+    <div class="invoice-modal-body">
+      <iframe id="invoiceIframe" class="invoice-iframe"></iframe>
+    </div>
+    <div class="invoice-modal-footer">
+      <button id="invoicePrintBtn" class="btn btn-primary" type="button">In hóa đơn</button>
+    </div>
+  </div>
+ </div>
+
+<script>
+  function openInvoiceModal(orderId){
+    var url = '<?php echo ROOT_URL; ?>cart/invoice/' + encodeURIComponent(orderId);
+    var m = document.getElementById('invoiceModal');
+    var f = document.getElementById('invoiceIframe');
+    var btn = document.getElementById('invoicePrintBtn');
+    f.src = url; m.classList.add('active');
+    if(btn){
+      btn.onclick = function(){ try{ f.contentWindow.focus(); f.contentWindow.print(); }catch(e){} };
+    }
+    try {
+      var qp = new URLSearchParams(window.location.search);
+      var shouldPrint = qp.get('print') === '1';
+      f.onload = function(){
+        if(shouldPrint){
+          try{ f.contentWindow.focus(); f.contentWindow.print(); }catch(e){}
+          try{
+            qp.delete('print');
+            var base = window.location.pathname + '?' + qp.toString();
+            if(!qp.toString()){ base = window.location.pathname; }
+            window.history.replaceState(null, document.title, base);
+          }catch(e){}
+        }
+      };
+    } catch(e) {}
+  }
+  function closeInvoiceModal(){
+    var m = document.getElementById('invoiceModal');
+    var f = document.getElementById('invoiceIframe');
+    f.src = 'about:blank'; m.classList.remove('active');
+  }
+  (function(){
+    var qp = new URLSearchParams(window.location.search);
+    var inv = qp.get('invoice');
+    if(inv){ openInvoiceModal(inv); }
+  })();
+</script>
+
+<style>
+  .payment-modal-overlay { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:9999; }
+  .payment-modal-overlay.active { display:flex; align-items:center; justify-content:center; }
+  .payment-modal { background:white; border-radius:16px; padding:40px; max-width:900px; width:90%; max-height:85vh; overflow-y:auto; box-shadow:0 10px 40px rgba(0,0,0,0.3); }
+  .payment-modal-header { font-size:28px; font-weight:bold; margin-bottom:30px; color:#333; text-align:center; }
+  .payment-modal-content { display:grid; grid-template-columns:1fr 1fr; gap:40px; margin-bottom:30px; }
+  .payment-modal-info { background:#f8f9fa; padding:20px; border-radius:8px; margin-bottom:20px; }
+  .payment-modal-info-row { display:flex; justify-content:space-between; margin-bottom:12px; padding-bottom:12px; border-bottom:1px solid #ddd; }
+  .payment-modal-amount { background:#fff3cd; padding:15px; border-radius:8px; margin-bottom:20px; text-align:center; }
+  .payment-modal-buttons { display:flex; gap:12px; margin-top:20px; }
+  .payment-modal-btn { flex:1; padding:14px; border:none; border-radius:8px; font-weight:600; cursor:pointer; transition:all .3s; font-size:16px; }
+  .payment-modal-btn-primary { background:#ff6b6b; color:white; }
+  .payment-modal-btn-secondary { background:#6c757d; color:white; }
+  .payment-modal-status { padding:15px; border-radius:8px; margin-bottom:20px; text-align:center; font-weight:600; grid-column:1 / -1; }
+  .payment-modal-status.pending { background:#e3f2fd; color:#1976d2; }
+  .payment-modal-status.success { background:#e8f5e9; color:#388e3c; }
+  .payment-modal-status.failed { background:#ffebee; color:#d32f2f; }
+  .payment-modal-spinner { display:inline-block; width:20px; height:20px; border:3px solid #f3f3f3; border-top:3px solid #007bff; border-radius:50%; animation:spin 1s linear infinite; margin-right:10px; }
+  @keyframes spin { 0% { transform: rotate(0deg);} 100% { transform: rotate(360deg);} }
+</style>
+
+<div class="payment-modal-overlay" id="cartPaymentModal">
+  <div class="payment-modal">
+    <div class="payment-modal-header">Thông tin thanh toán</div>
+    <div class="payment-modal-content">
+      <div>
+        <div class="payment-modal-info">
+          <div class="payment-modal-info-row"><span>Ngân hàng</span><span id="cartModalBankName">MB Bank</span></div>
+          <div class="payment-modal-info-row"><span>Số tài khoản</span><span id="cartModalAccountNo">0833268346</span></div>
+          <div class="payment-modal-info-row"><span>Tên tài khoản</span><span id="cartModalAccountName">DUONG THANH CONG</span></div>
+          <div class="payment-modal-info-row"><span>Nội dung</span><span id="cartModalDescription">-</span></div>
+        </div>
+        <div class="payment-modal-amount"><div>Số tiền cần thanh toán</div><div id="cartModalAmount" style="font-size:32px;font-weight:bold;color:#d39e00;">0 ₫</div></div>
+        <div class="payment-modal-info">
+          <div style="font-weight:600; margin-bottom:8px;">Địa chỉ nhận hàng</div>
+          <input id="cartAddressInput" type="text" style="width:100%; padding:12px 14px; border:2px solid var(--border-light); border-radius:8px;" value="<?php echo isset($_SESSION['user']['address']) ? htmlspecialchars($_SESSION['user']['address']) : ''; ?>" placeholder="Nhập địa chỉ nhận hàng">
+          <div style="font-weight:600; margin:16px 0 8px;">Ghi chú</div>
+          <textarea id="cartNoteInput" rows="3" style="width:100%; padding:12px 14px; border:2px solid var(--border-light); border-radius:8px;" placeholder="Ví dụ: Giao trong giờ hành chính"></textarea>
+        </div>
+      </div>
+      <div style="text-align:center;">
+        <div>
+          <p>Quét QR để thanh toán</p>
+          <img id="cartModalQRImage" src="" alt="QR Code" style="display:none; max-width:260px; border:2px solid #ddd; border-radius:8px; padding:8px; background:white; box-shadow:0 2px 8px rgba(0,0,0,0.1);">
+          <div id="cartQrLoadingPlaceholder" style="display:flex; align-items:center; justify-content:center; width:260px; height:260px; background:#f0f0f0; border-radius:8px; margin:0 auto; color:#999; font-size:14px;">Đang tải mã QR...</div>
+        </div>
+        <div class="payment-modal-status pending" id="cartModalStatus" style="display:none;"><span class="payment-modal-spinner"></span><span id="cartModalStatusText">Đang kiểm tra thanh toán...</span></div>
+      </div>
+    </div>
+    <div class="payment-modal-buttons">
+      <button type="button" class="payment-modal-btn payment-modal-btn-primary" id="cartModalCheckPaymentBtn">Đã chuyển khoản rồi</button>
+      <button type="button" class="payment-modal-btn payment-modal-btn-secondary" id="cartModalCancelBtn">Hủy</button>
+    </div>
+    <div style="padding-top:20px; border-top:1px solid #ddd; color:#666; font-size:12px; text-align:center; line-height:1.6;">Vui lòng chuyển khoản trong vòng 15 phút</div>
+  </div>
+</div>
+
+<script>
+  const paySelectedOnlineBtn = document.getElementById('paySelectedOnlineBtn');
+  const cartPaymentModal = document.getElementById('cartPaymentModal');
+  const cartModalQRImage = document.getElementById('cartModalQRImage');
+  const cartQrLoadingPlaceholder = document.getElementById('cartQrLoadingPlaceholder');
+  const cartModalStatus = document.getElementById('cartModalStatus');
+  const cartModalStatusText = document.getElementById('cartModalStatusText');
+  const cartModalCheckPaymentBtn = document.getElementById('cartModalCheckPaymentBtn');
+  const cartModalCancelBtn = document.getElementById('cartModalCancelBtn');
+  const cartAddressInput = document.getElementById('cartAddressInput');
+  const cartNoteInput = document.getElementById('cartNoteInput');
+  let currentOrderId = null;
+  const qrConfig = { bankId: 'MB', accountNo: '0833268346', accountName: 'DUONG THANH CONG', template: 'print' };
+
+  function getSelectedData() {
+    const selected = []; const quantities = {}; let total = 0;
+    document.querySelectorAll('.cart-select').forEach(chk => {
+      if (chk.checked && !chk.disabled) {
+        const id = chk.value; selected.push(id);
+        const input = document.querySelector(`input[data-id="${id}"]`);
+        const price = parseInt(input.getAttribute('data-price')) || 0;
+        const qty = parseInt(input.value) || 0;
+        quantities[id] = qty; total += price * qty;
+      }
+    });
+    return { selected, quantities, total };
+  }
+
+  function formatCurrency(amount) { return amount.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.'); }
+
+  function generateQRUrl(amount, description) {
+    const qrBaseUrl = 'https://img.vietqr.io/image/';
+    const qrCode = qrConfig.bankId + '-' + qrConfig.accountNo + '-' + qrConfig.template + '.png';
+    const params = new URLSearchParams();
+    params.append('amount', amount);
+    params.append('addInfo', description);
+    params.append('accountName', qrConfig.accountName);
+    return qrBaseUrl + qrCode + '?' + params.toString();
+  }
+
+  function showCartPaymentModal() {
+    const d = getSelectedData();
+    if (!d.selected.length) { alert('Vui lòng chọn ít nhất 1 sản phẩm để thanh toán'); return; }
+    currentOrderId = 'ORD' + Date.now() + Math.random().toString(36).substr(2, 9);
+    document.getElementById('cartModalBankName').textContent = 'MB Bank';
+    document.getElementById('cartModalAccountNo').textContent = qrConfig.accountNo;
+    document.getElementById('cartModalAccountName').textContent = qrConfig.accountName;
+    document.getElementById('cartModalDescription').textContent = currentOrderId;
+    document.getElementById('cartModalAmount').textContent = formatCurrency(d.total) + ' ₫';
+    const qrUrl = generateQRUrl(d.total, currentOrderId);
+    cartModalQRImage.src = qrUrl;
+    cartModalQRImage.style.display = 'none';
+    cartQrLoadingPlaceholder.style.display = 'flex';
+    cartModalQRImage.onload = function() { cartModalQRImage.style.display = 'block'; cartQrLoadingPlaceholder.style.display = 'none'; };
+    cartModalQRImage.onerror = function() { cartQrLoadingPlaceholder.style.display = 'flex'; cartQrLoadingPlaceholder.textContent = 'Lỗi tải mã QR'; };
+    cartModalStatus.style.display = 'none';
+    cartModalCheckPaymentBtn.disabled = false;
+    cartPaymentModal.classList.add('active');
+  }
+
+  function hideCartPaymentModal() { cartPaymentModal.classList.remove('active'); }
+
+  async function checkPaymentAndCreateOrderFromCart() {
+    const d = getSelectedData();
+    if (!d.selected.length) { alert('Vui lòng chọn ít nhất 1 sản phẩm để thanh toán'); return; }
+    cartModalStatus.style.display = 'block';
+    cartModalStatus.className = 'payment-modal-status pending';
+    cartModalStatusText.innerHTML = '<span class="payment-modal-spinner"></span> <span>Đang kiểm tra thanh toán...</span>';
+    cartModalCheckPaymentBtn.disabled = true;
+    try {
+      const resp = await fetch('<?php echo ROOT_URL; ?>payment/check-payment', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ order_id: currentOrderId, amount: d.total, description: currentOrderId, account_no: qrConfig.accountNo, bank_id: qrConfig.bankId })
+      });
+      let result = null; const ct = resp.headers.get('content-type') || '';
+      if (ct.indexOf('application/json') !== -1) { result = await resp.json(); } else { cartModalStatus.className = 'payment-modal-status failed'; cartModalStatusText.textContent = 'Lỗi phản hồi API'; cartModalCheckPaymentBtn.disabled = false; return; }
+      if (result && result.success) {
+        cartModalStatus.className = 'payment-modal-status pending';
+        cartModalStatusText.innerHTML = '<span class="payment-modal-spinner"></span> <span>Đang tạo đơn hàng...</span>';
+        const addressVal = (cartAddressInput.value || '').trim();
+        const noteVal = (cartNoteInput.value || '').trim();
+        const createResp = await fetch('<?php echo ROOT_URL; ?>payment/create-order-on-payment', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ amount: d.total, description: currentOrderId, address: addressVal, note: noteVal, selected: d.selected, quantities: d.quantities })
+        });
+        const ct2 = createResp.headers.get('content-type') || '';
+        if (ct2.indexOf('application/json') !== -1) {
+          const createResult = await createResp.json();
+          if (createResult && createResult.success) {
+            cartModalStatus.className = 'payment-modal-status success';
+            cartModalStatusText.innerHTML = 'Thanh toán thành công! Đơn hàng đã được tạo. Mã đơn: ' + (createResult.order_id || '');
+            setTimeout(() => { hideCartPaymentModal(); window.location = '<?php echo ROOT_URL; ?>cart/invoice/' + (createResult.order_id || ''); }, 300);
+          } else { cartModalStatus.className = 'payment-modal-status failed'; cartModalStatusText.textContent = (createResult && createResult.message) ? createResult.message : 'Không thể tạo đơn hàng'; cartModalCheckPaymentBtn.disabled = false; }
+        } else { cartModalStatus.className = 'payment-modal-status failed'; cartModalStatusText.textContent = 'Phản hồi tạo đơn không hợp lệ'; cartModalCheckPaymentBtn.disabled = false; }
+      } else { cartModalStatus.className = 'payment-modal-status failed'; cartModalStatusText.textContent = (result && result.message) ? result.message : 'Thanh toán thất bại'; cartModalCheckPaymentBtn.disabled = false; }
+    } catch (e) { cartModalStatus.className = 'payment-modal-status failed'; cartModalStatusText.textContent = 'Lỗi kết nối'; cartModalCheckPaymentBtn.disabled = false; }
+  }
+
+  if (paySelectedOnlineBtn) { paySelectedOnlineBtn.addEventListener('click', showCartPaymentModal); }
+  cartModalCheckPaymentBtn.addEventListener('click', checkPaymentAndCreateOrderFromCart);
+  cartModalCancelBtn.addEventListener('click', hideCartPaymentModal);
+  cartPaymentModal.addEventListener('click', function(e) { if (e.target === cartPaymentModal) { hideCartPaymentModal(); } });
+</script>
+
 <?php if (!empty($orders)): ?>
 <div style="margin-top: 60px;">
   <h3 style="font-family: 'Playfair Display', serif; font-size: 28px; font-weight: 700; margin-bottom: 24px;">📋 Lịch Sử Đơn Hàng</h3>
@@ -509,10 +738,11 @@ if (payBtn) {
               ?>
               <a href="<?php echo ROOT_URL; ?>cart/orderDetail/<?php echo htmlspecialchars($order['Order_Id']); ?>" style="color: var(--primary-gold); text-decoration: none; font-weight: 600;">Xem chi tiết →</a>
             </td>
-            <td style="padding: 16px 20px; text-align: center;">
+            <td style="padding: 16px 20px; text-align: center; display:flex; gap:8px; justify-content:center;">
               <a href="<?php echo ROOT_URL; ?>cart/orderDetail/<?php echo htmlspecialchars($order['Order_Id']); ?>" class="btn btn-primary" style="padding: 8px 16px; font-size: 12px; text-decoration: none; display: inline-block;">
                 📄 Chi Tiết
               </a>
+              <button type="button" class="btn btn-success" style="padding: 8px 16px; font-size: 12px;" onclick="openInvoiceModal('<?php echo htmlspecialchars($order['Order_Id']); ?>')">🧾 Hóa đơn (Pop-up)</button>
             </td>
           </tr>
         <?php endforeach; ?>

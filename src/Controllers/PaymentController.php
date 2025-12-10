@@ -629,6 +629,8 @@ class PaymentController extends Controller
         $note = isset($data['note']) ? trim($data['note']) : '';
         $selected = isset($data['selected']) && is_array($data['selected']) ? array_values($data['selected']) : [];
         $quantitiesOverride = isset($data['quantities']) && is_array($data['quantities']) ? $data['quantities'] : [];
+        $voucherCode = isset($data['voucher_code']) ? strtoupper(trim($data['voucher_code'])) : '';
+        $voucherDiscount = isset($data['voucher_discount']) ? (int)$data['voucher_discount'] : 0;
 
         // Validate
         if (empty($amount)) {
@@ -683,11 +685,31 @@ class PaymentController extends Controller
             }
 
             // Chuẩn bị dữ liệu để tạo đơn hàng
+            $u = $_SESSION['user'] ?? [];
+            $recipientName = isset($data['recipient_name']) ? trim($data['recipient_name']) : ($u['name'] ?? $u['username'] ?? '');
+            $recipientPhone = isset($data['recipient_phone']) ? trim($data['recipient_phone']) : ($u['phone'] ?? '');
+            if (!empty($recipientPhone)) {
+                $um = new \Models\User();
+                $bp = $um->getByPhone($recipientPhone);
+                if ($bp && ($bp['id'] ?? '') !== $userId) {
+                    http_response_code(400);
+                    echo json_encode([
+                        'success' => false,
+                        'message' => 'Số điện thoại người nhận đã được sử dụng bởi tài khoản khác'
+                    ]);
+                    return;
+                }
+            }
+            $noteFull = '[Receiver: ' . $recipientName . ' | Phone: ' . $recipientPhone . '] ' . ($note ?: 'Thanh toán Online') . ($voucherCode !== '' ? (' | Voucher: ' . $voucherCode . ' - ' . $voucherDiscount) : '');
+
             $orderData = [
                 'user_id' => $userId,
                 'address' => $address,
-                'note' => $note,
+                'note' => $noteFull,
                 'status' => 'pending',
+                'payment_method' => 'online',
+                'voucher_code' => $voucherCode,
+                'voucher_discount' => $voucherDiscount,
                 'order_date' => date('Y-m-d')
             ];
 
@@ -756,13 +778,21 @@ class PaymentController extends Controller
                 ];
             }
 
+            // Tính tổng thanh toán chuẩn theo front-end: VAT 5% + ship 50k - voucher
+            $vatAmount = (int)round($totalCartAmount * 0.05);
+            $shippingFee = 50000;
+            $expectedAmount = $totalCartAmount + $vatAmount + $shippingFee - max(0, $voucherDiscount);
+
             // Kiểm tra tổng tiền có khớp không
-            if ($totalCartAmount !== $amount) {
+            if ($expectedAmount !== $amount) {
                 http_response_code(400);
                 echo json_encode([
                     'success' => false,
-                    'message' => 'Tổng tiền không khớp. Giỏ hàng: ' . $totalCartAmount . ' VND, thanh toán: ' . $amount . ' VND',
-                    'cart_total' => $totalCartAmount,
+                    'message' => 'Tổng tiền không khớp. Hệ thống: ' . $expectedAmount . ' VND, thanh toán: ' . $amount . ' VND',
+                    'cart_subtotal' => $totalCartAmount,
+                    'vat' => $vatAmount,
+                    'shipping' => $shippingFee,
+                    'voucher_discount' => max(0, $voucherDiscount),
                     'payment_amount' => $amount
                 ]);
                 return;
@@ -1176,14 +1206,24 @@ class PaymentController extends Controller
                 return ['found' => false];
             }
 
-            // Lấy chi tiết đơn hàng
+            // Lấy chi tiết đơn hàng và tính tổng thanh toán cuối cùng
             $orderDetailModel = new \Models\OrderDetail();
             $orderDetails = $orderDetailModel->getByOrderId($orderId);
 
-            $totalAmount = 0;
+            $subtotal = 0;
             foreach ($orderDetails as $detail) {
-                $totalAmount += isset($detail['subtotal']) ? (int)$detail['subtotal'] : 0;
+                $qty = (int)($detail['quantity'] ?? $detail['Quantity'] ?? 0);
+                $price = (float)($detail['Price'] ?? $detail['price'] ?? 0);
+                $subtotal += $qty * $price;
             }
+            $vat = (int)round($subtotal * 0.05);
+            $ship = 50000;
+            $voucherDiscount = 0;
+            $noteStr = (string)($order['Note'] ?? '');
+            if ($noteStr !== '' && preg_match('/Voucher:\s*([A-Z0-9_-]+)\s*-\s*(\d+)/i', $noteStr, $m)) {
+                $voucherDiscount = (int)($m[2] ?? 0);
+            }
+            $totalAmount = max(0, $subtotal + $vat + $ship - max(0, $voucherDiscount));
 
             return [
                 'found' => true,

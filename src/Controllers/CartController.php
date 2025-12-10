@@ -595,12 +595,11 @@ class CartController extends Controller
         ], $orderDetails);
 
         if ($orderId) {
-            // Xóa các sản phẩm đã thanh toán khỏi giỏ hàng
             foreach ($selected as $cartKey) {
                 unset($_SESSION['cart'][$cartKey]);
             }
             $_SESSION['message'] = 'Đặt hàng thành công! Mã đơn: ' . $orderId . '. Tổng tiền: ' . number_format($totalAmount, 0, ',', '.') . ' ₫. Đơn hàng đang chờ xác nhận.';
-            header('Location: ' . ROOT_URL . 'cart');
+            header('Location: ' . ROOT_URL . 'cart/invoice/' . urlencode($orderId));
             exit;
         } else {
             $_SESSION['error'] = 'Đặt hàng thất bại. Vui lòng thử lại';
@@ -629,10 +628,23 @@ class CartController extends Controller
         }
 
         $address = isset($_POST['address']) ? trim($_POST['address']) : '';
+        $recipientName = isset($_POST['recipient_name']) ? trim($_POST['recipient_name']) : '';
+        $recipientPhone = isset($_POST['recipient_phone']) ? trim($_POST['recipient_phone']) : '';
         if ($address === '') {
             $_SESSION['error'] = 'Vui lòng nhập địa chỉ nhận hàng';
             header('Location: ' . ROOT_URL . 'cart');
             exit;
+        }
+
+        if (!empty($recipientPhone)) {
+            $userId = $_SESSION['user']['id'] ?? $_SESSION['user']['username'] ?? '';
+            $um = new \Models\User();
+            $byPhone = $um->getByPhone($recipientPhone);
+            if ($byPhone && ($byPhone['id'] ?? '') !== $userId) {
+                $_SESSION['error'] = 'Số điện thoại người nhận đã được sử dụng bởi tài khoản khác';
+                header('Location: ' . ROOT_URL . 'cart');
+                exit;
+            }
         }
 
         $productModel = new \Models\Product();
@@ -688,17 +700,19 @@ class CartController extends Controller
         }
 
         $user = $_SESSION['user'];
+        $noteFromUser = isset($_POST['note']) ? trim($_POST['note']) : '';
+        $noteFull = '[Receiver: ' . ($recipientName ?: ($user['name'] ?? $user['username'] ?? '')) . ' | Phone: ' . ($recipientPhone ?: ($user['phone'] ?? '')) . '] ' . ($noteFromUser ?: 'Đặt hàng');
         $orderId = $orderModel->createWithDetails([
             'user_id' => $user['id'] ?? $user['username'] ?? '',
             'address' => $address,
-            'note' => $_POST['note'] ?? 'Đặt hàng',
+            'note' => $noteFull,
             'status' => 'pending'
         ], $orderDetails);
 
         if ($orderId) {
             foreach ($processedCartIds as $cid) { $cartModel->deleteCart($cid); }
             $_SESSION['message'] = 'Đặt hàng thành công. Mã đơn: ' . $orderId . '. Tổng tiền: ' . number_format($totalAmount, 0, ',', '.') . ' ₫. Phương thức: OPT (Tiền mặt)';
-            header('Location: ' . ROOT_URL . 'cart');
+            header('Location: ' . ROOT_URL . 'cart/invoice/' . urlencode($orderId));
             exit;
         } else {
             $_SESSION['error'] = 'Đặt hàng thất bại. Vui lòng thử lại';
@@ -742,10 +756,23 @@ class CartController extends Controller
         }
 
         $address = isset($_POST['address']) ? trim($_POST['address']) : '';
+        $recipientName = isset($_POST['recipient_name']) ? trim($_POST['recipient_name']) : '';
+        $recipientPhone = isset($_POST['recipient_phone']) ? trim($_POST['recipient_phone']) : '';
         if (empty($address)) {
             $_SESSION['error'] = 'Vui lòng nhập địa chỉ nhận hàng';
             header('Location: ' . ROOT_URL . 'cart');
             exit;
+        }
+
+        if (!empty($recipientPhone)) {
+            $uid = $_SESSION['user']['id'] ?? $_SESSION['user']['username'] ?? '';
+            $um2 = new \Models\User();
+            $bp = $um2->getByPhone($recipientPhone);
+            if ($bp && ($bp['id'] ?? '') !== $uid) {
+                $_SESSION['error'] = 'Số điện thoại người nhận đã được sử dụng bởi tài khoản khác';
+                header('Location: ' . ROOT_URL . 'cart');
+                exit;
+            }
         }
 
         $productModel = new \Models\Product();
@@ -822,24 +849,27 @@ class CartController extends Controller
             $paymentMethod = 'opt'; // Mặc định nếu không hợp lệ
         }
         
+        $noteFromUser = isset($_POST['note']) ? trim($_POST['note']) : '';
+        $voucherCode = isset($_POST['voucher_code']) ? trim($_POST['voucher_code']) : '';
+        $voucherDiscount = isset($_POST['voucher_discount']) ? (int)$_POST['voucher_discount'] : 0;
+        $noteFull = '[Receiver: ' . ($recipientName ?: ($user['name'] ?? $user['username'] ?? '')) . ' | Phone: ' . ($recipientPhone ?: ($user['phone'] ?? '')) . '] ' . ($noteFromUser ?: 'Đặt hàng') . ($voucherCode !== '' ? (' | Voucher: ' . strtoupper($voucherCode) . ' - ' . $voucherDiscount) : '');
         $orderId = $orderModel->createWithDetails([
             'user_id' => $user['id'] ?? $user['username'] ?? '',
             'address' => $_POST['address'] ?? ($user['address'] ?? ''),
-            'note' => $_POST['note'] ?? 'Đặt hàng',
+            'note' => $noteFull,
             'status' => ($paymentMethod === 'online') ? 'pending' : 'completed', // online: chờ xác nhận
-            'payment_method' => $paymentMethod
+            'payment_method' => $paymentMethod,
+            'voucher_code' => $voucherCode,
+            'voucher_discount' => $voucherDiscount
         ], $orderDetails);
 
         if ($orderId) {
-            // Xóa các sản phẩm đã đặt hàng khỏi DB cart
             foreach ($selected as $cartId) {
                 $cartModel->deleteCart($cartId);
             }
-            
-            // Tạo message thanh toán phù hợp
             $paymentText = ($paymentMethod === 'online') ? 'Online (QR Code)' : 'OPT (Tiền mặt)';
             $_SESSION['message'] = 'Đặt hàng thành công. Mã đơn: ' . $orderId . '. Tổng tiền: ' . number_format($totalAmount, 0, ',', '.') . ' ₫. Phương thức: ' . $paymentText;
-            header('Location: ' . ROOT_URL . 'cart');
+            header('Location: ' . ROOT_URL . 'cart/invoice/' . urlencode($orderId));
             exit;
         } else {
             $_SESSION['error'] = 'Đặt hàng thất bại. Vui lòng thử lại';
@@ -978,6 +1008,52 @@ class CartController extends Controller
         ];
 
         $this->renderView('OrderDetail', $data);
+    }
+
+    /**
+     * In hóa đơn A4 cho người dùng
+     * URL: /cart/invoice/{orderId}
+     */
+    public function invoice($orderId = null)
+    {
+        if (!isset($_SESSION['user'])) {
+            $_SESSION['error'] = 'Vui lòng đăng nhập để xem hóa đơn';
+            header('Location: ' . ROOT_URL . 'login');
+            exit;
+        }
+
+        if (!$orderId) {
+            $_SESSION['error'] = 'Không tìm thấy đơn hàng';
+            header('Location: ' . ROOT_URL . 'cart');
+            exit;
+        }
+
+        $orderModel = new \Models\Order();
+        $orderDetailModel = new \Models\OrderDetail();
+
+        $order = $orderModel->getByIdWithUser($orderId);
+        if (!$order) {
+            $_SESSION['error'] = 'Không tìm thấy đơn hàng';
+            header('Location: ' . ROOT_URL . 'cart');
+            exit;
+        }
+
+        // Quyền truy cập: chính chủ đơn hàng hoặc admin
+        if ($order['_UserName_Id'] !== ($_SESSION['user']['username'] ?? '') && ($_SESSION['user']['role'] ?? '') !== 'admin') {
+            $_SESSION['error'] = 'Bạn không có quyền xem hóa đơn này';
+            header('Location: ' . ROOT_URL . 'cart');
+            exit;
+        }
+
+        $items = $orderDetailModel->getByOrderIdWithProduct($orderId) ?? [];
+
+        $data = [
+            'title' => 'Hóa đơn đơn hàng #' . $orderId,
+            'order' => $order,
+            'items' => $items
+        ];
+
+        $this->renderView('admin/order-detail', $data);
     }
 }
 ?>

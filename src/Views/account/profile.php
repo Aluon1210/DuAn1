@@ -891,6 +891,7 @@
                                         </div>
                                         <div class="order-actions">
                                             <a href="<?php echo ROOT_URL; ?>account/order/<?php echo urlencode($order['Order_Id']); ?>" class="order-btn order-btn-primary">Xem Chi Tiết</a>
+                                            <button type="button" class="order-btn order-btn-secondary" onclick="openInvoiceModal('<?php echo htmlspecialchars($order['Order_Id']); ?>')">🧾 Hóa đơn (Pop-up)</button>
                                             <?php if ($status === 'pending'): ?>
                                                 <form method="POST" action="<?php echo ROOT_URL; ?>account/cancelOrder" style="display:inline;">
                                                     <input type="hidden" name="order_id" value="<?php echo htmlspecialchars($order['Order_Id']); ?>">
@@ -1196,6 +1197,47 @@
                 }
             } catch (e) { console.error(e); }
         })();
+
+        function openInvoiceModal(orderId){
+            var url = '<?php echo ROOT_URL; ?>cart/invoice/' + encodeURIComponent(orderId);
+            var m = document.getElementById('invoiceModal');
+            var f = document.getElementById('invoiceIframe');
+            var btn = document.getElementById('invoicePrintBtn');
+            f.src = url; m.classList.add('active');
+            if(btn){ btn.onclick = function(){ try{ f.contentWindow.focus(); f.contentWindow.print(); }catch(e){} }; }
+        }
+        function closeInvoiceModal(){
+            var m = document.getElementById('invoiceModal');
+            var f = document.getElementById('invoiceIframe');
+            f.src = 'about:blank'; m.classList.remove('active');
+        }
     </script>
+</body>
+<style>
+    .invoice-modal-overlay{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.6);z-index:9999}
+    .invoice-modal-overlay.active{display:flex;align-items:center;justify-content:center}
+    .invoice-modal{background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 10px 40px rgba(0,0,0,0.3);width:90%;max-width:960px;max-height:85vh;display:flex;flex-direction:column}
+    .invoice-modal-header{display:flex;justify-content:space-between;align-items:center;padding:12px 16px;border-bottom:1px solid #eee}
+    .invoice-modal-title{font-weight:700}
+    .invoice-modal-close{border:none;background:#e74c3c;color:#fff;padding:8px 12px;border-radius:8px;cursor:pointer}
+    .invoice-modal-body{flex:1}
+    .invoice-iframe{width:100%;height:70vh;border:0}
+    .invoice-modal-footer{padding:10px 16px;border-top:1px solid #eee;text-align:right}
+</style>
+<div id="invoiceModal" class="invoice-modal-overlay" aria-hidden="true">
+  <div class="invoice-modal" role="dialog" aria-modal="true">
+    <div class="invoice-modal-header">
+      <div class="invoice-modal-title">Hóa đơn A4</div>
+      <button class="invoice-modal-close" type="button" onclick="closeInvoiceModal()">Đóng</button>
+    </div>
+    <div class="invoice-modal-body">
+      <iframe id="invoiceIframe" class="invoice-iframe"></iframe>
+    </div>
+    <div class="invoice-modal-footer">
+      <button id="invoicePrintBtn" class="order-btn order-btn-primary" type="button">In hóa đơn</button>
+    </div>
+  </div>
+</div>
+</html>
 </body>
 </html>

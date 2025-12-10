@@ -18,6 +18,14 @@ class User extends Model {
         $user = $this->getOne(['Email' => $email]);
         return $user ? $this->normalizeUser($user) : false;
     }
+
+    public function getByPhone($phone) {
+        if ($phone === '' || $phone === null) {
+            return false;
+        }
+        $user = $this->getOne(['Phone' => $phone]);
+        return $user ? $this->normalizeUser($user) : false;
+    }
     
     /**
      * Lấy user theo username

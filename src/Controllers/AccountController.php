@@ -215,6 +215,15 @@ class AccountController extends Controller {
             exit;
         }
         
+        if (!empty($phone)) {
+            $byPhone = $userModel->getByPhone($phone);
+            if ($byPhone && ($byPhone['id'] ?? '') !== $userId) {
+                $_SESSION['error'] = 'Số điện thoại này đã được sử dụng bởi tài khoản khác';
+                header('Location: ' . ROOT_URL . 'account/profile');
+                exit;
+            }
+        }
+        
         try {
             $updateData = [
                 'name' => $name,

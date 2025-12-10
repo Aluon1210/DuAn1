@@ -1,0 +1,41 @@
+[
+    {
+        "code": "SALE5",
+        "type": "percent",
+        "value": 5,
+        "max_discount": 50000,
+        "min_order": 0,
+        "expiry": "2026-12-31",
+        "active": true
+    },
+    {
+        "code": "NEWYEAR2K",
+        "type": "fixed",
+        "value": 2000,
+        "min_order": 100000,
+        "expiry": "2026-01-31",
+        "active": true
+    },
+    {
+        "code": "ALL12",
+        "type": "fixed",
+        "value": 20000,
+        "max_discount": 500000,
+        "min_order": 50000,
+        "expiry": "2025-12-20",
+        "active": true,
+        "scope": "all",
+        "categories": []
+    },
+    {
+        "code": "ALL",
+        "type": "percent",
+        "value": 10000,
+        "max_discount": 20,
+        "min_order": 10000,
+        "expiry": "2025-12-20",
+        "active": true,
+        "scope": "all",
+        "categories": []
+    }
+]

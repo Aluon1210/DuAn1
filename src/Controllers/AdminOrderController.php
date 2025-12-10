@@ -5,6 +5,7 @@ namespace Controllers;
 use Core\Controller;
 use Models\Order;
 use Models\OrderDetail;
+use Models\Category;
 
 class AdminOrderController extends Controller
 {
@@ -78,9 +79,30 @@ class AdminOrderController extends Controller
 
         $orders = $orderModel->query($sql, $params);
 
+        // Chuẩn hóa 'total' thành Tổng thanh toán cuối cùng (subtotal + VAT 5% + ship 50k - voucher)
+        if (!empty($orders)) {
+            foreach ($orders as &$o) {
+                $subtotal = (float)($o['total'] ?? 0);
+                $vat = (int)round($subtotal * 0.05);
+                $ship = 50000;
+                $voucherDiscount = 0;
+                $noteStr = (string)($o['Note'] ?? '');
+                if ($noteStr !== '') {
+                    if (preg_match('/Voucher:\s*([A-Z0-9_-]+)\s*-\s*(\d+)/i', $noteStr, $m)) {
+                        $voucherDiscount = (int)($m[2] ?? 0);
+                    }
+                }
+                $o['total'] = max(0, $subtotal + $vat + $ship - max(0, $voucherDiscount));
+            }
+            unset($o);
+        }
+        $categoryModel = new Category();
+        $categories = $categoryModel->getAll();
+
         $data = [
             'title' => 'Quản Lý Đơn Hàng - Admin',
             'orders' => $orders ?? [],
+            'categories' => $categories ?? [],
             'pagination' => [
                 'page' => $page,
                 'perPage' => $perPage,
