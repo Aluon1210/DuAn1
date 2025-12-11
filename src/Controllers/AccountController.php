@@ -206,6 +206,8 @@ class AccountController extends Controller {
         $name = trim($_POST['name'] ?? '');
         $phone = trim($_POST['phone'] ?? '');
         $address = trim($_POST['address'] ?? '');
+        $bankAccountNumber = trim($_POST['bank_account_number'] ?? '');
+        $bankName = trim($_POST['bank_name'] ?? '');
         $password = $_POST['password'] ?? '';
         
         // Validation
@@ -228,7 +230,9 @@ class AccountController extends Controller {
             $updateData = [
                 'name' => $name,
                 'phone' => $phone,
-                'address' => $address
+                'address' => $address,
+                'bank_account_number' => $bankAccountNumber,
+                'bank_name' => $bankName
             ];
             
             if (!empty($password)) {

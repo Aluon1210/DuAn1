@@ -64,7 +64,10 @@ class User extends Model {
                 '__PassWord' => isset($data['password']) ? password_hash($data['password'], PASSWORD_DEFAULT) : '',
                 'Phone' => trim($data['phone'] ?? $data['Phone'] ?? ''),
                 'Role' => trim($data['role'] ?? $data['Role'] ?? 'user'),
-                'Address' => trim($data['address'] ?? $data['Address'] ?? '')
+                'Address' => trim($data['address'] ?? $data['Address'] ?? ''),
+                'Price' => (float)($data['price'] ?? 0),
+                'BankAccountNumber' => trim($data['bank_account_number'] ?? ''),
+                'BankName' => trim($data['bank_name'] ?? '')
             ];
             
             // Validate dữ liệu bắt buộc
@@ -124,7 +127,10 @@ class User extends Model {
             // Normalize role to lowercase to avoid case-sensitivity issues
             'role' => strtolower($user['Role'] ?? 'user'),
             'address' => $user['Address'] ?? '',
-            'password' => $user['__PassWord'] ?? '' // Chỉ dùng khi authenticate
+            'password' => $user['__PassWord'] ?? '',
+            'price' => isset($user['Price']) ? (float)$user['Price'] : (isset($user['price']) ? (float)$user['price'] : 0.0),
+            'bank_account_number' => $user['BankAccountNumber'] ?? ($user['bank_account_number'] ?? ''),
+            'bank_name' => $user['BankName'] ?? ($user['bank_name'] ?? '')
         ];
     }
 
@@ -135,7 +141,7 @@ class User extends Model {
     public function getAllUsers() {
         try {
             // Exclude users with role 'forbident' from admin listings
-            $sql = "SELECT _UserName_Id as id, Email as email, FullName as name, Phone as phone, Role as role, Address as address FROM {$this->table} WHERE Role != 'forbident' ORDER BY _UserName_Id DESC";
+            $sql = "SELECT _UserName_Id as id, Email as email, FullName as name, Phone as phone, Role as role, Address as address, Price as price, BankAccountNumber as bank_account_number, BankName as bank_name FROM {$this->table} WHERE Role != 'forbident' ORDER BY _UserName_Id DESC";
             $stmt = $this->db->prepare($sql);
             $stmt->execute();
             return $stmt->fetchAll(\PDO::FETCH_ASSOC);
@@ -153,23 +159,32 @@ class User extends Model {
      */
     public function updateUser($id, $data) {
         try {
-            $sql = "UPDATE {$this->table} SET Email = :email, FullName = :name, Phone = :phone, Role = :role, Address = :address";
-            $params = [
-                ':email' => trim($data['email'] ?? ''),
-                ':name' => trim($data['name'] ?? ''),
-                ':phone' => trim($data['phone'] ?? ''),
-                ':role' => trim($data['role'] ?? 'user'),
-                ':address' => trim($data['address'] ?? ''),
-                ':id' => $id
+            $map = [
+                'email' => 'Email',
+                'name' => 'FullName',
+                'phone' => 'Phone',
+                'role' => 'Role',
+                'address' => 'Address',
+                'price' => 'Price',
+                'bank_account_number' => 'BankAccountNumber',
+                'bank_name' => 'BankName'
             ];
-            
-            // Nếu có password mới, hash và thêm vào
+            $set = [];
+            $params = [':id' => $id];
+            foreach ($map as $k => $col) {
+                if (array_key_exists($k, $data)) {
+                    $set[] = "$col = :$k";
+                    $params[":$k"] = is_string($data[$k]) ? trim($data[$k]) : $data[$k];
+                }
+            }
             if (!empty($data['password'])) {
-                $sql .= ", __PassWord = :password";
+                $set[] = "__PassWord = :password";
                 $params[':password'] = password_hash($data['password'], PASSWORD_DEFAULT);
             }
-            
-            $sql .= " WHERE _UserName_Id = :id";
+            if (empty($set)) {
+                return false;
+            }
+            $sql = "UPDATE {$this->table} SET " . implode(', ', $set) . " WHERE _UserName_Id = :id";
             $stmt = $this->db->prepare($sql);
             return $stmt->execute($params);
         } catch (\PDOException $e) {

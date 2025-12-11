@@ -556,6 +556,33 @@
                             <textarea id="address" name="address"><?php echo htmlspecialchars($data['user']['address'] ?? ''); ?></textarea>
                         </div>
 
+                        <div class="profile-grid">
+                            <div class="form-group">
+                                <label>Số dư tài khoản</label>
+                                <input type="text" value="<?php echo number_format((float)($data['user']['price'] ?? 0), 2, ',', '.'); ?>" disabled style="background: var(--accent-gray); cursor: not-allowed;">
+                            </div>
+                            <div class="form-group">
+                                <label for="bank_account_number">Số tài khoản ngân hàng</label>
+                                <input type="text" id="bank_account_number" name="bank_account_number" value="<?php echo htmlspecialchars($data['user']['bank_account_number'] ?? ''); ?>">
+                            </div>
+                        </div>
+
+                        <?php 
+                            $bankCodes = \Core\PaymentHelper::getAllBankCodes();
+                            $currentBankName = $data['user']['bank_name'] ?? '';
+                        ?>
+                        <div class="form-group">
+                            <label for="bank_name">Tên ngân hàng</label>
+                            <select id="bank_name" name="bank_name">
+                                <option value="">-- Chọn ngân hàng --</option>
+                                <?php foreach ($bankCodes as $code => $name): ?>
+                                    <option value="<?php echo htmlspecialchars($name); ?>" <?php echo ($currentBankName === $name) ? 'selected' : ''; ?>>
+                                        <?php echo htmlspecialchars($name) . ' (' . htmlspecialchars($code) . ')'; ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+
                         <div class="form-group">
                             <label for="password">Đổi mật khẩu (để trống nếu không thay đổi)</label>
                             <input type="password" id="password" name="password" placeholder="Nhập mật khẩu mới">

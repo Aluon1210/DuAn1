@@ -175,28 +175,17 @@ public function deleteUser($id) {
     exit;
 }
 
-    public function orders($action = null, $param = null) {
-        // Nếu action là 'detail', xử lý API JSON
-        if ($action === 'detail' && $param) {
-            $this->orderDetail($param);
-            return;
-        }
-        // Xem hóa đơn chi tiết (giao diện A4)
-        if ($action === 'view' && $param) {
-            $this->orderView($param);
-            return;
-        }
-
-        // Cập nhật trạng thái đơn hàng (AJAX)
-        if ($action === 'updateStatus') {
-            $oc = new AdminOrderController();
-            return $oc->updateStatus();
-        }
-        
-        // Delegate to AdminOrderController for full orders management
-        $oc = new AdminOrderController();
-        return $oc->index();
+public function orders($action = null, $param = null) {
+    // Nếu action là 'detail', xử lý API JSON
+    if ($action === 'detail' && $param) {
+        $this->orderDetail($param);
+        return;
     }
+    
+    // Delegate to AdminOrderController for full orders management
+    $oc = new AdminOrderController();
+    return $oc->index();
+}
 
 private function orderDetail($orderId) {
     // Kiểm tra admin
@@ -224,71 +213,24 @@ private function orderDetail($orderId) {
 
     $orderDetails = $orderDetailModel->getByOrderIdWithProduct($orderId);
 
-    // Tính tổng thanh toán cuối cùng
-    $subtotal = 0;
+    // Tính tổng
+    $total = 0;
     $detailsArray = [];
     if ($orderDetails) {
         foreach ($orderDetails as $detail) {
-            $subtotal += (int)$detail['quantity'] * (float)$detail['Price'];
+            $total += $detail['quantity'] * $detail['Price'];
             $detailsArray[] = $detail;
         }
     }
-    $vat = (int)round($subtotal * 0.05);
-    $ship = 50000;
-    $voucherDiscount = (int)($order['Voucher_Discount'] ?? 0);
-    if ($voucherDiscount <= 0) {
-        $noteStr = (string)($order['Note'] ?? '');
-        if ($noteStr !== '' && preg_match('/Voucher:\s*([A-Z0-9_-]+)\s*-\s*(\d+)/i', $noteStr, $m)) {
-            $voucherDiscount = (int)($m[2] ?? 0);
-        }
-    }
-    $total = max(0, $subtotal + $vat + $ship - max(0, $voucherDiscount));
 
     header('Content-Type: application/json');
     echo json_encode([
         'success' => true,
         'order' => $order,
         'details' => $detailsArray,
-        'total' => $total,
-        'subtotal' => $subtotal,
-        'vat' => $vat,
-        'shipping' => $ship,
-        'voucher_discount' => max(0, $voucherDiscount)
+        'total' => $total
     ]);
     exit;
-}
-
-private function orderView($orderId) {
-    if (!isset($_SESSION['user']) || $_SESSION['user']['role'] !== 'admin') {
-        header('Location: ' . ROOT_URL . 'login');
-        exit;
-    }
-
-    if (!$orderId) {
-        $_SESSION['error'] = 'Thiếu mã đơn hàng';
-        header('Location: ' . ROOT_URL . 'admin/orders');
-        exit;
-    }
-
-    $orderModel = new \Models\Order();
-    $orderDetailModel = new \Models\OrderDetail();
-
-    $order = $orderModel->getByIdWithUser($orderId);
-    if (!$order) {
-        $_SESSION['error'] = 'Không tìm thấy đơn hàng';
-        header('Location: ' . ROOT_URL . 'admin/orders');
-        exit;
-    }
-
-    $items = $orderDetailModel->getByOrderIdWithProduct($orderId) ?? [];
-
-    $data = [
-        'title' => 'Hóa đơn đơn hàng #' . $orderId,
-        'order' => $order,
-        'items' => $items
-    ];
-
-    $this->renderView('admin/order-detail', $data);
 }
 
 public function branch() {
@@ -447,11 +389,9 @@ public function dashboard() {
     $dm = new Dashboard();
     $year = (int)date('Y');
 
-    // selectors: week/month or arbitrary date range
+    // get optional selectors from query
     $selectedWeek = isset($_GET['week']) ? trim($_GET['week']) : null; // format YYYY-WW
     $selectedMonth = isset($_GET['month']) ? trim($_GET['month']) : null; // format YYYY-MM
-    $rangeStart = isset($_GET['start']) ? trim($_GET['start']) : null; // YYYY-MM-DD
-    $rangeEnd = isset($_GET['end']) ? trim($_GET['end']) : null;   // YYYY-MM-DD
 
     // default period-level data (yearly)
     $topCustomers = $dm->topCustomers($year, 5);
@@ -460,7 +400,7 @@ public function dashboard() {
     $revenueByWeek = $dm->revenueByWeek(12); // last 12 weeks
     $topWorst = $dm->topWorstProducts($year, 5);
 
-    // per-day datasets for selected week, month or range
+    // per-day datasets for selected week or month
     $weeklyPerDay = [];
     $monthlyPerDay = [];
     $topProductsPeriod = $topProducts;
@@ -500,17 +440,6 @@ public function dashboard() {
         }
     }
 
-    // Arbitrary date range takes precedence if provided
-    if ($rangeStart && $rangeEnd) {
-        // Basic validation for date format
-        if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $rangeStart) && preg_match('/^\d{4}-\d{2}-\d{2}$/', $rangeEnd)) {
-            $weeklyPerDay = $dm->revenueByRangePerDay($rangeStart, $rangeEnd);
-            $topProductsPeriod = $dm->topProductsByRange($rangeStart, $rangeEnd, 5);
-            $topCustomersPeriod = $dm->topCustomersByRange($rangeStart, $rangeEnd, 5);
-            $selectedWeek = null; // clear week label so view can show range
-        }
-    }
-
     // Build last-12 week options and last 12 months for selectors
     $weekOptions = array_keys($dm->revenueByWeek(12));
     $monthOptions = [];
@@ -539,8 +468,6 @@ public function dashboard() {
     $data['selectedMonth'] = $selectedMonth;
     $data['weekOptions'] = $weekOptions;
     $data['monthOptions'] = $monthOptions;
-    $data['rangeStart'] = $rangeStart;
-    $data['rangeEnd'] = $rangeEnd;
 
     $this->renderView('admin/dashboard', $data);
 }
@@ -562,141 +489,6 @@ public function dashboard() {
         // Delegate product admin pages to ProductController
         $pc = new ProductController();
         return $pc->adminProducts();
-    }
-
-    /**
-     * API quản lý Voucher
-     * URL: /admin/voucher/{action}
-     * Actions: list, save, delete
-     */
-    public function voucher($action = null)
-    {
-        $this->requireAdmin();
-        header('Content-Type: application/json; charset=utf-8');
-        $file = ROOT_PATH . '/public/data/vouchers.json';
-
-        if ($action === 'list') {
-            try {
-                if (!file_exists($file)) {
-                    echo json_encode([]); return;
-                }
-                $raw = file_get_contents($file);
-                $data = json_decode($raw, true);
-                echo json_encode(is_array($data) ? $data : []);
-            } catch (\Exception $e) {
-                http_response_code(500);
-                echo json_encode(['error' => $e->getMessage()]);
-            }
-            return;
-        }
-
-        if ($action === 'save') {
-            if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-                http_response_code(405);
-                echo json_encode(['error' => 'Method not allowed']);
-                return;
-            }
-            $payload = [];
-            $ct = $_SERVER['CONTENT_TYPE'] ?? '';
-            if (strpos($ct, 'application/json') !== false) {
-                $payload = json_decode(file_get_contents('php://input'), true) ?: [];
-            } else {
-                $payload = $_POST;
-            }
-
-            $code = strtoupper(trim($payload['code'] ?? ''));
-            $type = trim($payload['type'] ?? 'fixed');
-            $value = (float)($payload['value'] ?? 0);
-            $maxDiscount = isset($payload['max_discount']) ? (int)$payload['max_discount'] : null;
-            $minOrder = isset($payload['min_order']) ? (int)$payload['min_order'] : 0;
-            $expiry = trim($payload['expiry'] ?? '');
-            $active = !empty($payload['active']);
-            $scope = in_array(($payload['scope'] ?? 'all'), ['all','category']) ? $payload['scope'] : 'all';
-            $categories = $scope === 'category' ? (array)($payload['categories'] ?? []) : [];
-
-            if ($code === '' || ($type !== 'fixed' && $type !== 'percent') || $value <= 0) {
-                http_response_code(400);
-                echo json_encode(['error' => 'Invalid voucher data']);
-                return;
-            }
-
-            $list = [];
-            if (file_exists($file)) {
-                $list = json_decode(file_get_contents($file), true) ?: [];
-            }
-
-            $updated = false;
-            foreach ($list as &$v) {
-                if (strtoupper((string)($v['code'] ?? '')) === $code) {
-                    $v = [
-                        'code' => $code,
-                        'type' => $type,
-                        'value' => $value,
-                        'max_discount' => $maxDiscount,
-                        'min_order' => $minOrder,
-                        'expiry' => $expiry,
-                        'active' => $active,
-                        'scope' => $scope,
-                        'categories' => $categories
-                    ];
-                    $updated = true;
-                    break;
-                }
-            }
-            unset($v);
-            if (!$updated) {
-                $list[] = [
-                    'code' => $code,
-                    'type' => $type,
-                    'value' => $value,
-                    'max_discount' => $maxDiscount,
-                    'min_order' => $minOrder,
-                    'expiry' => $expiry,
-                    'active' => $active,
-                    'scope' => $scope,
-                    'categories' => $categories
-                ];
-            }
-
-            @mkdir(dirname($file), 0755, true);
-            $ok = file_put_contents($file, json_encode($list, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE), LOCK_EX) !== false;
-            if ($ok) {
-                echo json_encode(['success' => true, 'data' => $list]);
-            } else {
-                http_response_code(500);
-                echo json_encode(['error' => 'Failed to write file']);
-            }
-            return;
-        }
-
-        if ($action === 'delete') {
-            if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-                http_response_code(405);
-                echo json_encode(['error' => 'Method not allowed']);
-                return;
-            }
-            $payload = [];
-            $ct = $_SERVER['CONTENT_TYPE'] ?? '';
-            if (strpos($ct, 'application/json') !== false) {
-                $payload = json_decode(file_get_contents('php://input'), true) ?: [];
-            } else {
-                $payload = $_POST;
-            }
-            $code = strtoupper(trim($payload['code'] ?? ''));
-            if ($code === '') { http_response_code(400); echo json_encode(['error' => 'Missing code']); return; }
-
-            $list = [];
-            if (file_exists($file)) { $list = json_decode(file_get_contents($file), true) ?: []; }
-            $list = array_values(array_filter($list, function($v) use ($code){
-                return strtoupper((string)($v['code'] ?? '')) !== $code;
-            }));
-            $ok = file_put_contents($file, json_encode($list, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE), LOCK_EX) !== false;
-            if ($ok) { echo json_encode(['success' => true]); } else { http_response_code(500); echo json_encode(['error' => 'Failed to write file']); }
-            return;
-        }
-
-        http_response_code(404);
-        echo json_encode(['error' => 'Invalid action']);
     }
 
     /**
