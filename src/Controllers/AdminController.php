@@ -517,6 +517,152 @@ public function dashboard() {
         $pc = new ProductController();
         return $pc->adminDeleteProduct($id);
     }
+
+    /**
+     * Danh sách voucher (JSON)
+     * URL: /admin/voucher/list
+     */
+    public function voucherList() {
+        $this->requireAdmin();
+        header('Content-Type: application/json; charset=utf-8');
+        try {
+            $file = ROOT_PATH . '/public/data/vouchers.json';
+            if (!file_exists($file)) {
+                echo json_encode([]);
+                return;
+            }
+            $data = json_decode(file_get_contents($file), true);
+            if (!is_array($data)) { $data = []; }
+            echo json_encode($data, JSON_UNESCAPED_UNICODE);
+        } catch (\Exception $e) {
+            echo json_encode(['error' => 'Failed to load vouchers: ' . $e->getMessage()]);
+        }
+    }
+
+    /**
+     * Lưu/ cập nhật voucher (JSON)
+     * URL: /admin/voucher/save (POST)
+     */
+    public function voucherSave() {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            header('Location: ' . ROOT_URL . 'admin/orders');
+            exit;
+        }
+        $this->requireAdmin();
+        header('Content-Type: application/json; charset=utf-8');
+        try {
+            $payload = json_decode(file_get_contents('php://input'), true);
+            if (!is_array($payload)) { echo json_encode(['success' => false, 'error' => 'Invalid payload']); return; }
+            $code = strtoupper(trim($payload['code'] ?? ''));
+            $type = trim($payload['type'] ?? 'fixed');
+            $value = (float)($payload['value'] ?? 0);
+            $maxDiscount = isset($payload['max_discount']) && $payload['max_discount'] !== null ? (int)$payload['max_discount'] : null;
+            $minOrder = (int)($payload['min_order'] ?? 0);
+            $expiry = trim((string)($payload['expiry'] ?? ''));
+            $active = !!($payload['active'] ?? true);
+            $scope = trim($payload['scope'] ?? 'all');
+            $categories = [];
+            if ($scope === 'category') {
+                $categories = isset($payload['categories']) && is_array($payload['categories']) ? array_values($payload['categories']) : [];
+            }
+            if ($code === '' || !in_array($type, ['fixed', 'percent']) || $value <= 0) {
+                echo json_encode(['success' => false, 'error' => 'Invalid voucher data']);
+                return;
+            }
+
+            $file = ROOT_PATH . '/public/data/vouchers.json';
+            $list = file_exists($file) ? json_decode(file_get_contents($file), true) : [];
+            if (!is_array($list)) { $list = []; }
+            $found = false;
+            foreach ($list as &$v) {
+                if (strtoupper((string)($v['code'] ?? '')) === $code) {
+                    $v['code'] = $code;
+                    $v['type'] = $type;
+                    $v['value'] = $value;
+                    $v['max_discount'] = $maxDiscount;
+                    $v['min_order'] = max(0, $minOrder);
+                    $v['expiry'] = $expiry;
+                    $v['active'] = $active;
+                    $v['scope'] = $scope;
+                    $v['categories'] = $categories;
+                    $found = true;
+                    break;
+                }
+            }
+            unset($v);
+            if (!$found) {
+                $list[] = [
+                    'code' => $code,
+                    'type' => $type,
+                    'value' => $value,
+                    'max_discount' => $maxDiscount,
+                    'min_order' => max(0, $minOrder),
+                    'expiry' => $expiry,
+                    'active' => $active,
+                    'scope' => $scope,
+                    'categories' => $categories
+                ];
+            }
+            @file_put_contents($file, json_encode($list, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE), LOCK_EX);
+            echo json_encode(['success' => true]);
+        } catch (\Exception $e) {
+            echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+        }
+    }
+
+    /**
+     * Xóa voucher (JSON)
+     * URL: /admin/voucher/delete (POST)
+     */
+    public function voucherDelete() {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            header('Location: ' . ROOT_URL . 'admin/orders');
+            exit;
+        }
+        $this->requireAdmin();
+        header('Content-Type: application/json; charset=utf-8');
+        try {
+            $payload = json_decode(file_get_contents('php://input'), true);
+            $code = strtoupper(trim($payload['code'] ?? ''));
+            if ($code === '') { echo json_encode(['success' => false, 'error' => 'Code is required']); return; }
+            $file = ROOT_PATH . '/public/data/vouchers.json';
+            $list = file_exists($file) ? json_decode(file_get_contents($file), true) : [];
+            if (!is_array($list)) { $list = []; }
+            $newList = [];
+            foreach ($list as $v) {
+                if (strtoupper((string)($v['code'] ?? '')) !== $code) { $newList[] = $v; }
+            }
+            @file_put_contents($file, json_encode($newList, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE), LOCK_EX);
+            echo json_encode(['success' => true]);
+        } catch (\Exception $e) {
+            echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+        }
+    }
+
+    /**
+     * Router cho voucher theo dạng /admin/voucher/{action}
+     * Hỗ trợ: list, save, delete
+     */
+    public function voucher($action = null) {
+        // Map hành động sang method tương ứng
+        switch (strtolower((string)$action)) {
+            case 'list':
+                $this->voucherList();
+                return;
+            case 'save':
+                $this->voucherSave();
+                return;
+            case 'delete':
+                $this->voucherDelete();
+                return;
+            default:
+                // Trả về lỗi JSON nếu action không hợp lệ
+                $this->requireAdmin();
+                header('Content-Type: application/json; charset=utf-8');
+                echo json_encode(['error' => 'Invalid voucher action']);
+                return;
+        }
+    }
 }
 
 ?>
