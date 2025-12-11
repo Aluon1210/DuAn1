@@ -243,6 +243,14 @@
       <div class="info-row">
         <span class="info-label">Giờ ra: <?php echo date('d.m.Y H:i', strtotime($order['Order_date'])); ?></span>
       </div>
+      <?php 
+        $pmRaw = isset($order['PaymentMethod']) ? strtolower($order['PaymentMethod']) : strtolower($order['payment_method'] ?? '');
+        $pmText = $pmRaw === 'online' ? 'Online (QR Code)' : ($pmRaw === 'opt' ? 'Tiền mặt' : 'Tiền mặt');
+      ?>
+      <div class="info-row">
+        <span class="info-label">Hình thức thanh toán:</span>
+        <span class="info-value"><?php echo htmlspecialchars($pmText); ?></span>
+      </div>
     </div>
   </div>
 

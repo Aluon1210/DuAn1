@@ -208,6 +208,17 @@ class User extends Model {
             throw $e;
         }
     }
+
+    public function increaseBalance($id, $amount) {
+        try {
+            $sql = "UPDATE {$this->table} SET Price = COALESCE(Price, 0) + :amount WHERE _UserName_Id = :id";
+            $stmt = $this->db->prepare($sql);
+            return $stmt->execute([':amount' => (float)$amount, ':id' => $id]);
+        } catch (\PDOException $e) {
+            error_log("User increaseBalance SQL Error: " . $e->getMessage());
+            throw $e;
+        }
+    }
 }
 ?>
 

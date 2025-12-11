@@ -598,6 +598,26 @@
                 <!-- Tab: Orders -->
                 <div id="ordersTab" class="tab-content <?php echo ($data['activeTab'] ?? 'profile') === 'orders' ? 'active' : ''; ?>">
                     <h2 style="margin-bottom: 30px; font-family: 'Playfair Display', serif; font-size: 32px;">Lịch Sử Đơn Hàng</h2>
+
+                    <?php if (isset($_SESSION['refund_qr'])): ?>
+                        <?php $rq = $_SESSION['refund_qr']; ?>
+                        <div style="background:#fff;border:1px solid var(--border-light);border-radius:12px;padding:16px;margin-bottom:20px;box-shadow:var(--shadow-soft)">
+                            <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
+                                <div>
+                                    <div style="font-weight:700;color:#333">QR Hoàn tiền cho đơn <?php echo htmlspecialchars($rq['order_id']); ?></div>
+                                    <div style="font-size:12px;color:#666">Số tiền: ₫<?php echo number_format((float)($rq['amount'] ?? 0),0,',','.'); ?> · <?php echo htmlspecialchars($rq['account_name']); ?> · <?php echo htmlspecialchars($rq['account_no']); ?> (<?php echo htmlspecialchars($rq['bank_code']); ?>)</div>
+                                </div>
+                                <img src="<?php echo htmlspecialchars($rq['qr_url']); ?>" alt="Refund QR" style="max-height:140px;border-radius:8px;border:1px solid #eee">
+                            </div>
+                            <form method="POST" action="<?php echo ROOT_URL; ?>account/confirmRefund" style="margin-top:12px;display:flex;gap:10px;align-items:center">
+                                <input type="hidden" name="order_id" value="<?php echo htmlspecialchars($rq['order_id']); ?>">
+                                <input type="hidden" name="amount" value="<?php echo (int)($rq['amount'] ?? 0); ?>">
+                                <button type="submit" class="order-btn order-btn-primary" onclick="return confirm('Xác nhận đã chuyển lại tiền online?');">Xác nhận hoàn tiền</button>
+                                <button type="button" class="order-btn order-btn-secondary" onclick="(function(){try{delete window.sessionRefundQr;}catch(e){};})();">Ẩn thông báo</button>
+                            </form>
+                        </div>
+                        <?php unset($_SESSION['refund_qr']); ?>
+                    <?php endif; ?>
                     
                     <!-- Order Filter Tabs -->
                     <div style="display: flex; gap: 0; margin-bottom: 30px; border-bottom: 2px solid var(--border-light); overflow-x: auto;">
@@ -974,6 +994,24 @@
                 }
             });
         }
+
+        // Mở hóa đơn khi nhấn vào toàn bộ hàng đơn (trừ khu vực nút/hyperlink)
+        (function(){
+            try {
+                const container = document.getElementById('ordersContainer');
+                if (!container) return;
+                container.addEventListener('click', function(e){
+                    const actionArea = e.target.closest('.order-actions');
+                    const isButtonOrLink = e.target.closest('button, a, input, select, textarea');
+                    if (actionArea || isButtonOrLink) { return; }
+                    const item = e.target.closest('.order-item-shopee');
+                    if (item) {
+                        const orderId = item.getAttribute('data-order-id') || '';
+                        if (orderId) { openInvoiceModal(orderId); }
+                    }
+                });
+            } catch (err) {}
+        })();
 
         // --- Review popup for delivered orders ---
         (function(){

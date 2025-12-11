@@ -80,6 +80,19 @@
     } catch (\Exception $e) { /* ignore */ }
   }
   $grandTotal = $subtotal + $serviceFee + $shippingFee - max(0, $voucherDiscount);
+
+  // Xác định hình thức thanh toán hiển thị
+  $pmRaw = isset($order['PaymentMethod']) ? strtolower($order['PaymentMethod']) : strtolower($order['payment_method'] ?? '');
+  $paymentText = '';
+  if ($pmRaw === 'online') { $paymentText = 'Online (QR Code)'; }
+  elseif ($pmRaw === 'opt') { $paymentText = 'Tiền mặt'; }
+  else {
+    $noteStr = (string)($order['Note'] ?? '');
+    $paymentText = (stripos($noteStr, 'online') !== false) ? 'Online (QR Code)' : 'Tiền mặt';
+  }
+  $qrCfg = \Core\PaymentHelper::getQRConfig();
+  $bankCodes = \Core\PaymentHelper::getAllBankCodes();
+  $bankName = isset($bankCodes[$qrCfg['bank_id']]) ? $bankCodes[$qrCfg['bank_id']] : $qrCfg['bank_id'];
 ?>
 
 <div class="ei-container">
@@ -107,7 +120,7 @@
       <div class="box">
         <div><strong>Địa chỉ người bán:</strong> <?php echo htmlspecialchars($order['seller_address'] ?? ''); ?></div>
         <div><strong>Địa chỉ người nhận:</strong> <?php echo htmlspecialchars($order['Adress'] ?? ''); ?></div>
-        <div><strong>Hình thức thanh toán:</strong> <?php echo htmlspecialchars($order['PaymentMethod'] ?? ''); ?></div>
+        <div><strong>Hình thức thanh toán:</strong> <?php echo htmlspecialchars($paymentText); ?></div>
       </div>
     </div>
     <div class="right">
@@ -173,10 +186,13 @@
 
 
   <div class="ei-footer">
+    <?php if ($pmRaw === 'online'): ?>
     <div class="ei-bank">
-      <div><strong>Ngân hàng:</strong> ACB - Chi nhánh Tân Bình</div>
-      <div><strong>STK:</strong> 123456789</div>
+      <div><strong>Ngân hàng:</strong> <?php echo htmlspecialchars($bankName); ?></div>
+      <div><strong>STK:</strong> <?php echo htmlspecialchars($qrCfg['account_no']); ?></div>
+      <div><strong>Tên TK:</strong> <?php echo htmlspecialchars($qrCfg['account_name']); ?></div>
     </div>
+    <?php endif; ?>
     <div style="text-align:center;">
       <div style="font-weight:700;margin-bottom:8px;">Người bán</div>
       <div style="height:48px;"></div>

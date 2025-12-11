@@ -144,6 +144,18 @@ class Order extends Model
         return $stmt->execute([':status' => $status, ':id' => $orderId]);
     }
 
+    public function appendNote($orderId, $text)
+    {
+        try {
+            $sql = "UPDATE {$this->table} SET Note = CONCAT(COALESCE(Note, ''), :suffix) WHERE Order_Id = :id";
+            $stmt = $this->db->prepare($sql);
+            return $stmt->execute([':suffix' => ' | ' . trim($text), ':id' => $orderId]);
+        } catch (\PDOException $e) {
+            error_log("Order appendNote SQL Error: " . $e->getMessage());
+            throw $e;
+        }
+    }
+
     /**
      * Kiểm tra user đã nhận hàng sản phẩm chưa
      * @param string $userId

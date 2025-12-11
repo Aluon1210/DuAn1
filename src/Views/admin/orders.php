@@ -672,15 +672,15 @@
             });
         });
 
-        // Thêm event listener để mở modal khi nhấn vào hàng
+        // Thêm event listener để mở modal khi nhấn vào hàng (bỏ qua phần tử tương tác)
         document.querySelectorAll('tbody tr').forEach(row => {
             row.style.cursor = 'pointer';
             row.addEventListener('click', function(e) {
-                // Không mở modal nếu nhấn vào status select
-                if (e.target.classList.contains('status-select')) return;
-                
-                const orderId = this.querySelector('td:first-child strong').textContent;
-                openInvoiceModal(orderId);
+                // Bỏ qua nếu click vào các phần tử tương tác để tránh xung đột hành động
+                if (e.target.closest('select, button, a, input, textarea')) return;
+                const orderIdEl = this.querySelector('td:first-child strong');
+                const orderId = orderIdEl ? (orderIdEl.textContent || '').trim() : '';
+                if (orderId) { openInvoiceModal(orderId); }
             });
         });
 
@@ -833,7 +833,8 @@
             return new Intl.NumberFormat('vi-VN').format(n);
         }
         function openInvoiceModal(orderId){
-            var url = '<?php echo ROOT_URL; ?>admin/orders/view/' + encodeURIComponent(orderId);
+            // Sử dụng cùng trang hóa đơn như phía người dùng để hiển thị A4 sạch
+            var url = '<?php echo ROOT_URL; ?>cart/invoice/' + encodeURIComponent(orderId);
             var m = document.getElementById('invoiceModal');
             var f = document.getElementById('invoiceIframe');
             var btn = document.getElementById('invoicePrintBtn');
@@ -1024,5 +1025,26 @@
       </div>
     </div>
 </body>
+
+<script>
+  (function(){
+    try {
+      const tbl = document.querySelector('.table-container table');
+      if (!tbl) return;
+      tbl.addEventListener('click', function(e){
+        const isInteractive = e.target.closest('select, button, a, input, textarea');
+        if (isInteractive) return;
+        const row = e.target.closest('tr');
+        if (!row) return;
+        const idCell = row.querySelector('td:first-child strong');
+        if (!idCell) return;
+        const orderId = (idCell.textContent || '').trim();
+        if (orderId) {
+          try { openInvoiceModal(orderId); } catch(err) {}
+        }
+      });
+    } catch (err) {}
+  })();
+</script>
 
 </html>

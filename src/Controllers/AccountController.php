@@ -11,7 +11,7 @@ class AccountController extends Controller {
          * Hủy đơn hàng (chỉ khi trạng thái là 'pending')
          * URL: /account/cancelOrder (POST)
          */
-        public function cancelOrder() {
+    public function cancelOrder() {
             if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
                 header('Location: ' . ROOT_URL . 'account');
                 exit;
@@ -38,6 +38,57 @@ class AccountController extends Controller {
             if ($order['TrangThai'] !== 'pending') {
                 $_SESSION['error'] = 'Chỉ có thể hủy đơn hàng khi đang chờ xác nhận';
                 header('Location: ' . ROOT_URL . 'account');
+                exit;
+            }
+            // Nếu phương thức là online: chuẩn bị hoàn tiền và yêu cầu xác nhận
+            $pm = $order['PaymentMethod'] ?? ($order['payment_method'] ?? 'opt');
+            if ($pm === 'online') {
+                // Tính tổng cần hoàn
+                $orderDetailModel = new \Models\OrderDetail();
+                $items = $orderDetailModel->getByOrderId($orderId);
+                $subtotal = 0;
+                foreach ($items as $it) {
+                    $qty = (int)($it['quantity'] ?? $it['Quantity'] ?? 0);
+                    $price = (float)($it['Price'] ?? $it['price'] ?? 0);
+                    $subtotal += $qty * $price;
+                }
+                $vat = (int)round($subtotal * 0.05);
+                $ship = 50000;
+                $voucherDiscount = 0;
+                $noteStr = (string)($order['Note'] ?? '');
+                if ($noteStr !== '' && preg_match('/Voucher:\s*([A-Z0-9_-]+)\s*-\s*(\d+)/i', $noteStr, $m)) {
+                    $voucherDiscount = (int)($m[2] ?? 0);
+                }
+                $refundAmount = max(0, $subtotal + $vat + $ship - max(0, $voucherDiscount));
+
+                // Lấy thông tin ngân hàng người dùng
+                $userModel = new User();
+                $user = $userModel->getById($userId);
+                $bankName = $user['bank_name'] ?? '';
+                $bankCode = '';
+                $bankCodes = \Core\PaymentHelper::getAllBankCodes();
+                foreach ($bankCodes as $code => $name) {
+                    if (strcasecmp($name, $bankName) === 0) { $bankCode = $code; break; }
+                }
+                $accountNo = $user['bank_account_number'] ?? '';
+                $accountName = strtoupper($user['name'] ?? $user['username'] ?? '');
+
+                if ($bankCode && $accountNo && $accountName) {
+                    $qrUrl = \Core\PaymentHelper::buildQRUrl($bankCode, $accountNo, $accountName, $refundAmount, 'REFUND-' . $orderId, 'compact');
+                    $_SESSION['refund_qr'] = [
+                        'order_id' => $orderId,
+                        'amount' => $refundAmount,
+                        'qr_url' => $qrUrl,
+                        'bank_code' => $bankCode,
+                        'account_no' => $accountNo,
+                        'account_name' => $accountName
+                    ];
+                    $_SESSION['message'] = 'Đã tạo QR hoàn tiền. Vui lòng quét để chuyển lại cho khách. Sau khi chuyển, bấm Xác nhận hoàn.';
+                } else {
+                    $_SESSION['error'] = 'Chưa đủ thông tin ngân hàng của bạn để hoàn tiền (mã/tên/số tài khoản).';
+                }
+                // Không đổi trạng thái ngay, cần xác nhận
+                header('Location: ' . ROOT_URL . 'account/orders');
                 exit;
             }
             $success = $orderModel->updateStatus($orderId, 'cancelled');
@@ -81,14 +132,21 @@ class AccountController extends Controller {
         if (!empty($orders)) {
             foreach ($orders as &$o) {
                 $items = $orderDetailModel->getByOrderIdWithProduct($o['Order_Id']);
-                $total = 0;
+                $subtotal = 0;
                 foreach ($items as $it) {
                     $qty = (int)($it['quantity'] ?? 0);
                     $price = (float)($it['Price'] ?? $it['price'] ?? 0);
-                    $total += $qty * $price;
+                    $subtotal += $qty * $price;
+                }
+                $vat = (int)round($subtotal * 0.05);
+                $ship = 50000;
+                $voucherDiscount = 0;
+                $noteStr = (string)($o['Note'] ?? '');
+                if ($noteStr !== '' && preg_match('/Voucher:\s*([A-Z0-9_-]+)\s*-\s*(\d+)/i', $noteStr, $m)) {
+                    $voucherDiscount = (int)($m[2] ?? 0);
                 }
                 $o['items'] = $items;
-                $o['total'] = $total;
+                $o['total'] = max(0, $subtotal + $vat + $ship - max(0, $voucherDiscount));
             }
             unset($o);
         }
@@ -101,6 +159,47 @@ class AccountController extends Controller {
         ];
         
         $this->renderView('account/profile', $data);
+    }
+
+    public function confirmRefund() {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            header('Location: ' . ROOT_URL . 'account/orders');
+            exit;
+        }
+        if (!isset($_SESSION['user'])) {
+            $_SESSION['error'] = 'Vui lòng đăng nhập trước';
+            header('Location: ' . ROOT_URL . 'login');
+            exit;
+        }
+        $orderId = $_POST['order_id'] ?? '';
+        $amount = (int)($_POST['amount'] ?? 0);
+        if (!$orderId || $amount <= 0) {
+            $_SESSION['error'] = 'Thiếu thông tin hoàn tiền';
+            header('Location: ' . ROOT_URL . 'account/orders');
+            exit;
+        }
+        $orderModel = new Order();
+        $order = $orderModel->getById($orderId);
+        if (!$order) {
+            $_SESSION['error'] = 'Không tìm thấy đơn hàng';
+            header('Location: ' . ROOT_URL . 'account/orders');
+            exit;
+        }
+        // Ghi chú và đổi trạng thái
+        $orderModel->appendNote($orderId, 'Refund Online Success: +' . number_format($amount, 0, ',', '.') . 'đ');
+        $orderModel->updateStatus($orderId, 'cancelled');
+
+        // Cộng số dư ví người dùng
+        $userModel = new User();
+        $userId = $_SESSION['user']['id'];
+        $userModel->increaseBalance($userId, $amount);
+        // Update session price
+        $updatedUser = $userModel->getById($userId);
+        if ($updatedUser) { unset($updatedUser['password']); $_SESSION['user'] = $updatedUser; }
+
+        $_SESSION['message'] = 'Đã xác nhận hoàn tiền online và cộng vào ví.';
+        header('Location: ' . ROOT_URL . 'account/orders');
+        exit;
     }
     
     /**
@@ -162,14 +261,21 @@ class AccountController extends Controller {
         if (!empty($orders)) {
             foreach ($orders as &$o) {
                 $items = $orderDetailModel->getByOrderIdWithProduct($o['Order_Id']);
-                $total = 0;
+                $subtotal = 0;
                 foreach ($items as $it) {
                     $qty = (int)($it['quantity'] ?? 0);
                     $price = (float)($it['Price'] ?? $it['price'] ?? 0);
-                    $total += $qty * $price;
+                    $subtotal += $qty * $price;
+                }
+                $vat = (int)round($subtotal * 0.05);
+                $ship = 50000;
+                $voucherDiscount = 0;
+                $noteStr = (string)($o['Note'] ?? '');
+                if ($noteStr !== '' && preg_match('/Voucher:\s*([A-Z0-9_-]+)\s*-\s*(\d+)/i', $noteStr, $m)) {
+                    $voucherDiscount = (int)($m[2] ?? 0);
                 }
                 $o['items'] = $items;
-                $o['total'] = $total;
+                $o['total'] = max(0, $subtotal + $vat + $ship - max(0, $voucherDiscount));
             }
             unset($o);
         }

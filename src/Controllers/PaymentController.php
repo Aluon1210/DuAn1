@@ -388,8 +388,8 @@ class PaymentController extends Controller
 
             $requestUrl = $gasUrl . (strpos($gasUrl, '?') === false ? '?' : '&') . $queryParams;
 
-            $maxRetries = 3;
-            $retryDelayMs = 250;
+            $maxRetries = 5;
+            $retryDelayMs = 500;
             $response = '';
             $httpCode = 0;
             $error = '';
@@ -397,15 +397,16 @@ class PaymentController extends Controller
                 $ch = curl_init($requestUrl);
                 curl_setopt_array($ch, [
                     CURLOPT_RETURNTRANSFER => true,
-                    CURLOPT_TIMEOUT => 4,
-                    CURLOPT_CONNECTTIMEOUT => 3,
+                    CURLOPT_TIMEOUT => 12,
+                    CURLOPT_CONNECTTIMEOUT => 8,
                     CURLOPT_CUSTOMREQUEST => 'GET',
                     CURLOPT_FOLLOWLOCATION => true,
                     CURLOPT_USERAGENT => 'DuAn1-PaymentChecker/1.0',
                     CURLOPT_SSL_VERIFYPEER => false,
                     CURLOPT_SSL_VERIFYHOST => false,
                     CURLOPT_HTTPHEADER => [
-                        'Accept: application/json'
+                        'Accept: application/json',
+                        'Accept-Encoding: gzip, deflate'
                     ]
                 ]);
                 $response = curl_exec($ch);
@@ -438,8 +439,14 @@ class PaymentController extends Controller
                 // Ignore logging errors
             }
 
-            // Xử lý lỗi cURL
+            // Xử lý lỗi cURL với fallback
             if ($error) {
+                // Fallback: thử lấy thanh toán mới nhất rồi so khớp
+                $fallback = $this->getLatestPaymentFromAPI();
+                if ($fallback['success']) {
+                    $match = $this->matchPaymentTransaction([$fallback['data']], $amount, $description, $accountNo);
+                    if ($match['success']) { return $match; }
+                }
                 return [
                     'success' => false,
                     'message' => 'Lỗi kết nối API: ' . $error
@@ -448,13 +455,21 @@ class PaymentController extends Controller
 
             // Parse response - nếu không có response hoặc không phải JSON, trả về lỗi
             if (empty($response)) {
+                // Fallback: thử lấy thanh toán mới nhất rồi so khớp
+                $fallback = $this->getLatestPaymentFromAPI();
+                if ($fallback['success']) {
+                    $match = $this->matchPaymentTransaction([$fallback['data']], $amount, $description, $accountNo);
+                    if ($match['success']) { return $match; }
+                }
                 return [
                     'success' => false,
                     'message' => 'API không trả về dữ liệu'
                 ];
             }
 
-            $result = json_decode($response, true);
+            // Một số GAS trả về JSON kèm BOM hoặc khoảng trắng
+            $clean = preg_replace('/^\xEF\xBB\xBF/', '', $response);
+            $result = json_decode(trim($clean), true);
             
             // Nếu API trả về JSON hợp lệ
             if (is_array($result)) {
@@ -1255,8 +1270,8 @@ class PaymentController extends Controller
         $apiDescription = $apiPayment['Mô tả'] ?? $apiPayment['description'] ?? '';
         $systemDescription = $systemOrder['description'] ?? '';
 
-        $apiAccountNo = trim($apiPayment['Số tài khoản'] ?? $apiPayment['account_no'] ?? '');
-        $systemAccountNo = trim($systemOrder['account_no'] ?? '');
+        $apiAccountNo = preg_replace('/\D+/', '', trim($apiPayment['Số tài khoản'] ?? $apiPayment['account_no'] ?? ''));
+        $systemAccountNo = preg_replace('/\D+/', '', trim($systemOrder['account_no'] ?? ''));
 
         // Chuẩn hóa để so sánh
         $apiDescriptionSimple = preg_replace('/[^A-Z0-9]/i', '', strtoupper($apiDescription));
