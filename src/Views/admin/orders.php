@@ -488,7 +488,8 @@
                                         'shipping' => ['Vận chuyển', 'status-shipping'],
                                         'delivered' => ['Hoàn thành', 'status-delivered'],
                                         'cancelled' => ['Đã hủy', 'status-cancelled'],
-                                        'return' => ['Trả hàng', 'status-return']
+                                        'return' => ['Trả hàng', 'status-return'],
+                                        'refunded' => ['Đã hoàn tiền', 'status-refunded']
                                     ];
                                     $status = $order['TrangThai'] ?? 'pending';
                                     $statusLabel = $statusMap[$status][0] ?? $status;
@@ -504,7 +505,7 @@
                                     $pm = $order['PaymentMethod'] ?? '';
                                     $paymentText = ($pm === 'online' || stripos($rawNote, 'Thanh toán Online') !== false) ? 'Online' : 'Tiền mặt';
                                 ?>
-                                <tr>
+                                <tr data-pay="<?php echo ($paymentText === 'Online') ? 'online' : 'cash'; ?>">
                                     <td><strong><?php echo htmlspecialchars($order['Order_Id']); ?></strong></td>
                                     <td><?php echo htmlspecialchars($customerName); ?></td>
                                     <td><?php echo htmlspecialchars($customerPhone); ?></td>
@@ -520,7 +521,7 @@
                                         ];
                                         $canCancel = ($status === 'pending');
                                         $canReturn = ($status === 'delivered');
-                                        $isFinal = ($status === 'delivered' || $status === 'cancelled');
+                                        $isFinal = ($status === 'delivered' || $status === 'cancelled' || $status === 'refunded');
                                         ?>
                                         <select class="status-select" data-order-id="<?php echo htmlspecialchars($order['Order_Id']); ?>" data-current-status="<?php echo htmlspecialchars($status); ?>" <?php echo $isFinal ? 'disabled' : ''; ?>>
                                             <option value="<?php echo $status; ?>" selected><?php echo $statusLabel; ?></option>
@@ -536,7 +537,14 @@
                                         </select>
                                     </td>
                                     <td><?php echo date('d/m/Y', strtotime($order['Order_date'])); ?></td>
-                                    <td><small><?php echo htmlspecialchars($paymentText); ?></small></td>
+                                    <td>
+                                        <small><?php echo htmlspecialchars($paymentText); ?></small>
+                                        <?php if ($status === 'cancelled' && $paymentText === 'Online'): ?>
+                                            <div style="margin-top:6px">
+                                                <button type="button" class="btn btn-warning btn-sm refund-btn" data-order-id="<?php echo htmlspecialchars($order['Order_Id']); ?>">QR hoàn tiền</button>
+                                            </div>
+                                        <?php endif; ?>
+                                    </td>
                                     <td><small><?php echo htmlspecialchars($noteDisplay); ?></small></td>
                                     <td><small><?php echo htmlspecialchars($address); ?></small></td>
                                 </tr>
@@ -616,6 +624,58 @@
     </div>
 
     <script>
+        // Modal hoàn tiền
+        const refundModal = document.createElement('div');
+        refundModal.id = 'refundModal';
+        refundModal.className = 'invoice-modal-overlay';
+        refundModal.innerHTML = `
+        <div class="invoice-modal" role="dialog" aria-modal="true">
+          <div class="invoice-modal-header">
+            <div class="invoice-modal-title">Hoàn tiền đơn online</div>
+            <button class="invoice-modal-close" type="button" id="refundCloseBtn">Đóng</button>
+          </div>
+          <div class="invoice-modal-body" style="display:flex; gap:16px; align-items:flex-start;">
+            <div style="flex:1">
+              <div id="refundInfo"></div>
+              <div style="margin-top:8px"><small id="refundBank"></small></div>
+            </div>
+            <div style="width:220px; text-align:center">
+              <img id="refundQR" src="" alt="QR hoàn tiền" style="max-width:100%; border:1px solid #eee; border-radius:8px;" />
+            </div>
+          </div>
+          <div class="invoice-modal-footer">
+            <button id="refundConfirmBtn" class="btn btn-primary" type="button">Xác nhận đã chuyển & cộng số dư</button>
+          </div>
+        </div>`;
+        document.body.appendChild(refundModal);
+        function closeRefundModal(){ refundModal.classList.remove('active'); }
+        document.getElementById('refundCloseBtn').onclick = closeRefundModal;
+
+        function openRefundModal(orderId){
+            fetch('<?php echo ROOT_URL; ?>admin/refund/info/' + encodeURIComponent(orderId), { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+              .then(r => r.json())
+              .then(d => {
+                 if (!d || d.error) { alert('Lỗi: ' + (d.error || 'Không xác định')); return; }
+                 document.getElementById('refundInfo').textContent = 'Mã đơn: ' + d.order_id + ' • Số tiền hoàn: ' + (d.amount || 0).toLocaleString('vi-VN') + ' ₫';
+                 document.getElementById('refundBank').textContent = 'Ngân hàng: ' + (d.bank_code || '') + ' - ' + (d.bank_name || '') + ' • STK: ' + (d.account_no || '') + ' • Tên: ' + (d.account_name || '');
+                 const img = document.getElementById('refundQR');
+                 img.src = d.qr_url || '';
+                 const btn = document.getElementById('refundConfirmBtn');
+                 btn.onclick = function(){
+                    fetch('<?php echo ROOT_URL; ?>admin/refund/confirm', {
+                       method: 'POST',
+                       headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                       body: JSON.stringify({ order_id: d.order_id })
+                    }).then(r => r.json()).then(x => {
+                       if (x && x.success) { alert('Đã cộng số dư khách: +' + (x.amount || 0).toLocaleString('vi-VN') + ' ₫'); closeRefundModal(); }
+                       else { alert('Không thể xác nhận hoàn tiền: ' + (x.error || '')); }
+                    }).catch(e => alert('Lỗi: ' + e.message));
+                 };
+                 refundModal.classList.add('active');
+              })
+              .catch(e => alert('Lỗi tải thông tin hoàn tiền: ' + e.message));
+        }
+
         // Handle status dropdown change with auto-save
         document.querySelectorAll('.status-select').forEach(select => {
             select.addEventListener('change', function() {
@@ -653,6 +713,12 @@
                         this.disabled = false;
                         this.parentElement.style.opacity = '1';
                         console.log('✅ Cập nhật trạng thái ' + orderId + ' thành ' + newStatus + ' thành công');
+                        // Nếu là hủy và đơn online, mở modal hoàn tiền
+                        const row = this.closest('tr');
+                        const pay = row ? row.getAttribute('data-pay') : '';
+                        if (newStatus === 'cancelled' && pay === 'online') {
+                            openRefundModal(orderId);
+                        }
                     } else {
                         // Revert the change
                         this.value = previousStatus;
@@ -669,6 +735,15 @@
                     this.parentElement.style.opacity = '1';
                     alert('❌ Lỗi khi cập nhật trạng thái:\n' + err.message);
                 });
+            });
+        });
+
+        // Gán nút QR hoàn tiền trên các đơn đã hủy (online)
+        document.querySelectorAll('.refund-btn').forEach(btn => {
+            btn.addEventListener('click', function(e){
+                e.stopPropagation();
+                const oid = this.getAttribute('data-order-id');
+                if (oid) openRefundModal(oid);
             });
         });
 

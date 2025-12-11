@@ -71,8 +71,17 @@ class Order extends Model
     public function createOrder($data)
     {
         try {
-            // Generate Order_Id theo format or+0000000001
-            $orderId = IdGenerator::generate('Ord', $this->table, 'Order_Id', 10);
+            $customId = trim($data['order_id'] ?? $data['Order_Id'] ?? '');
+            if ($customId !== '') {
+                $exists = $this->query("SELECT COUNT(*) AS c FROM {$this->table} WHERE Order_Id = :id LIMIT 1", ['id' => $customId]);
+                if ($exists && (int)($exists[0]['c'] ?? 0) === 0) {
+                    $orderId = $customId;
+                } else {
+                    $orderId = IdGenerator::generate('Ord', $this->table, 'Order_Id', 10);
+                }
+            } else {
+                $orderId = IdGenerator::generate('Ord', $this->table, 'Order_Id', 10);
+            }
 
             // Mặc định trạng thái là 'pending' (chờ xác nhận)
             $status = $data['status'] ?? $data['TrangThai'] ?? 'pending';

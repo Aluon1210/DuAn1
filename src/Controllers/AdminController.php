@@ -663,6 +663,197 @@ public function dashboard() {
                 return;
         }
     }
+
+    /**
+     * Router hoàn tiền: /admin/refund/{action}
+     * Hỗ trợ: info/{orderId}, confirm (POST)
+     */
+    public function refund($action = null, $orderId = null) {
+        switch (strtolower((string)$action)) {
+            case 'info':
+                $this->refundInfo($orderId);
+                return;
+            case 'confirm':
+                $this->refundConfirm();
+                return;
+            default:
+                header('Content-Type: application/json');
+                echo json_encode(['error' => 'Invalid refund action']);
+                return;
+        }
+    }
+
+    /**
+     * Trả về thông tin hoàn tiền của đơn hàng (JSON)
+     * URL: /admin/refund/info/{orderId}
+     */
+    private function refundInfo($orderId) {
+        // Kiểm tra admin
+        if (!isset($_SESSION['user']) || $_SESSION['user']['role'] !== 'admin') {
+            header('Content-Type: application/json');
+            echo json_encode(['error' => 'Unauthorized']);
+            exit;
+        }
+        if (!$orderId) {
+            header('Content-Type: application/json');
+            echo json_encode(['error' => 'Order ID not provided']);
+            exit;
+        }
+        $orderModel = new \Models\Order();
+        $orderDetailModel = new \Models\OrderDetail();
+        $userModel = new \Models\User();
+
+        $order = $orderModel->getByIdWithUser($orderId);
+        if (!$order) {
+            header('Content-Type: application/json');
+            echo json_encode(['error' => 'Order not found']);
+            exit;
+        }
+        // Xác định phương thức thanh toán là online
+        $pm = $order['PaymentMethod'] ?? '';
+        $rawNote = (string)($order['Note'] ?? '');
+        $isOnline = ($pm === 'online') || (stripos($rawNote, 'Thanh toán Online') !== false);
+        if (!$isOnline) {
+            header('Content-Type: application/json');
+            echo json_encode(['error' => 'Order is not online payment']);
+            exit;
+        }
+        // Chỉ hiển thị QR khi đơn đang ở trạng thái đã hủy
+        if (($order['TrangThai'] ?? '') !== 'cancelled') {
+            header('Content-Type: application/json');
+            echo json_encode(['error' => 'Order is not cancelled']);
+            exit;
+        }
+
+        // Tính tổng cần hoàn giống công thức hiển thị hóa đơn
+        $items = $orderDetailModel->getByOrderIdWithProduct($orderId) ?? [];
+        $subtotal = 0;
+        foreach ($items as $it) {
+            $qty = (int)($it['quantity'] ?? $it['Quantity'] ?? 0);
+            $price = (float)($it['Price'] ?? $it['price'] ?? 0);
+            $subtotal += $qty * $price;
+        }
+        $vat = (int)round($subtotal * 0.05);
+        $ship = 50000;
+        $voucherDiscount = 0;
+        if ($rawNote !== '' && preg_match('/Voucher:\s*([A-Z0-9_-]+)\s*-\s*(\d+)/i', $rawNote, $m)) {
+            $voucherDiscount = (int)($m[2] ?? 0);
+        }
+        $refundAmount = max(0, $subtotal + $vat + $ship - max(0, $voucherDiscount));
+
+        // Lấy thông tin ngân hàng khách hàng
+        $userId = $order['_UserName_Id'] ?? '';
+        $user = $userModel->getById($userId);
+        $bankName = $user['bank_name'] ?? '';
+        $accountNo = $user['bank_account_number'] ?? '';
+        $accountName = strtoupper($user['name'] ?? $user['username'] ?? '');
+        $bankCode = '';
+        $bankCodes = \Core\PaymentHelper::getAllBankCodes();
+        foreach ($bankCodes as $code => $name) {
+            if (strcasecmp($name, $bankName) === 0 || strcasecmp($code, $bankName) === 0) { $bankCode = $code; break; }
+        }
+
+        $qrUrl = '';
+        if ($bankCode && $accountNo && $accountName) {
+            $qrUrl = \Core\PaymentHelper::buildQRUrl($bankCode, $accountNo, $accountName, $refundAmount, 'REFUND-' . $orderId, 'compact');
+        }
+
+        header('Content-Type: application/json');
+        echo json_encode([
+            'success' => true,
+            'order_id' => $orderId,
+            'amount' => $refundAmount,
+            'bank_code' => $bankCode,
+            'bank_name' => $bankName,
+            'account_no' => $accountNo,
+            'account_name' => $accountName,
+            'qr_url' => $qrUrl
+        ]);
+        exit;
+    }
+
+    /**
+     * Xác nhận đã chuyển hoàn tiền và cộng số dư cho khách
+     * URL: /admin/refund/confirm (POST JSON)
+     */
+    private function refundConfirm() {
+        // Chỉ cho phép POST
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'error' => 'Method not allowed']);
+            exit;
+        }
+        // Kiểm tra admin
+        if (!isset($_SESSION['user']) || $_SESSION['user']['role'] !== 'admin') {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'error' => 'Unauthorized']);
+            exit;
+        }
+        $payload = json_decode(file_get_contents('php://input'), true);
+        $orderId = trim($payload['order_id'] ?? '');
+        if ($orderId === '') {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'error' => 'Order ID required']);
+            exit;
+        }
+        $orderModel = new \Models\Order();
+        $orderDetailModel = new \Models\OrderDetail();
+        $userModel = new \Models\User();
+        $order = $orderModel->getByIdWithUser($orderId);
+        if (!$order) {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'error' => 'Order not found']);
+            exit;
+        }
+        $pm = $order['PaymentMethod'] ?? '';
+        $rawNote = (string)($order['Note'] ?? '');
+        $isOnline = ($pm === 'online') || (stripos($rawNote, 'Thanh toán Online') !== false);
+        if (!$isOnline) {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'error' => 'Order is not online payment']);
+            exit;
+        }
+        // Tính số tiền hoàn
+        $items = $orderDetailModel->getByOrderIdWithProduct($orderId) ?? [];
+        $subtotal = 0;
+        foreach ($items as $it) {
+            $qty = (int)($it['quantity'] ?? $it['Quantity'] ?? 0);
+            $price = (float)($it['Price'] ?? $it['price'] ?? 0);
+            $subtotal += $qty * $price;
+        }
+        $vat = (int)round($subtotal * 0.05);
+        $ship = 50000;
+        $voucherDiscount = 0;
+        if ($rawNote !== '' && preg_match('/Voucher:\s*([A-Z0-9_-]+)\s*-\s*(\d+)/i', $rawNote, $m)) {
+            $voucherDiscount = (int)($m[2] ?? 0);
+        }
+        $refundAmount = max(0, $subtotal + $vat + $ship - max(0, $voucherDiscount));
+
+        // Cộng số dư cho khách (users.Price)
+        $userId = $order['_UserName_Id'] ?? '';
+        $user = $userModel->getById($userId);
+        if (!$user) {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'error' => 'User not found']);
+            exit;
+        }
+        $newBalance = (float)($user['price'] ?? 0) + (float)$refundAmount;
+        $ok = $userModel->updateUser($userId, ['price' => $newBalance]);
+        if (!$ok) {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'error' => 'Failed to update user balance']);
+            exit;
+        }
+
+        // Ghi vào note đơn hàng
+        $orderModel->appendNote($orderId, 'REFUND CONFIRMED: +' . number_format($refundAmount, 0, ',', '.') . 'đ');
+        // Cập nhật trạng thái sang refunded
+        $orderModel->updateStatus($orderId, 'refunded');
+
+        header('Content-Type: application/json');
+        echo json_encode(['success' => true, 'amount' => $refundAmount, 'new_balance' => $newBalance]);
+        exit;
+    }
 }
 
 ?>

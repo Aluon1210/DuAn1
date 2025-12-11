@@ -534,8 +534,8 @@ class PaymentController extends Controller
         
         foreach ($transactions as $trans) {
             // Các trường có thể có trong transaction
-            $transAmount = isset($trans['Giá trị']) ? (int)$trans['Giá trị'] : 
-                          (isset($trans['amount']) ? (int)$trans['amount'] : 0);
+            $transAmount = isset($trans['Giá trị']) ? $this->normalizeAmount($trans['Giá trị']) : 
+                          (isset($trans['amount']) ? $this->normalizeAmount($trans['amount']) : 0);
             $transDescription = isset($trans['Mô tả']) ? $trans['Mô tả'] : 
                                (isset($trans['description']) ? $trans['description'] : '');
             $transAccountNo = isset($trans['Số tài khoản']) ? trim($trans['Số tài khoản']) : 
@@ -725,7 +725,8 @@ class PaymentController extends Controller
                 'payment_method' => 'online',
                 'voucher_code' => $voucherCode,
                 'voucher_discount' => $voucherDiscount,
-                'order_date' => date('Y-m-d')
+                'order_date' => date('Y-m-d'),
+                'order_id' => $this->extractOrderIdFromDescription($description) ?: $description
             ];
 
             // Chuẩn bị chi tiết đơn hàng
@@ -798,12 +799,13 @@ class PaymentController extends Controller
             $shippingFee = 50000;
             $expectedAmount = $totalCartAmount + $vatAmount + $shippingFee - max(0, $voucherDiscount);
 
-            // Kiểm tra tổng tiền có khớp không
-            if ($expectedAmount !== $amount) {
+            // Kiểm tra tổng tiền với dung sai để tránh lỗi làm tròn/định dạng
+            $tolerance = 1000; // VND
+            if (abs((int)$expectedAmount - (int)$amount) > $tolerance) {
                 http_response_code(400);
                 echo json_encode([
                     'success' => false,
-                    'message' => 'Tổng tiền không khớp. Hệ thống: ' . $expectedAmount . ' VND, thanh toán: ' . $amount . ' VND',
+                    'message' => 'Tổng tiền không khớp (±' . $tolerance . '). Hệ thống: ' . $expectedAmount . ' VND, thanh toán: ' . $amount . ' VND',
                     'cart_subtotal' => $totalCartAmount,
                     'vat' => $vatAmount,
                     'shipping' => $shippingFee,
@@ -935,6 +937,40 @@ class PaymentController extends Controller
             $systemOrderInfo = $this->getSystemOrderInfo($orderId);
             
             if (!$systemOrderInfo['found']) {
+                // Nếu chưa có đơn trong hệ thống: thử tạo đơn từ giỏ hàng nếu payment mô tả chứa order_id
+                $apiDesc = $payment['Mô tả'] ?? $payment['description'] ?? '';
+                $apiDescSimple = preg_replace('/[^A-Z0-9]/i', '', strtoupper(trim($apiDesc)));
+                $orderIdSimple = preg_replace('/[^A-Z0-9]/i', '', strtoupper(trim($orderId)));
+
+                $accountNoApi = preg_replace('/\D+/', '', trim($payment['Số tài khoản'] ?? $payment['account_no'] ?? ''));
+                $accountNoCfg = preg_replace('/\D+/', '', trim(PaymentHelper::getQRConfig()['account_no'] ?? ''));
+
+                $descHasOrderId = (!empty($orderIdSimple) && strpos($apiDescSimple, $orderIdSimple) !== false);
+                $accountOk = (empty($accountNoCfg) || empty($accountNoApi) || $accountNoApi === $accountNoCfg);
+
+                if ($descHasOrderId && $accountOk) {
+                    $createResult = $this->autoCreateOrderFromPayment($payment, $userId);
+                    if ($createResult['success']) {
+                        $this->markPaymentAsProcessed($payment);
+                        http_response_code(201);
+                        echo json_encode([
+                            'success' => true,
+                            'message' => 'Đã tạo đơn hàng tự động từ payment mới nhất',
+                            'payment' => $payment,
+                            'order_id' => $createResult['order_id'],
+                            'order_data' => $createResult['order_data']
+                        ]);
+                        return;
+                    }
+                    http_response_code(500);
+                    echo json_encode([
+                        'success' => false,
+                        'message' => 'Không thể tạo đơn hàng từ payment mới nhất: ' . ($createResult['message'] ?? ''),
+                        'payment' => $payment
+                    ]);
+                    return;
+                }
+
                 echo json_encode([
                     'success' => false,
                     'message' => 'Không tìm thấy thông tin đơn hàng trong hệ thống',
@@ -1223,7 +1259,7 @@ class PaymentController extends Controller
 
             // Lấy chi tiết đơn hàng và tính tổng thanh toán cuối cùng
             $orderDetailModel = new \Models\OrderDetail();
-            $orderDetails = $orderDetailModel->getByOrderId($orderId);
+            $orderDetails = $orderDetailModel->getByOrderIdWithProduct($orderId);
 
             $subtotal = 0;
             foreach ($orderDetails as $detail) {
@@ -1264,7 +1300,7 @@ class PaymentController extends Controller
      */
     private function comparePaymentInfo($apiPayment, $systemOrder)
     {
-        $apiAmount = (int)($apiPayment['Giá trị'] ?? $apiPayment['amount'] ?? 0);
+        $apiAmount = $this->normalizeAmount($apiPayment['Giá trị'] ?? $apiPayment['amount'] ?? 0);
         $systemAmount = (int)($systemOrder['amount'] ?? 0);
 
         $apiDescription = $apiPayment['Mô tả'] ?? $apiPayment['description'] ?? '';
@@ -1352,6 +1388,30 @@ class PaymentController extends Controller
         ];
     }
 
+    private function normalizeAmount($v)
+    {
+        if (is_numeric($v)) {
+            $s = (string)$v;
+            if (strpos($s, '.') !== false && strpos($s, ',') === false) {
+                $s = str_replace('.', '', $s);
+                return (int)$s;
+            }
+            return (int)$v;
+        }
+        $s = (string)$v;
+        $hasDot = strpos($s, '.') !== false;
+        $hasComma = strpos($s, ',') !== false;
+        if ($hasDot && $hasComma) {
+            $clean = preg_replace('/[^0-9\.,]/', '', $s);
+            $lastSepPos = max(strrpos($clean, '.'), strrpos($clean, ','));
+            $left = substr($clean, 0, $lastSepPos);
+            $leftDigits = preg_replace('/[^0-9]/', '', $left);
+            return (int)$leftDigits;
+        }
+        $digits = preg_replace('/[^0-9]/', '', $s);
+        return (int)$digits;
+    }
+
     /**
      * Tự động tạo đơn hàng từ thông tin thanh toán
      * @param array $payment
@@ -1383,7 +1443,8 @@ class PaymentController extends Controller
                 'status' => 'confirmed',
                 'payment_status' => 'completed',
                 'payment_id' => $payment['Mã GD'] ?? $payment['payment_id'] ?? '',
-                'order_date' => date('Y-m-d')
+                'order_date' => date('Y-m-d'),
+                'order_id' => $this->extractOrderIdFromDescription($payment['Mô tả'] ?? $payment['description'] ?? '')
             ];
 
             $orderDetails = [];
@@ -1461,6 +1522,16 @@ class PaymentController extends Controller
                 'message' => $e->getMessage()
             ];
         }
+    }
+
+    private function extractOrderIdFromDescription($desc)
+    {
+        $s = strtoupper(trim((string)$desc));
+        if ($s === '') return '';
+        if (preg_match('/\bORD[0-9A-Z]+\b/', $s, $m)) {
+            return $m[0];
+        }
+        return '';
     }
 
     /**

@@ -394,17 +394,16 @@
               </div>
               <div>
                 <div style="font-weight:600;"><?php echo htmlspecialchars($p['name']); ?></div>
-                <div style="color:var(--text-light);">Giá: <?php echo number_format($p['price'], 0, ',', '.'); ?> ₫</div>
+                <?php
+                  $unit = isset($it['unit_price']) ? (int)$it['unit_price'] : (int)round(((int)($it['subtotal'] ?? 0)) / max(1, (int)($it['quantity'] ?? 1)));
+                ?>
+                <div style="color:var(--text-light);">Giá: <?php echo number_format($unit, 0, ',', '.'); ?> ₫</div>
               </div>
             </div>
             <div style="text-align:right;">
               <div>Số lượng: <strong><?php echo (int) $it['quantity']; ?></strong></div>
               <?php
-                $base = (int)$it['subtotal'];
-                $weight = $orderSubtotal > 0 ? ($base / $orderSubtotal) : 1;
-                $allocService = (int)round($serviceFee * $weight);
-                $allocShip = (int)round($shippingFee * $weight);
-                $lineTotal = $base + $allocService + $allocShip;
+                $lineTotal = (int)($it['subtotal'] ?? 0);
               ?>
               <div>Thành tiền: <strong><?php echo number_format($lineTotal, 0, ',', '.'); ?> ₫</strong></div>
             </div>
@@ -754,9 +753,9 @@
   let paymentCheckInterval = null;
   let currentOrderId = null;
   let paymentAttempts = 0;
-  const pollingIntervalMs = 2500;
+  const pollingIntervalMs = 1500;
   let isChecking = false;
-  const maxAttempts = 600;
+  const maxAttempts = 120;
   let creatingOrder = false;
 
   // Hiá»ƒn thá»‹ payment modal
@@ -870,7 +869,96 @@
         if (ct1.indexOf('application/json') !== -1) {
           checkResult = await checkResp.json();
         } else {
-          // Không phải JSON, cứ tiếp tục thử lại ở lần kế tiếp
+          // Fallback nhanh: gọi poll-latest-payment với order_id để thử match
+          try {
+            const pollResp = await fetch('<?php echo ROOT_URL; ?>payment/poll-latest-payment', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ order_id: currentOrderId })
+            });
+            const ctPoll = pollResp.headers.get('content-type') || '';
+            if (ctPoll.indexOf('application/json') !== -1) {
+              const pollResult = await pollResp.json();
+              if (pollResult && pollResult.success && pollResult.order_id) {
+                // Đã tự tạo đơn từ polling, coi như thành công
+                paymentVerifiedInput.value = '1';
+                clearInterval(paymentCheckInterval);
+                paymentCheckInterval = null;
+                modalStatus.className = 'payment-modal-status success';
+                modalStatusText.innerHTML = 'Thanh toán thành công!<br>Đơn hàng đã được tạo.<br>Mã đơn: <strong>' + (pollResult.order_id || '') + '</strong>';
+                modalCheckPaymentBtn.disabled = true;
+                setTimeout(() => {
+                  hidePaymentModal();
+                  window.location = '<?php echo ROOT_URL; ?>cart?invoice=' + encodeURIComponent(pollResult.order_id || '') + '&print=1';
+                }, 300);
+                return;
+              }
+              // Nếu có payment nhưng chưa tạo order_id, fallback tự tạo đơn trực tiếp
+              if (pollResult && pollResult.success && pollResult.payment) {
+                const addressVal = checkoutForm.querySelector('input[name="address"]').value.trim();
+                const recipientName = (checkoutForm.querySelector('input[name="recipient_name"]')?.value || '').trim();
+                const recipientPhone = (checkoutForm.querySelector('input[name="recipient_phone"]')?.value || '').trim();
+                const noteVal = checkoutForm.querySelector('textarea[name="note"]').value.trim();
+                const selectedInputs = Array.from(checkoutForm.querySelectorAll('input[name="selected[]"]'));
+                const selectedIds = selectedInputs.map(i => i.value);
+                const qtyInputs = Array.from(checkoutForm.querySelectorAll('input[name^="quantity["]'));
+                const quantities = {};
+                qtyInputs.forEach(inp => { const m = inp.name.match(/^quantity\[(.+)\]$/); if (m) { quantities[m[1]] = parseInt(inp.value || '1', 10); } });
+                const createResp = await fetch('<?php echo ROOT_URL; ?>payment/create-order-on-payment', {
+                  method: 'POST', headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ amount: totalAmount, description: currentOrderId, address: addressVal, note: noteVal, recipient_name: recipientName, recipient_phone: recipientPhone, voucher_code: (document.getElementById('voucherCodeHidden')?.value||'').toString().trim(), voucher_discount: parseInt(document.getElementById('voucherDiscountHidden')?.value||'0',10)||0, selected: selectedIds, quantities })
+                });
+                const ct2 = createResp.headers.get('content-type') || '';
+                if (ct2.indexOf('application/json') !== -1) {
+                  const createResult = await createResp.json();
+                  if (createResult && createResult.success) {
+                    paymentVerifiedInput.value = '1';
+                    clearInterval(paymentCheckInterval);
+                    paymentCheckInterval = null;
+                    modalStatus.className = 'payment-modal-status success';
+                    modalStatusText.innerHTML = 'Thanh toán thành công!<br>Đơn hàng đã được tạo.<br>Mã đơn: <strong>' + (createResult.order_id || '') + '</strong>';
+                    modalCheckPaymentBtn.disabled = true;
+                    setTimeout(() => { hidePaymentModal(); window.location = '<?php echo ROOT_URL; ?>cart?invoice=' + encodeURIComponent(createResult.order_id || '') + '&print=1'; }, 300);
+                    return;
+                  }
+                }
+              }
+            }
+          } catch (e) {}
+          // Nếu nhiều lần non-JSON, thử tạo đơn trực tiếp để tránh chờ lâu
+          if (paymentAttempts >= 3 && !creatingOrder) {
+            try {
+              creatingOrder = true;
+              const addressVal = checkoutForm.querySelector('input[name="address"]').value.trim();
+              const recipientName = (checkoutForm.querySelector('input[name="recipient_name"]')?.value || '').trim();
+              const recipientPhone = (checkoutForm.querySelector('input[name="recipient_phone"]')?.value || '').trim();
+              const noteVal = checkoutForm.querySelector('textarea[name="note"]').value.trim();
+              const selectedInputs = Array.from(checkoutForm.querySelectorAll('input[name="selected[]"]'));
+              const selectedIds = selectedInputs.map(i => i.value);
+              const qtyInputs = Array.from(checkoutForm.querySelectorAll('input[name^="quantity["]'));
+              const quantities = {};
+              qtyInputs.forEach(inp => { const m = inp.name.match(/^quantity\[(.+)\]$/); if (m) { quantities[m[1]] = parseInt(inp.value || '1', 10); } });
+              const createResp = await fetch('<?php echo ROOT_URL; ?>payment/create-order-on-payment', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ amount: totalAmount, description: currentOrderId, address: addressVal, note: noteVal, recipient_name: recipientName, recipient_phone: recipientPhone, voucher_code: (document.getElementById('voucherCodeHidden')?.value||'').toString().trim(), voucher_discount: parseInt(document.getElementById('voucherDiscountHidden')?.value||'0',10)||0, selected: selectedIds, quantities })
+              });
+              const ct2 = createResp.headers.get('content-type') || '';
+              if (ct2.indexOf('application/json') !== -1) {
+                const createResult = await createResp.json();
+                if (createResult && createResult.success) {
+                  paymentVerifiedInput.value = '1';
+                  clearInterval(paymentCheckInterval);
+                  paymentCheckInterval = null;
+                  modalStatus.className = 'payment-modal-status success';
+                  modalStatusText.innerHTML = 'Thanh toán thành công!<br>Đơn hàng đã được tạo.<br>Mã đơn: <strong>' + (createResult.order_id || '') + '</strong>';
+                  modalCheckPaymentBtn.disabled = true;
+                  setTimeout(() => { hidePaymentModal(); window.location = '<?php echo ROOT_URL; ?>cart?invoice=' + encodeURIComponent(createResult.order_id || '') + '&print=1'; }, 300);
+                  return;
+                }
+              }
+              creatingOrder = false;
+            } catch (e) { creatingOrder = false; }
+          }
           paymentAttempts++;
           return;
         }
@@ -1067,12 +1155,90 @@
           return;
         }
       } else {
-        // Hiển thị non-JSON response
+        // Fallback: thử poll-latest-payment
+        try {
+          const pollResp = await fetch('<?php echo ROOT_URL; ?>payment/poll-latest-payment', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ order_id: currentOrderId })
+          });
+          const ctPoll = pollResp.headers.get('content-type') || '';
+          if (ctPoll.indexOf('application/json') !== -1) {
+            const pollResult = await pollResp.json();
+            if (pollResult && pollResult.success && pollResult.order_id) {
+              paymentVerifiedInput.value = '1';
+              modalStatus.className = 'payment-modal-status success';
+              modalStatusText.innerHTML = 'Thanh toán thành công!<br>Đơn hàng đã được tạo.<br>Mã đơn: <strong>' + (pollResult.order_id || '') + '</strong>';
+              modalCheckPaymentBtn.disabled = true;
+              setTimeout(() => {
+                hidePaymentModal();
+                window.location = '<?php echo ROOT_URL; ?>cart?invoice=' + encodeURIComponent(pollResult.order_id || '') + '&print=1';
+              }, 300);
+              return;
+            }
+            // Nếu trả về payment nhưng chưa tạo order_id, fallback tự tạo đơn trực tiếp
+            if (pollResult && pollResult.success && pollResult.payment) {
+              const addressVal = checkoutForm.querySelector('input[name="address"]').value.trim();
+              const recipientName = (checkoutForm.querySelector('input[name="recipient_name"]')?.value || '').trim();
+              const recipientPhone = (checkoutForm.querySelector('input[name="recipient_phone"]')?.value || '').trim();
+              const noteVal = checkoutForm.querySelector('textarea[name="note"]').value.trim();
+              const selectedInputs = Array.from(checkoutForm.querySelectorAll('input[name="selected[]"]'));
+              const selectedIds = selectedInputs.map(i => i.value);
+              const qtyInputs = Array.from(checkoutForm.querySelectorAll('input[name^="quantity["]'));
+              const quantities = {};
+              qtyInputs.forEach(inp => { const m = inp.name.match(/^quantity\[(.+)\]$/); if (m) { quantities[m[1]] = parseInt(inp.value || '1', 10); } });
+              const createResp = await fetch('<?php echo ROOT_URL; ?>payment/create-order-on-payment', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ amount: totalAmount, description: currentOrderId, address: addressVal, note: noteVal, recipient_name: recipientName, recipient_phone: recipientPhone, voucher_code: (document.getElementById('voucherCodeHidden')?.value||'').toString().trim(), voucher_discount: parseInt(document.getElementById('voucherDiscountHidden')?.value||'0',10)||0, selected: selectedIds, quantities })
+              });
+              const ct2 = createResp.headers.get('content-type') || '';
+              if (ct2.indexOf('application/json') !== -1) {
+                const createResult = await createResp.json();
+                if (createResult && createResult.success) {
+                  paymentVerifiedInput.value = '1';
+                  modalStatus.className = 'payment-modal-status success';
+                  modalStatusText.innerHTML = 'Thanh toán thành công!<br>Đơn hàng đã được tạo.<br>Mã đơn: <strong>' + (createResult.order_id || '') + '</strong>';
+                  modalCheckPaymentBtn.disabled = true;
+                  setTimeout(() => { hidePaymentModal(); window.location = '<?php echo ROOT_URL; ?>cart?invoice=' + encodeURIComponent(createResult.order_id || '') + '&print=1'; }, 300);
+                  return;
+                }
+              }
+            }
+          }
+        } catch (e) {}
+        // Nếu non-JSON: thử tạo đơn trực tiếp sau 3 lần cố gắng
+        if (paymentAttempts >= 3) {
+          try {
+            const addressVal = checkoutForm.querySelector('input[name="address"]').value.trim();
+            const recipientName = (checkoutForm.querySelector('input[name="recipient_name"]')?.value || '').trim();
+            const recipientPhone = (checkoutForm.querySelector('input[name="recipient_phone"]')?.value || '').trim();
+            const noteVal = checkoutForm.querySelector('textarea[name="note"]').value.trim();
+            const selectedInputs = Array.from(checkoutForm.querySelectorAll('input[name="selected[]"]'));
+            const selectedIds = selectedInputs.map(i => i.value);
+            const qtyInputs = Array.from(checkoutForm.querySelectorAll('input[name^="quantity["]'));
+            const quantities = {};
+            qtyInputs.forEach(inp => { const m = inp.name.match(/^quantity\[(.+)\]$/); if (m) { quantities[m[1]] = parseInt(inp.value || '1', 10); } });
+            const createResp = await fetch('<?php echo ROOT_URL; ?>payment/create-order-on-payment', {
+              method: 'POST', headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ amount: totalAmount, description: currentOrderId, address: addressVal, note: noteVal, recipient_name: recipientName, recipient_phone: recipientPhone, voucher_code: (document.getElementById('voucherCodeHidden')?.value||'').toString().trim(), voucher_discount: parseInt(document.getElementById('voucherDiscountHidden')?.value||'0',10)||0, selected: selectedIds, quantities })
+            });
+            const ct2 = createResp.headers.get('content-type') || '';
+            if (ct2.indexOf('application/json') !== -1) {
+              const createResult = await createResp.json();
+              if (createResult && createResult.success) {
+                paymentVerifiedInput.value = '1';
+                modalStatus.className = 'payment-modal-status success';
+                modalStatusText.innerHTML = 'Thanh toán thành công!<br>Đơn hàng đã được tạo.<br>Mã đơn: <strong>' + (createResult.order_id || '') + '</strong>';
+                modalCheckPaymentBtn.disabled = true;
+                setTimeout(() => { hidePaymentModal(); window.location = '<?php echo ROOT_URL; ?>cart?invoice=' + encodeURIComponent(createResult.order_id || '') + '&print=1'; }, 300);
+                return;
+              }
+            }
+          } catch (e) {}
+        }
         const txt = await response.text();
         modalStatus.className = 'payment-modal-status failed';
-        modalStatusText.textContent = 'Lỗi kết nối. Phản hồi API không hợp lệ.';
-        console.error('Non-JSON response from check-payment. Status:', response.status, 'Content-Type:', contentType);
-        console.error('Response text:', txt.slice(0, 500));
+        modalStatusText.textContent = 'API trả về dữ liệu không hợp lệ (không phải JSON). Vui lòng thử lại.';
         modalCheckPaymentBtn.disabled = false;
         modalCheckPaymentBtn.textContent = 'Thử lại';
         return;

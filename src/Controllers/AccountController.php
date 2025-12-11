@@ -45,7 +45,7 @@ class AccountController extends Controller {
             if ($pm === 'online') {
                 // Tính tổng cần hoàn
                 $orderDetailModel = new \Models\OrderDetail();
-                $items = $orderDetailModel->getByOrderId($orderId);
+                $items = $orderDetailModel->getByOrderIdWithProduct($orderId);
                 $subtotal = 0;
                 foreach ($items as $it) {
                     $qty = (int)($it['quantity'] ?? $it['Quantity'] ?? 0);

@@ -471,6 +471,7 @@ class CartController extends Controller
                 'product' => $product,
                 'quantity' => $qty,
                 'subtotal' => $price * $qty,
+                'unit_price' => $price,
                 'cart_key' => $cartId
             ];
             $total += $price * $qty;
