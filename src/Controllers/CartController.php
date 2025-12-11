@@ -713,7 +713,7 @@ class CartController extends Controller
         if ($orderId) {
             foreach ($processedCartIds as $cid) { $cartModel->deleteCart($cid); }
             $_SESSION['message'] = 'Đặt hàng thành công. Mã đơn: ' . $orderId . '. Tổng tiền: ' . number_format($totalAmount, 0, ',', '.') . ' ₫. Phương thức: OPT (Tiền mặt)';
-            header('Location: ' . ROOT_URL . 'cart/invoice/' . urlencode($orderId));
+            header('Location: ' . ROOT_URL . 'cart?invoice=' . urlencode($orderId) . '&print=1');
             exit;
         } else {
             $_SESSION['error'] = 'Đặt hàng thất bại. Vui lòng thử lại';
@@ -870,7 +870,7 @@ class CartController extends Controller
             }
             $paymentText = ($paymentMethod === 'online') ? 'Online (QR Code)' : 'OPT (Tiền mặt)';
             $_SESSION['message'] = 'Đặt hàng thành công. Mã đơn: ' . $orderId . '. Tổng tiền: ' . number_format($totalAmount, 0, ',', '.') . ' ₫. Phương thức: ' . $paymentText;
-            header('Location: ' . ROOT_URL . 'cart/invoice/' . urlencode($orderId));
+            header('Location: ' . ROOT_URL . 'cart?invoice=' . urlencode($orderId) . '&print=1');
             exit;
         } else {
             $_SESSION['error'] = 'Đặt hàng thất bại. Vui lòng thử lại';

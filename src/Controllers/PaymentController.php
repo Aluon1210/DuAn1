@@ -404,6 +404,7 @@ class PaymentController extends Controller
                     CURLOPT_USERAGENT => 'DuAn1-PaymentChecker/1.0',
                     CURLOPT_SSL_VERIFYPEER => false,
                     CURLOPT_SSL_VERIFYHOST => false,
+                    CURLOPT_ENCODING => '', // Tự động giải nén gzip/deflate
                     CURLOPT_HTTPHEADER => [
                         'Accept: application/json',
                         'Accept-Encoding: gzip, deflate'
@@ -467,9 +468,8 @@ class PaymentController extends Controller
                 ];
             }
 
-            // Một số GAS trả về JSON kèm BOM hoặc khoảng trắng
-            $clean = preg_replace('/^\xEF\xBB\xBF/', '', $response);
-            $result = json_decode(trim($clean), true);
+            // Giải mã JSON linh hoạt
+            $result = $this->decodeJsonFlexible($response);
             
             // Nếu API trả về JSON hợp lệ
             if (is_array($result)) {
@@ -490,7 +490,12 @@ class PaymentController extends Controller
                 ];
             }
 
-            // Nếu API chỉ trả về text (không phải JSON)
+            // Nếu không parse được JSON, thử fallback sang polling mới nhất
+            $fallback = $this->getLatestPaymentFromAPI();
+            if ($fallback['success']) {
+                $match = $this->matchPaymentTransaction([$fallback['data']], $amount, $description, $accountNo);
+                if ($match['success']) { return $match; }
+            }
             return [
                 'success' => false,
                 'message' => 'API trả về dữ liệu không hợp lệ (không phải JSON)',
@@ -1064,6 +1069,7 @@ class PaymentController extends Controller
                     CURLOPT_SSL_VERIFYPEER => false,
                     CURLOPT_SSL_VERIFYHOST => false,
                     CURLOPT_USERAGENT => 'DuAn1-PaymentPoller/1.0',
+                    CURLOPT_ENCODING => '', // Tự động giải nén gzip/deflate
                     CURLOPT_HTTPHEADER => [
                         'Accept: application/json',
                         'Accept-Encoding: gzip, deflate'
@@ -1115,8 +1121,8 @@ class PaymentController extends Controller
                     continue;
                 }
 
-                // Parse response
-                $result = json_decode($response, true);
+                // Parse response linh hoạt (loại bỏ BOM/chuỗi dư)
+                $result = $this->decodeJsonFlexible($response);
                 
                 if (!is_array($result)) {
                     $lastError = 'API trả về dữ liệu không hợp lệ (không phải JSON)';
@@ -1566,5 +1572,27 @@ class PaymentController extends Controller
         } catch (\Exception $e) {
             // Ignore logging errors
         }
+    }
+
+    private function decodeJsonFlexible($response)
+    {
+        if ($response === null || $response === '') { return null; }
+        $clean = preg_replace('/^\xEF\xBB\xBF/', '', (string)$response);
+        $trimmed = trim($clean);
+        $decoded = json_decode($trimmed, true);
+        if (is_array($decoded)) { return $decoded; }
+        $firstBrace = strpos($trimmed, '{');
+        $lastBrace = strrpos($trimmed, '}');
+        $firstBracket = strpos($trimmed, '[');
+        $lastBracket = strrpos($trimmed, ']');
+        $start = null; $end = null;
+        if ($firstBrace !== false && $lastBrace !== false && $lastBrace > $firstBrace) { $start = $firstBrace; $end = $lastBrace; }
+        elseif ($firstBracket !== false && $lastBracket !== false && $lastBracket > $firstBracket) { $start = $firstBracket; $end = $lastBracket; }
+        if ($start !== null && $end !== null) {
+            $jsonStr = substr($trimmed, $start, $end - $start + 1);
+            $decoded2 = json_decode($jsonStr, true);
+            if (is_array($decoded2)) { return $decoded2; }
+        }
+        return null;
     }
 }
