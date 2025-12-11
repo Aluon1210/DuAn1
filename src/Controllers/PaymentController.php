@@ -1534,7 +1534,7 @@ class PaymentController extends Controller
     {
         $s = strtoupper(trim((string)$desc));
         if ($s === '') return '';
-        if (preg_match('/\bORD[0-9A-Z]+\b/', $s, $m)) {
+        if (preg_match('/\bORD[0-9]+\b/', $s, $m)) {
             return $m[0];
         }
         return '';

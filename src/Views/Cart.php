@@ -512,7 +512,14 @@ if (payBtn) {
   (function(){
     var qp = new URLSearchParams(window.location.search);
     var inv = qp.get('invoice');
-    if(inv){ openInvoiceModal(inv); }
+    if(inv){
+      try{
+        var up = String(inv||'').toUpperCase();
+        var m = up.match(/\bORD[0-9]+\b/);
+        if(m && m[0]){ inv = m[0]; }
+      }catch(e){}
+      openInvoiceModal(inv);
+    }
   })();
 </script>
 

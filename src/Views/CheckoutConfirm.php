@@ -761,7 +761,7 @@
   // Hiá»ƒn thá»‹ payment modal
   function showPaymentModal() {
     // Táº¡o order ID duy nháº¥t cho session nÃ y (pháº£i táº¡o trÆ°á»›c khi táº¡o mÃ´ táº£/QR)
-    currentOrderId = 'ORD' + Date.now() + '' + Math.random().toString(36).substr(2, 9);
+    currentOrderId = 'ORD' + String(Date.now()).slice(-9);
 
     // Láº¥y tÃªn ngÆ°á»i nháº­n
     const fullName = '<?php echo isset($user['name']) ? htmlspecialchars($user['name']) : (isset($user['username']) ? htmlspecialchars($user['username']) : 'KHACH HANG'); ?>';
@@ -1080,7 +1080,7 @@
     const template = qrConfig.template;
     const fullName = '<?php echo isset($user['name']) ? htmlspecialchars($user['name']) : (isset($user['username']) ? htmlspecialchars($user['username']) : 'KHACH HANG'); ?>';
     // Sá»­ dá»¥ng order id hiá»‡n táº¡i Ä‘á»ƒ lÃ m mÃ´ táº£; náº¿u chÆ°a cÃ³ thÃ¬ táº¡o táº¡m
-    const orderIdForDesc = currentOrderId || ('ORD' + Date.now() + '' + Math.random().toString(36).substr(2, 9));
+    const orderIdForDesc = currentOrderId || ('ORD' + String(Date.now()).slice(-9));
     let description = orderIdForDesc;
     if (productNames.length > 0) {
       if (productNames.length === 1) {
@@ -1109,7 +1109,7 @@
   // Gọi API kiểm tra thanh toán (Khi nhấn nút "Đã chuyển khoản rồi")
   async function checkPayment() {
     // Mô tả khi chủ động check: chỉ gửi order id
-    const description = currentOrderId || ('ORD' + Date.now() + '' + Math.random().toString(36).substr(2, 9));
+    const description = currentOrderId || ('ORD' + String(Date.now()).slice(-9));
     if (productNames.length > 0) {
       if (productNames.length === 1) {
         // description += ' - ' + productNames[0];
