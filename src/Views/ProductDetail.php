@@ -432,12 +432,8 @@
             const variantInfo = document.getElementById('variant-info');
             if (variantInfo) {
                 const stock = variant.stock || 0;
-                const sku = variant.sku || 'N/A';
-
                 variantInfo.innerHTML = `
-                <p><strong>SKU:</strong> ${sku}</p>
                 <p><strong>Tồn kho:</strong> <span style="color: ${stock > 0 ? '#27ae60' : '#e74c3c'}; font-weight: 600;">${stock} sản phẩm</span></p>
-                <p><strong>Giá:</strong> ${new Intl.NumberFormat('vi-VN').format(variant.price)} ₫</p>
             `;
                 variantInfo.style.display = 'block';
             }
@@ -447,6 +443,15 @@
             if (quantityInput) {
                 quantityInput.max = variant.stock;
                 quantityInput.value = Math.min(1, variant.stock);
+            }
+
+            // Hiển thị số lượng còn lại
+            const remainingStockEl = document.getElementById('remaining-stock');
+            if (remainingStockEl) {
+                const stock = variant.stock || 0;
+                remainingStockEl.textContent = `(Còn lại: ${stock})`;
+                remainingStockEl.style.display = 'inline';
+                remainingStockEl.style.color = stock > 0 ? '#27ae60' : '#e74c3c';
             }
 
             // Cập nhật variant_id hidden input
@@ -465,6 +470,15 @@
             } else {
                 if (addToCartBtn) addToCartBtn.style.display = 'none';
                 if (outOfStockMsg) outOfStockMsg.style.display = 'block';
+            }
+        }
+
+        const alertEl = document.getElementById('variant-alert');
+        if (alertEl) {
+            if (selectedColor || selectedSize) {
+                alertEl.style.display = 'none';
+            } else {
+                alertEl.style.display = 'block';
             }
         }
 
@@ -551,11 +565,20 @@
 
 <?php if (isset($product) && $product): ?>
     <div class="product-detail-container">
-        <a href="<?php echo ROOT_URL; ?>product" class="btn btn-primary"
-            style="margin-bottom: 30px; display: inline-flex; align-items: center; gap: 8px;">
-            <span>←</span>
-            <span>Quay lại danh sách</span>
-        </a>
+        <div style="margin-bottom: 30px; display: flex; align-items: center; justify-content: space-between; gap: 16px;">
+            <a href="<?php echo ROOT_URL; ?>product" class="btn btn-primary"
+                style="display: inline-flex; align-items: center; gap: 8px;">
+                <span>←</span>
+                <span>Tiếp tục mua sắm</span>
+            </a>
+            <?php if (!empty($variants) && (!empty($availableColors) || !empty($availableSizes))): ?>
+                <div id="variant-alert" class="alert alert-warning" style="margin: 0;">
+                    ℹ️ Vui lòng chọn
+                    <?php echo !empty($availableColors) ? 'màu sắc' : ''; ?><?php echo !empty($availableColors) && !empty($availableSizes) ? ' và ' : ''; ?><?php echo !empty($availableSizes) ? 'kích thước' : ''; ?>
+                    để xem thông tin chi tiết và giá.
+                </div>
+            <?php endif; ?>
+        </div>
 
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 50px; margin-top: 30px;">
             <!-- Hình ảnh -->
@@ -578,27 +601,25 @@
                 <div class="product-detail-price" id="product-price">
                     <?php echo number_format($product['price'], 0, ',', '.'); ?></div>
 
-                <div class="product-info-box">
-                    <p>
-                        <strong>Danh mục:</strong>
-                        <?php
-                        $categoryId = $product['category_id'] ?? null;
-                        if (!empty($categories) && $categoryId !== null) {
-                            $cat = array_filter($categories, function ($c) use ($categoryId) {
-                                return is_array($c) && isset($c['id']) && $c['id'] == $categoryId;
-                            });
-                            if (!empty($cat)) {
-                                $firstCat = array_values($cat)[0];
-                                if (is_array($firstCat) && isset($firstCat['name'])) {
-                                    echo htmlspecialchars($firstCat['name']);
-                                }
+                <p style="margin: 16px 0;">
+                    <strong>Danh mục:</strong>
+                    <?php
+                    $categoryId = $product['category_id'] ?? null;
+                    if (!empty($categories) && $categoryId !== null) {
+                        $cat = array_filter($categories, function ($c) use ($categoryId) {
+                            return is_array($c) && isset($c['id']) && $c['id'] == $categoryId;
+                        });
+                        if (!empty($cat)) {
+                            $firstCat = array_values($cat)[0];
+                            if (is_array($firstCat) && isset($firstCat['name'])) {
+                                echo htmlspecialchars($firstCat['name']);
                             }
-                        } elseif (!empty($product['category_name'])) {
-                            echo htmlspecialchars($product['category_name']);
                         }
-                        ?>
-                    </p>
-                </div>
+                    } elseif (!empty($product['category_name'])) {
+                        echo htmlspecialchars($product['category_name']);
+                    }
+                    ?>
+                </p>
 
                 <?php if (!empty($variants)): ?>
                     <!-- Chọn màu sắc và kích thước -->
@@ -634,22 +655,12 @@
                             </div>
                         <?php endif; ?>
 
-                        <!-- Thông tin variant đã chọn -->
                         <div id="variant-info" class="variant-info" style="display: none;">
-                            <!-- Sẽ được cập nhật bởi JavaScript -->
                         </div>
                     </div>
 
                     <?php if (empty($availableColors) && empty($availableSizes)): ?>
-                        <div class="alert alert-info">
-                            Sản phẩm này có sẵn với cấu hình tiêu chuẩn.
-                        </div>
-                    <?php else: ?>
-                        <div class="alert alert-warning">
-                            ℹ️ Vui lòng chọn
-                            <?php echo !empty($availableColors) ? 'màu sắc' : ''; ?>            <?php echo !empty($availableColors) && !empty($availableSizes) ? ' và ' : ''; ?>            <?php echo !empty($availableSizes) ? 'kích thước' : ''; ?>
-                            để xem thông tin chi tiết và giá.
-                        </div>
+                        <div class="alert alert-info">Sản phẩm này có sẵn với cấu hình tiêu chuẩn.</div>
                     <?php endif; ?>
                 <?php else: ?>
                     <div class="product-info-box">
@@ -668,13 +679,6 @@
                     </div>
                 <?php endif; ?>
 
-                <div class="product-description-box">
-                    <h3>Mô tả sản phẩm</h3>
-                    <p>
-                        <?php echo nl2br(htmlspecialchars($product['description'])); ?>
-                    </p>
-                </div>
-
                 <!-- Form thêm vào giỏ hàng -->
                 <?php if (!empty($variants)): ?>
                     <form method="POST" action="<?php echo ROOT_URL; ?>cart/add/<?php echo $product['id']; ?>"
@@ -684,6 +688,7 @@
                         <div class="quantity-selector">
                             <label for="quantity">Số lượng:</label>
                             <input type="number" id="quantity" name="quantity" value="1" min="1" max="1" required>
+                            <span id="remaining-stock" style="font-size: 14px; margin-left: 8px; display: none;"></span>
                         </div>
 
                         <button type="submit" id="add-to-cart-btn" class="btn btn-success"
@@ -723,6 +728,12 @@
                     </div>
                 <?php endif; ?>
             </div>
+        </div>
+        <div class="product-description-box">
+            <h3>Mô tả sản phẩm</h3>
+            <p>
+                <?php echo nl2br(htmlspecialchars($product['description'])); ?>
+            </p>
         </div>
     </div>
 
