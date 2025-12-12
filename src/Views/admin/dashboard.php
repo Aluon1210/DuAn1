@@ -104,21 +104,6 @@
                     <div class="card">
                         <div class="panel-header">
                             <div class="panel-title">Top 5 sản phẩm bán chạy</div>
-                            <div class="controls">
-                                <label>Tuần/Tháng</label>
-                                <select class="select-week" data-target="top-products">
-                                    <option value="">-- Chọn tuần --</option>
-                                    <?php foreach (($data['weekOptions'] ?? []) as $w): ?>
-                                        <option value="<?php echo htmlspecialchars($w); ?>"><?php echo htmlspecialchars($w); ?></option>
-                                    <?php endforeach; ?>
-                                </select>
-                                <select class="select-month" data-target="top-products">
-                                    <option value="">-- Chọn tháng --</option>
-                                    <?php foreach (($data['monthOptions'] ?? []) as $m): ?>
-                                        <option value="<?php echo htmlspecialchars($m); ?>"><?php echo htmlspecialchars($m); ?></option>
-                                    <?php endforeach; ?>
-                                </select>
-                            </div>
                         </div>
                         <canvas id="chart-top-products" width="600" height="240"></canvas>
                     </div>
@@ -127,21 +112,6 @@
                     <div class="card">
                         <div class="panel-header">
                             <div class="panel-title">Top 5 khách hàng theo doanh số</div>
-                            <div class="controls">
-                                <label>Tuần/Tháng</label>
-                                <select class="select-week" data-target="top-customers">
-                                    <option value="">-- Chọn tuần --</option>
-                                    <?php foreach (($data['weekOptions'] ?? []) as $w): ?>
-                                        <option value="<?php echo htmlspecialchars($w); ?>"><?php echo htmlspecialchars($w); ?></option>
-                                    <?php endforeach; ?>
-                                </select>
-                                <select class="select-month" data-target="top-customers">
-                                    <option value="">-- Chọn tháng --</option>
-                                    <?php foreach (($data['monthOptions'] ?? []) as $m): ?>
-                                        <option value="<?php echo htmlspecialchars($m); ?>"><?php echo htmlspecialchars($m); ?></option>
-                                    <?php endforeach; ?>
-                                </select>
-                            </div>
                         </div>
                         <canvas id="chart-top-customers" width="600" height="240"></canvas>
                     </div>
@@ -337,15 +307,19 @@ if(ctxTopCust){ makeBarChart(ctxTopCust, topCustomerLabels, topCustomerData, 'Do
 document.querySelectorAll('.select-week').forEach(function(el){
     el.addEventListener('change', function(e){
         const v = e.target.value;
-        if (v) window.location.href = window.location.pathname + '?week=' + encodeURIComponent(v);
-        else window.location.href = window.location.pathname;
+        const params = new URLSearchParams(window.location.search);
+        if (v) { params.set('week', v); } else { params.delete('week'); }
+        const qs = params.toString();
+        window.location.href = window.location.pathname + (qs ? '?' + qs : '');
     });
 });
 document.querySelectorAll('.select-month').forEach(function(el){
     el.addEventListener('change', function(e){
         const v = e.target.value;
-        if (v) window.location.href = window.location.pathname + '?month=' + encodeURIComponent(v);
-        else window.location.href = window.location.pathname;
+        const params = new URLSearchParams(window.location.search);
+        if (v) { params.set('month', v); } else { params.delete('month'); }
+        const qs = params.toString();
+        window.location.href = window.location.pathname + (qs ? '?' + qs : '');
     });
 });
 </script>

@@ -307,6 +307,8 @@
         color: #fff;
         border-color: var(--gold);
     }
+    .col-address { width: 22%; min-width: 260px; }
+    .col-address small { white-space: normal; word-break: break-word; }
 </style>
 
 <body>
@@ -326,53 +328,7 @@
                 </div>
             <?php endif; ?>
 
-            <!-- Filter Section -->
-            <div class="filter-section">
-                <form method="GET" action="<?php echo ROOT_URL; ?>admin/orders">
-                    <div class="filter-row">
-                        <div class="form-group">
-                            <label for="filter-status">Trạng thái</label>
-                            <select id="filter-status" name="status">
-                                <option value="">-- Tất cả --</option>
-                                <option value="pending" <?php echo ($data['filter']['status'] === 'pending') ? 'selected' : ''; ?>>Chờ xác nhận</option>
-                                <option value="confirmed" <?php echo ($data['filter']['status'] === 'confirmed') ? 'selected' : ''; ?>>Chờ giao hàng</option>
-                                <option value="shipping" <?php echo ($data['filter']['status'] === 'shipping') ? 'selected' : ''; ?>>Vận chuyển</option>
-                                <option value="delivered" <?php echo ($data['filter']['status'] === 'delivered') ? 'selected' : ''; ?>>Hoàn thành</option>
-                                <option value="cancelled" <?php echo ($data['filter']['status'] === 'cancelled') ? 'selected' : ''; ?>>Đã hủy</option>
-                                <option value="return" <?php echo ($data['filter']['status'] === 'return') ? 'selected' : ''; ?>>Trả hàng</option>
-                            </select>
-                        </div>
-
-                        <div class="form-group">
-                            <label for="filter-search">Tìm kiếm</label>
-                            <input type="text" id="filter-search" name="q" placeholder="Mã đơn hàng, tên khách..."
-                                   value="<?php echo htmlspecialchars($data['filter']['q'] ?? ''); ?>">
-                        </div>
-
-                        <div class="form-group">
-                            <label for="filter-sort">Sắp xếp theo ngày</label>
-                            <select id="filter-sort" name="sort">
-                                <option value="desc" <?php echo ($data['filter']['sort'] === 'desc') ? 'selected' : ''; ?>>Z-A (Mới nhất)</option>
-                                <option value="asc" <?php echo ($data['filter']['sort'] === 'asc') ? 'selected' : ''; ?>>A-Z (Cũ nhất)</option>
-                            </select>
-                        </div>
-
-                        <div class="form-group">
-                            <button type="submit" class="btn btn-primary">Lọc</button>
-                        </div>
-                    </div>
-                </form>
-            </div>
-
-            <!-- Stats -->
-            <div class="stats-box">
-                <div>
-                    <strong>Tổng đơn hàng:</strong> <?php echo (int)($data['pagination']['total'] ?? 0); ?>
-                </div>
-                <div>
-                    <strong>Trang:</strong> <?php echo $data['pagination']['page']; ?> / <?php echo $data['pagination']['totalPages']; ?>
-                </div>
-            </div>
+            
 
             <!-- Voucher Management -->
             <div class="filter-section" id="voucherAdmin">
@@ -461,6 +417,54 @@
                 </div>
             </div>
 
+            <!-- Filter Section -->
+            <div class="filter-section">
+                <form method="GET" action="<?php echo ROOT_URL; ?>admin/orders">
+                    <div class="filter-row">
+                        <div class="form-group">
+                            <label for="filter-status">Trạng thái</label>
+                            <select id="filter-status" name="status">
+                                <option value="">-- Tất cả --</option>
+                                <option value="pending" <?php echo ($data['filter']['status'] === 'pending') ? 'selected' : ''; ?>>Chờ xác nhận</option>
+                                <option value="confirmed" <?php echo ($data['filter']['status'] === 'confirmed') ? 'selected' : ''; ?>>Chờ giao hàng</option>
+                                <option value="shipping" <?php echo ($data['filter']['status'] === 'shipping') ? 'selected' : ''; ?>>Vận chuyển</option>
+                                <option value="delivered" <?php echo ($data['filter']['status'] === 'delivered') ? 'selected' : ''; ?>>Hoàn thành</option>
+                                <option value="cancelled" <?php echo ($data['filter']['status'] === 'cancelled') ? 'selected' : ''; ?>>Đã hủy</option>
+                                <option value="return" <?php echo ($data['filter']['status'] === 'return') ? 'selected' : ''; ?>>Trả hàng</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="filter-search">Tìm kiếm</label>
+                            <input type="text" id="filter-search" name="q" placeholder="Mã đơn hàng, tên khách..."
+                                   value="<?php echo htmlspecialchars($data['filter']['q'] ?? ''); ?>">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="filter-sort">Sắp xếp theo ngày</label>
+                            <select id="filter-sort" name="sort">
+                                <option value="desc" <?php echo ($data['filter']['sort'] === 'desc') ? 'selected' : ''; ?>>Z-A (Mới nhất)</option>
+                                <option value="asc" <?php echo ($data['filter']['sort'] === 'asc') ? 'selected' : ''; ?>>A-Z (Cũ nhất)</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <button type="submit" class="btn btn-primary">Lọc</button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Stats -->
+            <div class="stats-box">
+                <div>
+                    <strong>Tổng đơn hàng:</strong> <?php echo (int)($data['pagination']['total'] ?? 0); ?>
+                </div>
+                <div>
+                    <strong>Trang:</strong> <?php echo $data['pagination']['page']; ?> / <?php echo $data['pagination']['totalPages']; ?>
+                </div>
+            </div>
+
             <!-- Orders Table -->
             <div class="table-container">
                 <?php if (!empty($data['orders'])): ?>
@@ -469,14 +473,14 @@
                             <tr>
                                 <th width="12%">Mã Đơn Hàng</th>
                                 <th width="12%">Người nhận</th>
-                                <th width="10%">SDT</th>
+                                <th width="9%">SDT</th>
                                 <th width="10%">Tổng tiền</th>
-                                <th width="8%">Số lượng</th>
-                                <th width="13%">Trạng thái</th>
-                                <th width="10%">Ngày đặt hàng</th>
-                                <th width="10%">Thanh toán</th>
-                                <th width="14%">Ghi chú</th>
-                                <th width="11%">Địa chỉ giao hàng</th>
+                                <th width="7%">Số lượng</th>
+                                <th width="12%">Trạng thái</th>
+                                <th width="8%">Ngày đặt hàng</th>
+                                <th width="8%">Thanh toán</th>
+                                <th width="10%">Ghi chú</th>
+                                <th class="col-address">Địa chỉ giao hàng</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -546,7 +550,7 @@
                                         <?php endif; ?>
                                     </td>
                                     <td><small><?php echo htmlspecialchars($noteDisplay); ?></small></td>
-                                    <td><small><?php echo htmlspecialchars($address); ?></small></td>
+                                    <td class="col-address"><small><?php echo htmlspecialchars($address); ?></small></td>
                                 </tr>
                             <?php endforeach; ?>
                         </tbody>

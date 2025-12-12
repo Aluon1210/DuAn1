@@ -383,62 +383,70 @@ public function stats() {
     $this->renderView('admin/stat');
 }
 
-public function dashboard() {
-    $this->requireAdmin();
+    public function dashboard() {
+        $this->requireAdmin();
 
-    $dm = new Dashboard();
-    $year = (int)date('Y');
+        $dm = new Dashboard();
+        $year = (int)date('Y');
 
-    // get optional selectors from query
-    $selectedWeek = isset($_GET['week']) ? trim($_GET['week']) : null; // format YYYY-WW
-    $selectedMonth = isset($_GET['month']) ? trim($_GET['month']) : null; // format YYYY-MM
+        // get optional selectors from query
+        $selectedWeek = isset($_GET['week']) ? trim($_GET['week']) : null; // format YYYY-WW
+        $selectedMonth = isset($_GET['month']) ? trim($_GET['month']) : null; // format YYYY-MM
+        $rangeStart = isset($_GET['start']) ? trim($_GET['start']) : null; // YYYY-MM-DD
+        $rangeEnd = isset($_GET['end']) ? trim($_GET['end']) : null; // YYYY-MM-DD
 
-    // default period-level data (yearly)
-    $topCustomers = $dm->topCustomers($year, 5);
-    $topProducts = $dm->topProducts($year, 5);
-    $revenueByMonth = $dm->revenueByMonth($year);
-    $revenueByWeek = $dm->revenueByWeek(12); // last 12 weeks
-    $topWorst = $dm->topWorstProducts($year, 5);
+        // default period-level data (yearly)
+        $topCustomers = $dm->topCustomers($year, 5);
+        $topProducts = $dm->topProducts($year, 5);
+        $revenueByMonth = $dm->revenueByMonth($year);
+        $revenueByWeek = $dm->revenueByWeek(12); // last 12 weeks
+        $topWorst = $dm->topWorstProducts($year, 5);
 
-    // per-day datasets for selected week or month
-    $weeklyPerDay = [];
-    $monthlyPerDay = [];
-    $topProductsPeriod = $topProducts;
-    $topCustomersPeriod = $topCustomers;
+        // per-day datasets for selected week or month
+        $weeklyPerDay = [];
+        $monthlyPerDay = [];
+        $topProductsPeriod = $topProducts;
+        $topCustomersPeriod = $topCustomers;
 
-    if ($selectedWeek) {
-        // parse selectedWeek YYYY-WW
-        if (preg_match('/^(\d{4})-W?(\d{1,2})$/', $selectedWeek, $m)) {
-            $wYear = (int)$m[1];
-            $wNum = (int)$m[2];
-            $weeklyPerDay = $dm->revenueByWeekPerDay($wYear, $wNum);
+        if ($selectedWeek) {
+            // parse selectedWeek YYYY-WW
+            if (preg_match('/^(\d{4})-W?(\d{1,2})$/', $selectedWeek, $m)) {
+                $wYear = (int)$m[1];
+                $wNum = (int)$m[2];
+                $weeklyPerDay = $dm->revenueByWeekPerDay($wYear, $wNum);
 
-            $dt = new \DateTime();
-            $dt->setISODate($wYear, $wNum);
-            $start = $dt->format('Y-m-d');
-            $dt->modify('+6 days');
-            $end = $dt->format('Y-m-d');
+                $dt = new \DateTime();
+                $dt->setISODate($wYear, $wNum);
+                $start = $dt->format('Y-m-d');
+                $dt->modify('+6 days');
+                $end = $dt->format('Y-m-d');
 
-            $topProductsPeriod = $dm->topProductsByRange($start, $end, 5);
-            $topCustomersPeriod = $dm->topCustomersByRange($start, $end, 5);
+                $topProductsPeriod = $dm->topProductsByRange($start, $end, 5);
+                $topCustomersPeriod = $dm->topCustomersByRange($start, $end, 5);
+            }
         }
-    }
 
-    if ($selectedMonth) {
-        if (preg_match('/^(\d{4})-(\d{1,2})$/', $selectedMonth, $mm)) {
-            $mYear = (int)$mm[1];
-            $mNum = (int)$mm[2];
-            $monthlyPerDay = $dm->revenueByMonthDays($mYear, $mNum, 30);
+        if ($selectedMonth) {
+            if (preg_match('/^(\d{4})-(\d{1,2})$/', $selectedMonth, $mm)) {
+                $mYear = (int)$mm[1];
+                $mNum = (int)$mm[2];
+                $monthlyPerDay = $dm->revenueByMonthDays($mYear, $mNum, 30);
 
-            $start = sprintf('%04d-%02d-01', $mYear, $mNum);
-            $dt2 = new \DateTime($start);
-            $dt2->modify('+29 days');
-            $end = $dt2->format('Y-m-d');
+                $start = sprintf('%04d-%02d-01', $mYear, $mNum);
+                $dt2 = new \DateTime($start);
+                $dt2->modify('+29 days');
+                $end = $dt2->format('Y-m-d');
 
-            $topProductsPeriod = $dm->topProductsByRange($start, $end, 5);
-            $topCustomersPeriod = $dm->topCustomersByRange($start, $end, 5);
+                $topProductsPeriod = $dm->topProductsByRange($start, $end, 5);
+                $topCustomersPeriod = $dm->topCustomersByRange($start, $end, 5);
+            }
         }
-    }
+        
+        if ($rangeStart && $rangeEnd && preg_match('/^\d{4}-\d{2}-\d{2}$/', $rangeStart) && preg_match('/^\d{4}-\d{2}-\d{2}$/', $rangeEnd)) {
+            $weeklyPerDay = $dm->revenueByRangePerDay($rangeStart, $rangeEnd);
+            $topProductsPeriod = $dm->topProductsByRange($rangeStart, $rangeEnd, 5);
+            $topCustomersPeriod = $dm->topCustomersByRange($rangeStart, $rangeEnd, 5);
+        }
 
     // Build last-12 week options and last 12 months for selectors
     $weekOptions = array_keys($dm->revenueByWeek(12));
@@ -462,15 +470,17 @@ public function dashboard() {
     // extra period data
     $data['weeklyPerDay'] = $weeklyPerDay;
     $data['monthlyPerDay'] = $monthlyPerDay;
-    $data['topProductsPeriod'] = $topProductsPeriod;
-    $data['topCustomersPeriod'] = $topCustomersPeriod;
-    $data['selectedWeek'] = $selectedWeek;
-    $data['selectedMonth'] = $selectedMonth;
-    $data['weekOptions'] = $weekOptions;
-    $data['monthOptions'] = $monthOptions;
+        $data['topProductsPeriod'] = $topProductsPeriod;
+        $data['topCustomersPeriod'] = $topCustomersPeriod;
+        $data['selectedWeek'] = $selectedWeek;
+        $data['selectedMonth'] = $selectedMonth;
+        $data['rangeStart'] = $rangeStart;
+        $data['rangeEnd'] = $rangeEnd;
+        $data['weekOptions'] = $weekOptions;
+        $data['monthOptions'] = $monthOptions;
 
-    $this->renderView('admin/dashboard', $data);
-}
+        $this->renderView('admin/dashboard', $data);
+    }
 
     /**
      * Mặc định chuyển vào quản lý sản phẩm
@@ -857,5 +867,4 @@ public function dashboard() {
 }
 
 ?>
-
 
