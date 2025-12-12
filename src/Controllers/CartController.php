@@ -380,6 +380,39 @@ class CartController extends Controller
         exit;
     }
 
+    public function remove($cartId = null)
+    {
+        $this->initCart();
+        if (!isset($_SESSION['user'])) {
+            header('Location: ' . ROOT_URL . 'login');
+            exit;
+        }
+        if (!$cartId) {
+            $_SESSION['error'] = 'Không tìm thấy sản phẩm cần xóa';
+            header('Location: ' . ROOT_URL . 'cart');
+            exit;
+        }
+        $cartModel = new \Models\Cart();
+        $userId = $_SESSION['user']['id'] ?? $_SESSION['user']['username'] ?? '';
+        $items = $cartModel->getCartByUserId($userId);
+        $exists = false;
+        foreach ($items as $it) {
+            if (($it['_Cart_Id'] ?? '') === $cartId) {
+                $exists = true;
+                break;
+            }
+        }
+        if (!$exists) {
+            $_SESSION['error'] = 'Sản phẩm không tồn tại trong giỏ hàng của bạn';
+            header('Location: ' . ROOT_URL . 'cart');
+            exit;
+        }
+        $cartModel->deleteCart($cartId);
+        $_SESSION['message'] = 'Đã xóa sản phẩm khỏi giỏ hàng';
+        header('Location: ' . ROOT_URL . 'cart');
+        exit;
+    }
+
     /**
      * Xác nhận thanh toán (bước 1 giống Shopee)
      * URL: /cart/confirm (POST)
