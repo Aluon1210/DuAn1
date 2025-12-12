@@ -154,6 +154,42 @@
         color: var(--primary-black);
         text-decoration: underline;
     }
+    .modal-overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(0,0,0,0.5);
+        display: none;
+        align-items: center;
+        justify-content: center;
+        z-index: 1000;
+    }
+    .modal-overlay.active { display: flex; }
+    .modal-card {
+        background: #fff;
+        border-radius: 16px;
+        width: 100%;
+        max-width: 480px;
+        padding: 24px;
+        box-shadow: var(--shadow-hover);
+    }
+    .modal-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 16px;
+    }
+    .modal-title {
+        font-size: 20px;
+        font-weight: 700;
+        color: var(--primary-black);
+    }
+    .modal-close {
+        background: transparent;
+        border: none;
+        font-size: 20px;
+        cursor: pointer;
+        line-height: 1;
+    }
 </style>
 
 <div class="auth-container">
@@ -207,13 +243,37 @@
                 <input type="checkbox" name="remember">
                 <span>Ghi nhớ đăng nhập</span>
             </label>
-            <a href="#">Quên mật khẩu?</a>
+            <a href="#" id="forgotPasswordLink">Quên mật khẩu?</a>
         </div>
 
         <button type="submit" class="btn btn-success auth-submit">
             Đăng Nhập
         </button>
     </form>
+
+    <div class="modal-overlay" id="forgotPasswordModal">
+      <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="forgotTitle">
+        <div class="modal-header">
+          <div class="modal-title" id="forgotTitle">🔐 Lấy lại mật khẩu</div>
+          <button class="modal-close" type="button" id="forgotCloseBtn" aria-label="Đóng">×</button>
+        </div>
+        <form method="POST" action="<?php echo ROOT_URL; ?>auth/send-reset-link" class="auth-form" id="forgotPasswordForm">
+          <div class="form-group">
+            <label for="forgot_email">Email đã đăng ký</label>
+            <input 
+              type="email" 
+              id="forgot_email" 
+              name="email" 
+              placeholder="Nhập email đã đăng ký"
+              required
+            >
+          </div>
+          <button type="submit" class="btn btn-primary auth-submit">
+            Gửi liên kết đặt lại mật khẩu
+          </button>
+        </form>
+      </div>
+    </div>
 
     <div class="auth-divider">
         <span>HOẶC</span>
@@ -230,6 +290,38 @@
         <a href="<?php echo ROOT_URL; ?>register">Đăng ký ngay</a>
     </div>
 </div>
+
+<script>
+  (function(){
+    var link = document.getElementById('forgotPasswordLink');
+    var modal = document.getElementById('forgotPasswordModal');
+    var closeBtn = document.getElementById('forgotCloseBtn');
+    var emailInput = document.getElementById('email');
+    var forgotEmail = document.getElementById('forgot_email');
+    function openModal(){
+      if (!modal) return;
+      modal.classList.add('active');
+      if (emailInput && forgotEmail && !forgotEmail.value) {
+        forgotEmail.value = emailInput.value || '';
+      }
+      try { forgotEmail.focus(); } catch(_){}
+    }
+    function closeModal(){
+      if (!modal) return;
+      modal.classList.remove('active');
+    }
+    if (link) {
+      link.addEventListener('click', function(e){ e.preventDefault(); openModal(); });
+    }
+    if (closeBtn) {
+      closeBtn.addEventListener('click', function(){ closeModal(); });
+    }
+    if (modal) {
+      modal.addEventListener('click', function(e){ if (e.target === modal) { closeModal(); } });
+      document.addEventListener('keydown', function(e){ if (e.key === 'Escape') { closeModal(); } });
+    }
+  })();
+</script>
 
 <?php require_once ROOT_PATH . '/src/Views/includes/footer.php'; ?>
 

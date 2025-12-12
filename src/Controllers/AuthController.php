@@ -358,6 +358,167 @@ class AuthController extends Controller {
         header('Location: ' . ROOT_URL . 'login');
         exit;
     }
+
+    public function sendResetLink()
+    {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            header('Location: ' . ROOT_URL . 'login');
+            exit;
+        }
+        $email = trim($_POST['email'] ?? '');
+        if ($email === '' || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            $_SESSION['error'] = 'Email không hợp lệ';
+            header('Location: ' . ROOT_URL . 'login');
+            exit;
+        }
+        $userModel = new User();
+        $user = $userModel->getByEmail($email);
+        $token = bin2hex(random_bytes(32));
+        $expires = time() + 1800;
+        $storageDir = ROOT_PATH . '/storage';
+        if (!is_dir($storageDir)) {
+            @mkdir($storageDir, 0755, true);
+        }
+        $resetFile = $storageDir . '/password_resets.json';
+        $resets = [];
+        if (file_exists($resetFile)) {
+            $json = @file_get_contents($resetFile);
+            $arr = json_decode($json, true);
+            if (is_array($arr)) {
+                $resets = $arr;
+            }
+        }
+        $now = time();
+        $resets = array_values(array_filter($resets, function($r) use ($now, $email) {
+            return isset($r['email'], $r['token'], $r['expires']) && $r['email'] !== $email && (int)$r['expires'] > $now;
+        }));
+        $resets[] = ['email' => $email, 'token' => $token, 'expires' => $expires];
+        @file_put_contents($resetFile, json_encode($resets), LOCK_EX);
+        $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+        $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
+        $baseUrl = rtrim($scheme . '://' . $host . ROOT_URL, '/');
+        $resetUrl = $baseUrl . '/auth/reset-password/' . urlencode($token);
+        $subject = 'Dat lai mat khau';
+        $body = "Ban da yeu cau dat lai mat khau.\nLien ket: " . $resetUrl . "\nLien ket het han sau 30 phut.";
+        $sent = false;
+        $mailConf = require ROOT_PATH . '/src/Config/email.php';
+        $smtpConf = $mailConf['smtp'] ?? [];
+        if (!empty($smtpConf['enabled'])) {
+            try {
+                $fromEmail = $smtpConf['from_email'] ?? '';
+                $fromName = $smtpConf['from_name'] ?? '';
+                $sent = \Core\EmailSender::send($email, $subject, $body, $fromEmail, $fromName);
+            } catch (\Throwable $e) {
+                $sent = false;
+            }
+        }
+        if (!$sent && $user) {
+            $headers = 'From: ' . ($smtpConf['from_email'] ?? 'noreply@localhost');
+            @mail($email, $subject, $body, $headers);
+        }
+        if (!$sent) {
+            try {
+                $sent = \Core\EmailSender::sendCustom($email, $subject, $body, [
+                    'host' => $smtpConf['host'] ?? 'smtp.gmail.com',
+                    'port' => 465,
+                    'username' => $smtpConf['username'] ?? '',
+                    'password' => $smtpConf['password'] ?? '',
+                    'encryption' => 'ssl',
+                    'timeout' => (int)($smtpConf['timeout'] ?? 30),
+                    'from_email' => $smtpConf['from_email'] ?? '',
+                    'from_name' => $smtpConf['from_name'] ?? ''
+                ]);
+            } catch (\Throwable $e) {}
+        }
+        $logFile = $storageDir . '/password_reset_links.log';
+        $logEntry = date('Y-m-d H:i:s') . ' | ' . $email . ' | ' . $resetUrl . "\n";
+        @file_put_contents($logFile, $logEntry, FILE_APPEND | LOCK_EX);
+        if ($sent) {
+            $_SESSION['message'] = 'Đã gửi liên kết đặt lại mật khẩu. Vui lòng kiểm tra email.';
+            header('Location: ' . ROOT_URL . 'login');
+            exit;
+        } else {
+            $_SESSION['error'] = 'Không thể gửi email đặt lại mật khẩu. Vui lòng thử lại sau.';
+            header('Location: ' . ROOT_URL . 'login');
+            exit;
+        }
+    }
+
+    public function resetPassword($token = null)
+    {
+        $storageDir = ROOT_PATH . '/storage';
+        $resetFile = $storageDir . '/password_resets.json';
+        $resets = [];
+        if (file_exists($resetFile)) {
+            $json = @file_get_contents($resetFile);
+            $arr = json_decode($json, true);
+            if (is_array($arr)) {
+                $resets = $arr;
+            }
+        }
+        $now = time();
+        $record = null;
+        foreach ($resets as $r) {
+            if (isset($r['token'], $r['expires']) && $r['token'] === (string)$token && (int)$r['expires'] > $now) {
+                $record = $r;
+                break;
+            }
+        }
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $tok = $_POST['token'] ?? '';
+            $pwd = $_POST['password'] ?? '';
+            $cf = $_POST['confirm_password'] ?? '';
+            if ($tok === '' || $pwd === '' || $cf === '' || $pwd !== $cf || strlen($pwd) < 6) {
+                $_SESSION['error'] = 'Thông tin không hợp lệ';
+                header('Location: ' . ROOT_URL . 'login');
+                exit;
+            }
+            $record = null;
+            foreach ($resets as $r) {
+                if (isset($r['token'], $r['expires']) && $r['token'] === (string)$tok && (int)$r['expires'] > time()) {
+                    $record = $r;
+                    break;
+                }
+            }
+            if (!$record || empty($record['email'])) {
+                $_SESSION['error'] = 'Liên kết không hợp lệ hoặc đã hết hạn';
+                header('Location: ' . ROOT_URL . 'login');
+                exit;
+            }
+            $userModel = new User();
+            $user = $userModel->getByEmail($record['email']);
+            if (!$user || empty($user['id'])) {
+                $_SESSION['error'] = 'Không tìm thấy tài khoản';
+                header('Location: ' . ROOT_URL . 'login');
+                exit;
+            }
+            $ok = $userModel->updateUser($user['id'], ['password' => $pwd]);
+            if ($ok) {
+                $resets = array_values(array_filter($resets, function($r) use ($tok) {
+                    return $r['token'] !== $tok;
+                }));
+                @file_put_contents($resetFile, json_encode($resets), LOCK_EX);
+                $_SESSION['message'] = 'Đặt lại mật khẩu thành công. Vui lòng đăng nhập.';
+                header('Location: ' . ROOT_URL . 'login');
+                exit;
+            } else {
+                $_SESSION['error'] = 'Không thể đặt lại mật khẩu';
+                header('Location: ' . ROOT_URL . 'login');
+                exit;
+            }
+        } else {
+            if (!$record) {
+                $_SESSION['error'] = 'Liên kết không hợp lệ hoặc đã hết hạn';
+                header('Location: ' . ROOT_URL . 'login');
+                exit;
+            }
+            $data = [
+                'title' => 'Đặt lại mật khẩu',
+                'token' => $token
+            ];
+            $this->renderView('auth/reset_password_full', $data);
+        }
+    }
 }
 ?>
 
