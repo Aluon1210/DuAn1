@@ -471,9 +471,6 @@
             <p class="qr-label" style="margin:0;">Mã QR sẽ hiển thị sau khi bạn nhấn "Đặt hàng"</p>
           </div>
         </div>
-
-        <button type="submit" class="btn btn-success" id="placeOrderBtn"
-          style="margin-top:16px; padding:14px 24px; width:100%;">Đặt hàng</button>
         <a href="<?php echo ROOT_URL; ?>cart" class="btn btn-primary"
           style="margin-top:10px; padding:12px 24px; width:100%;">Quay lại giỏ hàng</a>
       </div>
@@ -514,6 +511,10 @@
           <span>Tổng thanh toán</span><span id="grandTotalValue"><?php echo number_format($grandTotal, 0, ',', '.'); ?> ₫</span>
         </div>
       </div>
+    </div>
+    <div style="grid-column: 1 / -1; margin-top: 16px;">
+      <button type="submit" class="btn btn-success" id="placeOrderBtn"
+        style="padding:14px 24px; width:100%;">Đặt hàng</button>
     </div>
 
   </form>
