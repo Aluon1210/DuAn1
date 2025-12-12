@@ -632,8 +632,7 @@ class CartController extends Controller
             foreach ($selected as $cartKey) {
                 unset($_SESSION['cart'][$cartKey]);
             }
-            $_SESSION['message'] = 'Đặt hàng thành công! Mã đơn: ' . $orderId . '. Tổng tiền: ' . number_format($totalAmount, 0, ',', '.') . ' ₫. Đơn hàng đang chờ xác nhận.';
-            header('Location: ' . ROOT_URL . 'cart/invoice/' . urlencode($orderId));
+            header('Location: ' . ROOT_URL . 'cart?invoice=' . urlencode($orderId));
             exit;
         } else {
             $_SESSION['error'] = 'Đặt hàng thất bại. Vui lòng thử lại';
@@ -745,8 +744,7 @@ class CartController extends Controller
 
         if ($orderId) {
             foreach ($processedCartIds as $cid) { $cartModel->deleteCart($cid); }
-            $_SESSION['message'] = 'Đặt hàng thành công. Mã đơn: ' . $orderId . '. Tổng tiền: ' . number_format($totalAmount, 0, ',', '.') . ' ₫. Phương thức: OPT (Tiền mặt)';
-            header('Location: ' . ROOT_URL . 'cart?invoice=' . urlencode($orderId) . '&print=1');
+            header('Location: ' . ROOT_URL . 'cart?invoice=' . urlencode($orderId));
             exit;
         } else {
             $_SESSION['error'] = 'Đặt hàng thất bại. Vui lòng thử lại';
@@ -901,9 +899,7 @@ class CartController extends Controller
             foreach ($selected as $cartId) {
                 $cartModel->deleteCart($cartId);
             }
-            $paymentText = ($paymentMethod === 'online') ? 'Online (QR Code)' : 'OPT (Tiền mặt)';
-            $_SESSION['message'] = 'Đặt hàng thành công. Mã đơn: ' . $orderId . '. Tổng tiền: ' . number_format($totalAmount, 0, ',', '.') . ' ₫. Phương thức: ' . $paymentText;
-            header('Location: ' . ROOT_URL . 'cart?invoice=' . urlencode($orderId) . '&print=1');
+            header('Location: ' . ROOT_URL . 'cart?invoice=' . urlencode($orderId));
             exit;
         } else {
             $_SESSION['error'] = 'Đặt hàng thất bại. Vui lòng thử lại';
