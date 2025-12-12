@@ -564,13 +564,8 @@
 </script>
 
 <?php if (isset($product) && $product): ?>
-    <div class="product-detail-container">
-        <div style="margin-bottom: 30px; display: flex; align-items: center; justify-content: space-between; gap: 16px;">
-            <a href="<?php echo ROOT_URL; ?>product" class="btn btn-primary"
-                style="display: inline-flex; align-items: center; gap: 8px;">
-                <span>←</span>
-                <span>Tiếp tục mua sắm</span>
-            </a>
+    <div class="product-detail-container" style="position: relative;">
+        <div style="margin-bottom: 30px; display: flex; align-items: center; justify-content: flex-end; gap: 16px;">
             <?php if (!empty($variants) && (!empty($availableColors) || !empty($availableSizes))): ?>
                 <div id="variant-alert" class="alert alert-warning" style="margin: 0;">
                     ℹ️ Vui lòng chọn
@@ -583,6 +578,11 @@
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 50px; margin-top: 30px;">
             <!-- Hình ảnh -->
             <div class="product-detail-image">
+                <a href="<?php echo ROOT_URL; ?>product" class="btn btn-primary"
+                    style="position: absolute; top: 16px; left: 16px; z-index: 3; display: inline-flex; align-items: center; gap: 8px;">
+                    <span>←</span>
+                    <span>Tiếp tục mua sắm</span>
+                </a>
                 <?php if (!empty($product['image'])): ?>
                     <img src="<?php echo ROOT_URL; ?>public/images/<?php echo htmlspecialchars($product['image']); ?>"
                         alt="<?php echo htmlspecialchars($product['name']); ?>">
