@@ -200,6 +200,21 @@ table tr:hover td {
   background: #f1f1f1;
 }
 
+.col-action {
+  width: 140px;
+  text-align: center;
+}
+.col-action .action-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+.col-action .action-grid .btn {
+  width: 100%;
+  padding: 6px 0;
+  display: inline-block;
+}
+
 /* Responsive */
 @media (max-width: 768px) {
   .form-row {
@@ -319,7 +334,7 @@ table tr:hover td {
                 <th>Hãng</th>
                 <th>Giá</th>
                 <th>Kho</th>
-                <th>Hành động</th>
+                <th class="col-action">Thao tác</th>
               </tr>
             </thead>
             <tbody>
@@ -336,9 +351,11 @@ table tr:hover td {
                   <td><?php echo !empty($p['branch_name']) ? htmlspecialchars($p['branch_name']) : ''; ?></td>
                   <td><?php echo number_format($p['price'], 0, ',', '.'); ?> ₫</td>
                   <td><?php echo (int)$p['quantity']; ?></td>
-                  <td>
-                    <a class="btn btn-warning btn-small" href="<?php echo ROOT_URL; ?>admin/editProduct/<?php echo $p['id']; ?>">Sửa</a>
-                    <a class="btn btn-danger btn-small" href="<?php echo ROOT_URL; ?>admin/deleteProduct/<?php echo $p['id']; ?>" onclick="return confirm('Xóa sản phẩm này?');">Xóa</a>
+                  <td class="col-action">
+                    <div class="action-grid">
+                      <a class="btn btn-warning btn-small" href="<?php echo ROOT_URL; ?>admin/editProduct/<?php echo $p['id']; ?>">Sửa</a>
+                      <a class="btn btn-danger btn-small" href="<?php echo ROOT_URL; ?>admin/deleteProduct/<?php echo $p['id']; ?>" onclick="return confirm('Ẩn sản phẩm này?');">Ẩn</a>
+                    </div>
                   </td>
                 </tr>
               <?php endforeach; ?>
