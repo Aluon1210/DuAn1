@@ -10,6 +10,7 @@ class Order extends Model
 
     protected $table = 'orders';
     protected $primaryKey = 'Order_Id';
+    private $lastError = null;
 
     /**
      * Lấy đơn hàng kèm thông tin user
@@ -36,8 +37,13 @@ class Order extends Model
     {
         $sql = "SELECT * FROM {$this->table} 
                 WHERE _UserName_Id = :user_id 
-                ORDER BY Order_date DESC";
+                ORDER BY Order_date DESC, Order_Id DESC";
         return $this->query($sql, ['user_id' => $userId]);
+    }
+
+    public function getLastError()
+    {
+        return $this->lastError;
     }
 
     /**
@@ -91,7 +97,7 @@ class Order extends Model
 
             $dbData = [
                 'Order_Id' => $orderId,
-                'Order_date' => $data['order_date'] ?? $data['Order_date'] ?? date('Y-m-d'),
+                'Order_date' => $data['order_date'] ?? $data['Order_date'] ?? date('Y-m-d H:i:s'),
                 'Adress' => $data['address'] ?? $data['Adress'] ?? '',
                 'Note' => $data['note'] ?? $data['Note'] ?? '',
                 'TrangThai' => $status,
@@ -120,18 +126,22 @@ class Order extends Model
 
             if (empty($dbData['_UserName_Id'])) {
                 error_log("Order creation failed: Missing user_id");
+                $this->lastError = 'missing_user';
                 return false;
             }
 
             if ($this->create($dbData)) {
                 return $dbData['Order_Id'];
             }
+            $this->lastError = 'order_insert_failed';
             return false;
         } catch (\PDOException $e) {
             error_log("Order creation SQL Error: " . $e->getMessage());
-            throw $e;
+            $this->lastError = 'order_sql_error';
+            return false;
         } catch (\Exception $e) {
             error_log("Order creation Error: " . $e->getMessage());
+            $this->lastError = 'order_exception';
             return false;
         }
     }
@@ -199,6 +209,7 @@ class Order extends Model
             // 1. Tạo bản ghi trong bảng orders (không dùng transaction để tránh lock lâu)
             $orderId = $this->createOrder($orderData);
             if (!$orderId) {
+                $this->lastError = $this->lastError ?? 'order_create_failed';
                 return false;
             }
 
@@ -293,20 +304,26 @@ class Order extends Model
                 // Thực hiện insert, nếu lỗi thì log và bỏ qua chi tiết này
                 if (!$orderDetailModel->create($detailData)) {
                     error_log("Order createWithDetails: failed to create order_detail " . print_r($detailData, true));
+                    $this->lastError = 'order_detail_insert_failed';
                     continue;
                 }
                 $createdAnyDetail = true;
 
                 // 3. Trừ tồn kho variant
                 $newStock = max(0, $stock - $quantity);
-                $variantModel->updateVariant($variantId, [
-                    'product_id' => $productId,
-                    'color_id' => $variant['color_id'] ?? $variant['Color_Id'] ?? null,
-                    'size_id' => $variant['size_id'] ?? $variant['Size_Id'] ?? null,
-                    'price' => $price,
-                    'stock' => $newStock,
-                    'sku' => $variant['sku'] ?? $variant['SKU'] ?? ''
-                ]);
+                try {
+                    $variantModel->updateVariant($variantId, [
+                        'product_id' => $productId,
+                        'color_id' => $variant['color_id'] ?? $variant['Color_Id'] ?? null,
+                        'size_id' => $variant['size_id'] ?? $variant['Size_Id'] ?? null,
+                        'price' => $price,
+                        'stock' => $newStock,
+                        'sku' => $variant['sku'] ?? $variant['SKU'] ?? ''
+                    ]);
+                } catch (\Exception $e) {
+                    error_log("Order createWithDetails: updateVariant failed id={$variantId} - " . $e->getMessage());
+                    $this->lastError = 'update_variant_failed';
+                }
 
                 if (!in_array($productId, $productsToUpdate, true)) {
                     $productsToUpdate[] = $productId;
@@ -315,16 +332,23 @@ class Order extends Model
 
             if (!$createdAnyDetail) {
                 error_log("Order createWithDetails: no valid order_detail for order {$orderId}");
+                $this->lastError = 'no_valid_items';
                 return false;
             }
 
             // 4. Đồng bộ lại Quantity của bảng products từ tổng Quantity_In_Stock của variants
             foreach ($productsToUpdate as $pid) {
-                $productModel->updateQuantityFromVariants($pid);
+                try {
+                    $productModel->updateQuantityFromVariants($pid);
+                } catch (\Exception $e) {
+                    error_log("Order createWithDetails: updateQuantityFromVariants failed product={$pid} - " . $e->getMessage());
+                    $this->lastError = 'update_product_quantity_failed';
+                }
             }
             return $orderId;
         } catch (\Exception $e) {
             error_log("Order createWithDetails Error: " . $e->getMessage());
+            $this->lastError = 'order_details_exception';
             return false;
         }
     }

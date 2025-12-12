@@ -598,6 +598,21 @@
                 <!-- Tab: Orders -->
                 <div id="ordersTab" class="tab-content <?php echo ($data['activeTab'] ?? 'profile') === 'orders' ? 'active' : ''; ?>">
                     <h2 style="margin-bottom: 30px; font-family: 'Playfair Display', serif; font-size: 32px;">Lịch Sử Đơn Hàng</h2>
+                    
+                    <div style="margin-bottom:20px;">
+                        <form method="GET" action="<?php echo ROOT_URL; ?>account/orders" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+                            <input 
+                                type="text" 
+                                name="order_id" 
+                                value="<?php echo isset($_GET['order_id']) ? htmlspecialchars($_GET['order_id']) : ''; ?>" 
+                                placeholder="Nhập mã đơn hàng (ví dụ: Ord123456)" 
+                                style="flex:1;min-width:220px;padding:12px;border:1px solid var(--border-light);border-radius:8px;"
+                                required
+                            >
+                            <button type="submit" class="btn btn-primary" style="padding:12px 18px;">Tìm kiếm</button>
+                            <a href="<?php echo ROOT_URL; ?>account/orders" class="btn btn-secondary" style="padding:12px 18px;">Xóa tìm kiếm</a>
+                        </form>
+                    </div>
 
                     <?php if (isset($_SESSION['refund_qr'])): ?>
                         <?php $rq = $_SESSION['refund_qr']; ?>
@@ -878,7 +893,7 @@
                                         </div>
                                         <div class="order-item-header-right">
                                             <div style="text-align: right; font-size: 12px; color: var(--text-light);">
-                                                <div><?php echo htmlspecialchars($order['Order_date'] ?? 'N/A'); ?></div>
+                                                <div><?php $d=$order['Order_date']??null; $s=$d?date('H:i:s d/m/Y',strtotime($d)):'N/A'; echo htmlspecialchars($s); ?></div>
                                             </div>
                                         </div>
                                     </div>
@@ -937,7 +952,6 @@
                                             <div class="order-total-price-value">₫<?php echo number_format((float)($order['total'] ?? 0), 0, ',', '.'); ?></div>
                                         </div>
                                         <div class="order-actions">
-                                            <a href="<?php echo ROOT_URL; ?>account/order/<?php echo urlencode($order['Order_Id']); ?>" class="order-btn order-btn-primary">Xem Chi Tiết</a>
                                             <button type="button" class="order-btn order-btn-secondary" onclick="openInvoiceModal('<?php echo htmlspecialchars($order['Order_Id']); ?>')">🧾 Hóa đơn (Pop-up)</button>
                                             <?php if ($status === 'pending'): ?>
                                                 <form method="POST" action="<?php echo ROOT_URL; ?>account/cancelOrder" style="display:inline;">

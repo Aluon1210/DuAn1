@@ -112,7 +112,7 @@
   <div class="ei-meta">
     <div class="box">Người bán: <strong><?php echo htmlspecialchars($order['seller_name'] ?? 'Cửa hàng'); ?></strong></div>
     <div class="box">Người mua: <strong><?php echo htmlspecialchars($order['user_name'] ?? 'Khách hàng'); ?></strong></div>
-    <div class="box">Ngày: <strong><?php echo date('d/m/Y', strtotime($order['Order_date'] ?? date('Y-m-d'))); ?></strong></div>
+    <div class="box">Ngày: <strong><?php echo date('H:i:s d/m/Y', strtotime($order['Order_date'] ?? date('Y-m-d H:i:s'))); ?></strong></div>
   </div>
 
   <div class="ei-section">

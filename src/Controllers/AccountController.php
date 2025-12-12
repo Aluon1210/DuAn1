@@ -252,9 +252,19 @@ class AccountController extends Controller {
             exit;
         }
         
-        // Lấy các đơn hàng của user
+        // Lấy các đơn hàng của user hoặc lọc theo mã đơn nếu có
         $orderModel = new Order();
-        $orders = $orderModel->getByUserId($userId) ?? [];
+        $searchOrderId = isset($_GET['order_id']) ? trim($_GET['order_id']) : '';
+        if ($searchOrderId !== '') {
+            $one = $orderModel->getById($searchOrderId);
+            if ($one && ($one['_UserName_Id'] ?? '') === $userId) {
+                $orders = [$one];
+            } else {
+                $orders = [];
+            }
+        } else {
+            $orders = $orderModel->getByUserId($userId) ?? [];
+        }
 
         // Lấy chi tiết cho mỗi đơn
         $orderDetailModel = new \Models\OrderDetail();

@@ -185,7 +185,9 @@ class Product_Varirant extends Model
      */
     public function createVariant(array $data)
     {
-        $variantId = IdGenerator::generate('PV+', $this->table, 'Variant_Id', 10);
+        $stmt = $this->db->query("SELECT MAX(CAST(Variant_Id AS UNSIGNED)) as maxid FROM " . $this->table);
+        $row = $stmt->fetch(\PDO::FETCH_ASSOC);
+        $variantId = ((int)($row['maxid'] ?? 0)) + 1;
 
         $payload = [
             'Variant_Id' => $variantId,
@@ -252,16 +254,27 @@ class Product_Varirant extends Model
     public function createSyntheticVariant(string $productId, int $price, int $stock)
     {
         try {
-            $stmt = $this->db->query("SELECT MAX(Variant_Id) as maxid FROM " . $this->table);
+            $stmt = $this->db->query("SELECT MAX(CAST(Variant_Id AS UNSIGNED)) as maxid FROM " . $this->table);
             $row = $stmt->fetch(\PDO::FETCH_ASSOC);
             $newVariantId = ((int)($row['maxid'] ?? 0)) + 1;
 
+            $colorId = null;
+            $sizeId = null;
+            $existing = $this->getByProductId($productId);
+            if (!empty($existing)) {
+                $first = $existing[0];
+                $colorId = $first['Color_Id'] ?? null;
+                $sizeId = $first['Size_Id'] ?? null;
+            }
+
             $insertSql = "INSERT INTO {$this->table} (Variant_Id, Product_Id, Color_Id, Size_Id, Quantity_In_Stock, Price, SKU)
-                          VALUES (:id, :product_id, NULL, NULL, :stock, :price, '')";
+                          VALUES (:id, :product_id, :color_id, :size_id, :stock, :price, '')";
             $insertStmt = $this->db->prepare($insertSql);
             $ok = $insertStmt->execute([
                 ':id' => $newVariantId,
                 ':product_id' => $productId,
+                ':color_id' => $colorId,
+                ':size_id' => $sizeId,
                 ':stock' => $stock,
                 ':price' => $price
             ]);

@@ -31,6 +31,7 @@ if (file_exists(ROOT_PATH . '/.env')) {
 
 // 2b. Autoloader đơn giản cho cấu trúc /src
 // Tự động 'require' file khi bạn 'new' một class
+date_default_timezone_set(isset($_ENV['APP_TIMEZONE']) ? $_ENV['APP_TIMEZONE'] : 'Asia/Ho_Chi_Minh');
 spl_autoload_register(function ($className) {
     // Ví dụ: new Core\App()
     // $className sẽ là 'Core\App'

@@ -739,15 +739,29 @@ class CartController extends Controller
             'user_id' => $user['id'] ?? $user['username'] ?? '',
             'address' => $address,
             'note' => $noteFull,
-            'status' => 'pending'
+            'status' => 'pending',
+            'payment_method' => 'cod'
         ], $orderDetails);
 
-        if ($orderId) {
-            foreach ($processedCartIds as $cid) { $cartModel->deleteCart($cid); }
-            header('Location: ' . ROOT_URL . 'cart?invoice=' . urlencode($orderId));
-            exit;
-        } else {
-            $_SESSION['error'] = 'Đặt hàng thất bại. Vui lòng thử lại';
+            if ($orderId) {
+                foreach ($processedCartIds as $cid) { $cartModel->deleteCart($cid); }
+                header('Location: ' . ROOT_URL . 'cart?invoice=' . urlencode($orderId));
+                exit;
+            } else {
+                $err = method_exists($orderModel, 'getLastError') ? $orderModel->getLastError() : null;
+            $msg = 'Đặt hàng thất bại. Vui lòng thử lại';
+            if ($err === 'no_valid_items') {
+                $msg = 'Không có sản phẩm hợp lệ để đặt hàng';
+            } elseif ($err === 'order_detail_insert_failed') {
+                $msg = 'Không thể lưu chi tiết đơn hàng';
+            } elseif ($err === 'order_create_failed' || $err === 'order_insert_failed') {
+                $msg = 'Không thể tạo đơn hàng';
+            } elseif ($err === 'missing_user') {
+                $msg = 'Thiếu thông tin người dùng để đặt hàng';
+            } elseif ($err === 'order_details_exception' || $err === 'order_sql_error' || $err === 'order_exception') {
+                $msg = 'Có lỗi khi xử lý đơn hàng';
+            }
+            $_SESSION['error'] = $err ? ($msg . ' [' . $err . ']') : $msg;
             header('Location: ' . ROOT_URL . 'cart');
             exit;
         }
