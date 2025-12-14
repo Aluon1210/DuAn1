@@ -691,6 +691,9 @@ public function stats() {
             case 'confirm':
                 $this->refundConfirm();
                 return;
+            case 'marktransfer':
+                $this->refundMarkTransfer();
+                return;
             default:
                 header('Content-Type: application/json');
                 echo json_encode(['error' => 'Invalid refund action']);
@@ -867,6 +870,69 @@ public function stats() {
 
         header('Content-Type: application/json');
         echo json_encode(['success' => true, 'amount' => $refundAmount, 'new_balance' => $newBalance]);
+        exit;
+    }
+
+    /**
+     * Xác nhận đã hoàn tiền qua chuyển khoản (không cộng số dư ví)
+     * URL: /admin/refund/markTransfer (POST JSON)
+     */
+    private function refundMarkTransfer() {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'error' => 'Method not allowed']);
+            exit;
+        }
+        if (!isset($_SESSION['user']) || $_SESSION['user']['role'] !== 'admin') {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'error' => 'Unauthorized']);
+            exit;
+        }
+        $payload = json_decode(file_get_contents('php://input'), true);
+        $orderId = trim($payload['order_id'] ?? '');
+        if ($orderId === '') {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'error' => 'Order ID required']);
+            exit;
+        }
+        $orderModel = new \Models\Order();
+        $orderDetailModel = new \Models\OrderDetail();
+        $order = $orderModel->getByIdWithUser($orderId);
+        if (!$order) {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'error' => 'Order not found']);
+            exit;
+        }
+        $pm = $order['PaymentMethod'] ?? '';
+        $rawNote = (string)($order['Note'] ?? '');
+        $isOnline = ($pm === 'online') || (stripos($rawNote, 'Thanh toán Online') !== false);
+        if (!$isOnline) {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'error' => 'Order is not online payment']);
+            exit;
+        }
+        $items = $orderDetailModel->getByOrderIdWithProduct($orderId) ?? [];
+        $subtotal = 0;
+        foreach ($items as $it) {
+            $qty = (int)($it['quantity'] ?? $it['Quantity'] ?? 0);
+            $price = (float)($it['Price'] ?? $it['price'] ?? 0);
+            $subtotal += $qty * $price;
+        }
+        $vat = (int)round($subtotal * 0.05);
+        $ship = 50000;
+        $voucherDiscount = 0;
+        if ($rawNote !== '' && preg_match('/Voucher:\s*([A-Z0-9_-]+)\s*-\s*(\d+)/i', $rawNote, $m)) {
+            $voucherDiscount = (int)($m[2] ?? 0);
+        }
+        $refundAmount = max(0, $subtotal + $vat + $ship - max(0, $voucherDiscount));
+
+        // Ghi note xác nhận chuyển khoản
+        $orderModel->appendNote($orderId, 'REFUND BANK TRANSFER CONFIRMED: -' . number_format($refundAmount, 0, ',', '.') . 'đ');
+        // Cập nhật trạng thái sang refunded
+        $orderModel->updateStatus($orderId, 'refunded');
+
+        header('Content-Type: application/json');
+        echo json_encode(['success' => true, 'amount' => $refundAmount, 'method' => 'bank_transfer']);
         exit;
     }
 }

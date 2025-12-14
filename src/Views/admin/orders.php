@@ -648,7 +648,10 @@
             </div>
           </div>
           <div class="invoice-modal-footer">
-            <button id="refundConfirmBtn" class="btn btn-primary" type="button">Xác nhận đã chuyển & cộng số dư</button>
+            <div style="display:flex; gap:8px; flex-wrap:wrap">
+              <button id="refundTopupBtn" class="btn btn-primary" type="button">Nạp vào tài khoản người dùng</button>
+              <button id="refundTransferBtn" class="btn btn-secondary" type="button">Xác nhận chuyển khoản online</button>
+            </div>
           </div>
         </div>`;
         document.body.appendChild(refundModal);
@@ -661,21 +664,32 @@
               .then(d => {
                  if (!d || d.error) { alert('Lỗi: ' + (d.error || 'Không xác định')); return; }
                  document.getElementById('refundInfo').textContent = 'Mã đơn: ' + d.order_id + ' • Số tiền hoàn: ' + (d.amount || 0).toLocaleString('vi-VN') + ' ₫';
-                 document.getElementById('refundBank').textContent = 'Ngân hàng: ' + (d.bank_code || '') + ' - ' + (d.bank_name || '') + ' • STK: ' + (d.account_no || '') + ' • Tên: ' + (d.account_name || '');
-                 const img = document.getElementById('refundQR');
-                 img.src = d.qr_url || '';
-                 const btn = document.getElementById('refundConfirmBtn');
-                 btn.onclick = function(){
-                    fetch('<?php echo ROOT_URL; ?>admin/refund/confirm', {
-                       method: 'POST',
-                       headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
-                       body: JSON.stringify({ order_id: d.order_id })
-                    }).then(r => r.json()).then(x => {
-                       if (x && x.success) { alert('Đã cộng số dư khách: +' + (x.amount || 0).toLocaleString('vi-VN') + ' ₫'); closeRefundModal(); }
-                       else { alert('Không thể xác nhận hoàn tiền: ' + (x.error || '')); }
-                    }).catch(e => alert('Lỗi: ' + e.message));
-                 };
-                 refundModal.classList.add('active');
+                document.getElementById('refundBank').textContent = 'Ngân hàng: ' + (d.bank_code || '') + ' - ' + (d.bank_name || '') + ' • STK: ' + (d.account_no || '') + ' • Tên: ' + (d.account_name || '');
+                const img = document.getElementById('refundQR');
+                img.src = d.qr_url || '';
+                const btnTopup = document.getElementById('refundTopupBtn');
+                const btnTransfer = document.getElementById('refundTransferBtn');
+                btnTopup.onclick = function(){
+                  fetch('<?php echo ROOT_URL; ?>admin/refund/confirm', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                    body: JSON.stringify({ order_id: d.order_id })
+                  }).then(r => r.json()).then(x => {
+                    if (x && x.success) { alert('Đã cộng số dư khách: +' + (x.amount || 0).toLocaleString('vi-VN') + ' ₫'); closeRefundModal(); }
+                    else { alert('Không thể xác nhận hoàn tiền: ' + (x.error || '')); }
+                  }).catch(e => alert('Lỗi: ' + e.message));
+                };
+                btnTransfer.onclick = function(){
+                  fetch('<?php echo ROOT_URL; ?>admin/refund/markTransfer', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                    body: JSON.stringify({ order_id: d.order_id })
+                  }).then(r => r.json()).then(x => {
+                    if (x && x.success) { alert('Đã xác nhận chuyển khoản online: -' + (x.amount || 0).toLocaleString('vi-VN') + ' ₫'); closeRefundModal(); }
+                    else { alert('Không thể xác nhận chuyển khoản: ' + (x.error || '')); }
+                  }).catch(e => alert('Lỗi: ' + e.message));
+                };
+                refundModal.classList.add('active');
               })
               .catch(e => alert('Lỗi tải thông tin hoàn tiền: ' + e.message));
         }
