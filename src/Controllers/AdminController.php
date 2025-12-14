@@ -380,6 +380,11 @@ public function deleteCategory($id) {
         return $mvc->adminDeleteVariant($id);
     }
 
+    public function paymentConfig() {
+        $this->requireAdmin();
+        $this->renderView('admin/payment-config', []);
+    }
+
 public function comments() {
     $this->renderView('admin/comment');
 }

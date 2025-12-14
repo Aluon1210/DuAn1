@@ -1595,4 +1595,214 @@ class PaymentController extends Controller
         }
         return null;
     }
+
+    /**
+     * POLL LATEST REFUND - kiểm tra giao dịch REFUND mới và tự động xác nhận
+     * URL: /payment/poll-latest-refund (POST)
+     * Body JSON: { order_id }
+     * Nếu phát hiện giao dịch có mô tả chứa REFUND-{order_id} và số tiền khớp,
+     * hệ thống ghi chú và cập nhật trạng thái sang refunded.
+     */
+    public function pollLatestRefund()
+    {
+        header('Content-Type: application/json; charset=utf-8');
+
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            http_response_code(405);
+            echo json_encode(['success' => false, 'error' => 'Method not allowed']);
+            return;
+        }
+        // Chỉ cho admin thực hiện
+        if (!isset($_SESSION['user']) || $_SESSION['user']['role'] !== 'admin') {
+            http_response_code(403);
+            echo json_encode(['success' => false, 'error' => 'Unauthorized']);
+            return;
+        }
+
+        $payload = json_decode(file_get_contents('php://input'), true) ?? [];
+        $orderId = trim($payload['order_id'] ?? '');
+        if ($orderId === '') {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'error' => 'Order ID required']);
+            return;
+        }
+
+        $orderModel = new \Models\Order();
+        $orderDetailModel = new \Models\OrderDetail();
+        $userModel = new \Models\User();
+        $order = $orderModel->getByIdWithUser($orderId);
+        if (!$order) {
+            http_response_code(404);
+            echo json_encode(['success' => false, 'error' => 'Order not found']);
+            return;
+        }
+
+        $pm = $order['PaymentMethod'] ?? '';
+        $rawNote = (string)($order['Note'] ?? '');
+        $isOnline = ($pm === 'online') || (stripos($rawNote, 'Thanh toán Online') !== false);
+        if (!$isOnline) {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'error' => 'Order is not online payment']);
+            return;
+        }
+
+        // Tính số tiền hoàn theo hệ thống
+        $items = $orderDetailModel->getByOrderIdWithProduct($orderId) ?? [];
+        $subtotal = 0;
+        foreach ($items as $it) {
+            $qty = (int)($it['quantity'] ?? $it['Quantity'] ?? 0);
+            $price = (float)($it['Price'] ?? $it['price'] ?? 0);
+            $subtotal += $qty * $price;
+        }
+        $vat = (int)round($subtotal * 0.05);
+        $ship = 50000;
+        $voucherDiscount = 0;
+        if ($rawNote !== '' && preg_match('/Voucher:\s*([A-Z0-9_-]+)\s*-\s*(\d+)/i', $rawNote, $m)) {
+            $voucherDiscount = (int)($m[2] ?? 0);
+        }
+        $expectedAmount = max(0, $subtotal + $vat + $ship - max(0, $voucherDiscount));
+
+        // Lấy giao dịch mới nhất từ API
+        $latest = $this->getLatestPaymentFromAPI();
+        if (!$latest['success']) {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'error' => $latest['message'] ?? 'API error']);
+            return;
+        }
+        $payment = $latest['data'];
+        $desc = (string)($payment['Mô tả'] ?? $payment['description'] ?? '');
+        $amount = (int)($payment['Giá trị'] ?? $payment['amount'] ?? 0);
+
+        $norm = function($s){ return preg_replace('/[^A-Z0-9]/i','', strtoupper(trim((string)$s))); };
+        $descNorm = $norm($desc);
+        $targetNorm = $norm('REFUND-' . $orderId);
+        $hasTag = strpos($descNorm, $targetNorm) !== false;
+        $amountOk = (abs((int)$amount) === (int)$expectedAmount);
+
+        if ($hasTag && $amountOk) {
+            // Ghi chú và cập nhật trạng thái
+            $orderModel->appendNote($orderId, 'REFUND AUTO VERIFIED: -' . number_format($expectedAmount, 0, ',', '.') . 'đ');
+            $orderModel->updateStatus($orderId, 'refunded');
+            echo json_encode(['success' => true, 'refunded' => true, 'amount' => (int)$expectedAmount]);
+            return;
+        }
+
+        echo json_encode([
+            'success' => true,
+            'refunded' => false,
+            'message' => 'No matching refund transaction',
+            'latest_description' => $desc,
+            'latest_amount' => $amount
+        ]);
+    }
+    /**
+     * Xác thực chuyển khoản hoàn tiền cho đơn online
+     * URL: /payment/verifyRefund (POST JSON)
+     * Body:
+     *  - order_id: mã đơn
+     *  - amount: số tiền giao dịch
+     *  - description: nội dung (khuyến nghị: REFUND-{order_id})
+     *  - bank_code: mã ngân hàng người nhận
+     *  - account_no: số tài khoản người nhận
+     *  - account_name: tên người nhận
+     *  - tx_ref: mã giao dịch (tùy chọn)
+     * Kết quả: nếu dữ liệu khớp với tính toán hệ thống, cập nhật đơn sang refunded
+     */
+    public function verifyRefund()
+    {
+        header('Content-Type: application/json; charset=utf-8');
+
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            http_response_code(405);
+            echo json_encode(['success' => false, 'error' => 'Method not allowed']);
+            return;
+        }
+
+        $payload = json_decode(file_get_contents('php://input'), true) ?? [];
+        $orderId = trim($payload['order_id'] ?? '');
+        $amount = (int)($payload['amount'] ?? 0);
+        $desc = trim($payload['description'] ?? '');
+        $bankCode = trim($payload['bank_code'] ?? '');
+        $accountNo = trim($payload['account_no'] ?? '');
+        $accountName = trim($payload['account_name'] ?? '');
+        $txRef = trim($payload['tx_ref'] ?? '');
+
+        if ($orderId === '' || $amount <= 0 || $accountNo === '' || $accountName === '') {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'error' => 'Missing required fields']);
+            return;
+        }
+
+        $orderModel = new \Models\Order();
+        $orderDetailModel = new \Models\OrderDetail();
+        $userModel = new \Models\User();
+
+        $order = $orderModel->getByIdWithUser($orderId);
+        if (!$order) {
+            http_response_code(404);
+            echo json_encode(['success' => false, 'error' => 'Order not found']);
+            return;
+        }
+
+        $pm = $order['PaymentMethod'] ?? '';
+        $rawNote = (string)($order['Note'] ?? '');
+        $isOnline = ($pm === 'online') || (stripos($rawNote, 'Thanh toán Online') !== false);
+        if (!$isOnline) {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'error' => 'Order is not online payment']);
+            return;
+        }
+
+        $items = $orderDetailModel->getByOrderIdWithProduct($orderId) ?? [];
+        $subtotal = 0;
+        foreach ($items as $it) {
+            $qty = (int)($it['quantity'] ?? $it['Quantity'] ?? 0);
+            $price = (float)($it['Price'] ?? $it['price'] ?? 0);
+            $subtotal += $qty * $price;
+        }
+        $vat = (int)round($subtotal * 0.05);
+        $ship = 50000;
+        $voucherDiscount = 0;
+        if ($rawNote !== '' && preg_match('/Voucher:\s*([A-Z0-9_-]+)\s*-\s*(\d+)/i', $rawNote, $m)) {
+            $voucherDiscount = (int)($m[2] ?? 0);
+        }
+        $expectedAmount = max(0, $subtotal + $vat + $ship - max(0, $voucherDiscount));
+
+        // Thay vì tin payload, kiểm tra giao dịch mới nhất từ API
+        $latest = $this->getLatestPaymentFromAPI();
+        if (!$latest['success']) {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'error' => $latest['message'] ?? 'API error']);
+            return;
+        }
+        $payment = $latest['data'];
+        if ($this->isPaymentProcessed($payment)) {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'error' => 'Payment already processed']);
+            return;
+        }
+        $pDesc = (string)($payment['Mô tả'] ?? $payment['description'] ?? '');
+        $pAmount = (int)($payment['Giá trị'] ?? $payment['amount'] ?? 0);
+        $norm = function($s){ return preg_replace('/[^A-Z0-9]/i','', strtoupper(trim((string)$s))); };
+        $pDescNorm = $norm($pDesc);
+        $targetNorm = $norm('REFUND-' . $orderId);
+        $hasTag = strpos($pDescNorm, $targetNorm) !== false;
+        $amountOk = (abs((int)$pAmount) === (int)$expectedAmount);
+        if (!$hasTag || !$amountOk) {
+            http_response_code(400);
+            echo json_encode([
+                'success' => false,
+                'error' => 'Refund not matched with latest payment',
+                'latest_description' => $pDesc,
+                'latest_amount' => $pAmount,
+                'expected_amount' => (int)$expectedAmount
+            ]);
+            return;
+        }
+        // Đánh dấu đã xử lý và cập nhật trạng thái
+        $this->markPaymentAsProcessed($payment);
+        $orderModel->appendNote($orderId, 'REFUND VERIFIED TRANSFER: -' . number_format($expectedAmount, 0, ',', '.') . 'đ' . ($txRef !== '' ? (' | TX:' . $txRef) : ''));
+        $orderModel->updateStatus($orderId, 'refunded');
+        echo json_encode(['success' => true, 'order_id' => $orderId, 'amount' => (int)$expectedAmount, 'verified' => true]);
+    }
 }

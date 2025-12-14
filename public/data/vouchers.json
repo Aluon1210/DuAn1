@@ -33,7 +33,7 @@
         "value": 10000,
         "max_discount": 20,
         "min_order": 10000,
-        "expiry": "2025-12-20",
+        "expiry": "2025-12-10",
         "active": true,
         "scope": "category",
         "categories": [
@@ -43,5 +43,16 @@
             "LFC_PHU_KIEN",
             "LFC_NAM_BESPOKE"
         ]
+    },
+    {
+        "code": "FREE",
+        "type": "percent",
+        "value": 50000,
+        "max_discount": 50000,
+        "min_order": 20000,
+        "expiry": "2025-12-20",
+        "active": true,
+        "scope": "all",
+        "categories": []
     }
 ]

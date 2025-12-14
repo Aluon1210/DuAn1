@@ -657,8 +657,9 @@
           </div>
         </div>`;
         document.body.appendChild(refundModal);
-        function closeRefundModal(){ refundModal.classList.remove('active'); }
+        function closeRefundModal(){ refundModal.classList.remove('active'); refundModal.style.display='none'; }
         document.getElementById('refundCloseBtn').onclick = closeRefundModal;
+        refundModal.addEventListener('click', function(e){ if (e.target === refundModal) closeRefundModal(); });
 
         function openRefundModal(orderId){
             fetch('<?php echo ROOT_URL; ?>admin/refund/info/' + encodeURIComponent(orderId), { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
@@ -699,13 +700,28 @@
                   }).catch(e => alert('Lỗi: ' + e.message));
                 };
                 btnTransfer.onclick = function(){
-                  fetch('<?php echo ROOT_URL; ?>admin/refund/markTransfer', {
+                  console.log('[verifyRefund] start', d);
+                  btnTransfer.disabled = true;
+                  btnTransfer.textContent = 'Đang xác nhận...';
+                  fetch('<?php echo ROOT_URL; ?>payment/verifyRefund', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
-                    body: JSON.stringify({ order_id: d.order_id })
-                  }).then(r => r.json()).then(x => {
-                    if (x && x.success) {
-                      alert('Đã xác nhận chuyển khoản online: -' + (x.amount || 0).toLocaleString('vi-VN') + ' ₫');
+                    credentials: 'same-origin',
+                    body: JSON.stringify({
+                      order_id: d.order_id,
+                      amount: d.amount,
+                      description: 'REFUND-' + d.order_id,
+                      bank_code: d.bank_code,
+                      account_no: d.account_no,
+                      account_name: d.account_name
+                    })
+                  }).then(r => {
+                    console.log('[verifyRefund] response status', r.status);
+                    return r.json();
+                  }).then(x => {
+                    console.log('[verifyRefund] response body', x);
+                    if (x && x.success && x.verified) {
+                      alert('Giao dịch khớp - Đã hoàn tiền online: -' + (x.amount || 0).toLocaleString('vi-VN') + ' ₫');
                       const btn = document.querySelector('.refund-btn[data-order-id=\"' + d.order_id + '\"]');
                       if (btn) {
                         const row = btn.closest('tr');
@@ -721,10 +737,56 @@
                         }
                       }
                       closeRefundModal();
+                    } else {
+                      if (x && (String(x.error||'').indexOf('Payment API chưa được cấu hình') !== -1 || String(x.code||'') === 'NO_API_CONFIG')) {
+                        alert('Chưa cấu hình API đối soát. Vui lòng vào trang Cấu hình Thanh toán để nhập Google Apps Script URL.');
+                        window.location.href = '<?php echo ROOT_URL; ?>admin/paymentConfig';
+                        return;
+                      }
+                      alert('Không thể xác nhận chuyển khoản: ' + (x.error || ''));
+                      let elapsed = 0;
+                      const intervalMs = 3000;
+                      const maxMs = 60000;
+                      const timer = setInterval(function(){
+                        elapsed += intervalMs;
+                        fetch('<?php echo ROOT_URL; ?>payment/poll-latest-refund', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                          credentials: 'same-origin',
+                          body: JSON.stringify({ order_id: d.order_id })
+                        }).then(rr => rr.json()).then(xx => {
+                          console.log('[pollLatestRefund]', xx);
+                          if (xx && xx.success && xx.refunded) {
+                            clearInterval(timer);
+                            const btn = document.querySelector('.refund-btn[data-order-id=\"' + d.order_id + '\"]');
+                            if (btn) {
+                              const row = btn.closest('tr');
+                              const paymentCell = btn.closest('td');
+                              const smallEl = paymentCell ? paymentCell.querySelector('small') : null;
+                              if (smallEl) { smallEl.textContent = 'Đã hoàn tiền'; }
+                              btn.remove();
+                              const sel = row ? row.querySelector('.status-select') : null;
+                              if (sel) {
+                                sel.innerHTML = '<option value=\"refunded\" selected>Đã hoàn tiền</option>';
+                                sel.disabled = true;
+                                sel.parentElement.style.opacity = '1';
+                              }
+                            }
+                            closeRefundModal();
+                          }
+                        }).catch(err => console.error('[pollLatestRefund] error', err));
+                        if (elapsed >= maxMs) { clearInterval(timer); }
+                      }, intervalMs);
                     }
-                    else { alert('Không thể xác nhận chuyển khoản: ' + (x.error || '')); }
-                  }).catch(e => alert('Lỗi: ' + e.message));
+                  }).catch(e => {
+                    console.error('[verifyRefund] error', e);
+                    alert('Lỗi: ' + e.message);
+                  }).finally(() => {
+                    btnTransfer.disabled = false;
+                    btnTransfer.textContent = 'Xác nhận chuyển khoản online';
+                  });
                 };
+                refundModal.style.display='flex';
                 refundModal.classList.add('active');
               })
               .catch(e => alert('Lỗi tải thông tin hoàn tiền: ' + e.message));

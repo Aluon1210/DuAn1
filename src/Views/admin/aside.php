@@ -8,6 +8,7 @@ $menuItems = [
     '/DuAn1/admin/colors' => 'Màu sắc',
     '/DuAn1/admin/sizes' => 'Kích cỡ',
     '/DuAn1/admin/orders' => 'Đơn hàng',
+    '/DuAn1/admin/paymentConfig' => 'Thanh toán',
     '/DuAn1/admin/categories' => 'Danh mục',
     '/DuAn1/admin/branch' => 'Hãng',
     '/DuAn1/admin/comments' => 'Bình luận',

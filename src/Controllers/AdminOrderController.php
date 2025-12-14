@@ -5,6 +5,8 @@ namespace Controllers;
 use Core\Controller;
 use Models\Order;
 use Models\OrderDetail;
+use Models\Product;
+use Models\Product_Varirant;
 use Models\Category;
 
 class AdminOrderController extends Controller
@@ -185,6 +187,44 @@ class AdminOrderController extends Controller
             exit;
         }
         $success = $orderModel->updateStatus($orderId, $newStatus);
+        if ($success && $isCancel) {
+            try {
+                $orderDetailModel = new OrderDetail();
+                $variantModel = new Product_Varirant();
+                $productModel = new Product();
+                $details = $orderDetailModel->getByOrderIdWithProduct($orderId) ?? [];
+                $productsToUpdate = [];
+                foreach ($details as $d) {
+                    $variantId = (string)($d['Variant_Id'] ?? $d['variant_id'] ?? '');
+                    $qty = (int)($d['quantity'] ?? $d['Quantity'] ?? 0);
+                    if ($variantId === '' || $qty <= 0) {
+                        continue;
+                    }
+                    $variant = $variantModel->getById($variantId);
+                    if (!$variant) {
+                        continue;
+                    }
+                    $newStock = (int)($variant['stock'] ?? $variant['Quantity_In_Stock'] ?? 0) + $qty;
+                    $variantModel->updateVariant($variantId, [
+                        'product_id' => $variant['product_id'] ?? $variant['Product_Id'] ?? '',
+                        'color_id' => $variant['color_id'] ?? $variant['Color_Id'] ?? null,
+                        'size_id' => $variant['size_id'] ?? $variant['Size_Id'] ?? null,
+                        'price' => (float)($variant['price'] ?? $variant['Price'] ?? 0),
+                        'stock' => $newStock,
+                        'sku' => $variant['sku'] ?? $variant['SKU'] ?? ''
+                    ]);
+                    $pid = $variant['product_id'] ?? $variant['Product_Id'] ?? ($d['product_id'] ?? null);
+                    if ($pid && !in_array($pid, $productsToUpdate, true)) {
+                        $productsToUpdate[] = $pid;
+                    }
+                }
+                foreach ($productsToUpdate as $pid) {
+                    $productModel->updateQuantityFromVariants($pid);
+                }
+            } catch (\Exception $e) {
+                error_log('restore stock on cancel failed for order ' . $orderId . ': ' . $e->getMessage());
+            }
+        }
 
         // Detect AJAX (X-Requested-With) or Accept header
         $isAjax = (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest')

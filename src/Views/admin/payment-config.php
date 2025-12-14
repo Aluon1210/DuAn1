@@ -240,6 +240,23 @@ $bankCodes = PaymentHelper::getAllBankCodes();
   </div>
 </div>
 
+<div class="payment-config-container">
+  <div class="config-header">🧩 Cấu Hình API Đối Soát</div>
+  <p class="config-subtitle">Thiết lập URL Google Apps Script dùng để đối soát giao dịch</p>
+  <div class="info-box">Nếu chưa cấu hình API, các nút xác nhận chuyển khoản sẽ báo lỗi và không tự động xác thực.</div>
+  <form id="gasForm">
+    <div class="form-group">
+      <label for="api_url">Google Apps Script URL <span style="color:red;">*</span></label>
+      <input type="url" id="api_url" name="api_url" value="<?php echo htmlspecialchars(\Core\PaymentHelper::getGoogleAppsScriptUrl()); ?>" required placeholder="https://script.google.com/.../exec">
+      <small>Đường dẫn API web app đã triển khai (kết thúc bằng /exec)</small>
+    </div>
+    <div class="button-group">
+      <button type="submit" class="btn btn-primary">💾 Lưu API</button>
+      <button type="reset" class="btn btn-secondary">🔄 Đặt Lại</button>
+    </div>
+  </form>
+</div>
+
 <script>
   // Generate QR preview khi thay đổi form
   const form = document.getElementById('configForm');
@@ -295,6 +312,21 @@ $bankCodes = PaymentHelper::getAllBankCodes();
       console.error('Error:', error);
       alert('❌ Lỗi kết nối');
     });
+  });
+
+  const gasForm = document.getElementById('gasForm');
+  gasForm.addEventListener('submit', function(e){
+    e.preventDefault();
+    const apiUrl = document.getElementById('api_url').value.trim();
+    const fd = new FormData();
+    fd.append('api_url', apiUrl);
+    fetch('<?php echo ROOT_URL; ?>payment/update-gas-api', { method: 'POST', body: fd })
+      .then(r => r.json())
+      .then(d => {
+        if (d && d.success) { alert('✅ Đã cập nhật API URL'); location.reload(); }
+        else { alert('❌ ' + (d.message || 'Không thể cập nhật API URL')); }
+      })
+      .catch(err => { alert('❌ Lỗi kết nối: ' + err.message); });
   });
 </script>
 

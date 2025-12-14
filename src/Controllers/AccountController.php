@@ -93,6 +93,42 @@ class AccountController extends Controller {
             }
             $success = $orderModel->updateStatus($orderId, 'cancelled');
             if ($success) {
+                try {
+                    $orderDetailModel = new \Models\OrderDetail();
+                    $variantModel = new \Models\Product_Varirant();
+                    $productModel = new \Models\Product();
+                    $details = $orderDetailModel->getByOrderIdWithProduct($orderId) ?? [];
+                    $productsToUpdate = [];
+                    foreach ($details as $d) {
+                        $variantId = (string)($d['Variant_Id'] ?? $d['variant_id'] ?? '');
+                        $qty = (int)($d['quantity'] ?? $d['Quantity'] ?? 0);
+                        if ($variantId === '' || $qty <= 0) {
+                            continue;
+                        }
+                        $variant = $variantModel->getById($variantId);
+                        if (!$variant) {
+                            continue;
+                        }
+                        $newStock = (int)($variant['stock'] ?? $variant['Quantity_In_Stock'] ?? 0) + $qty;
+                        $variantModel->updateVariant($variantId, [
+                            'product_id' => $variant['product_id'] ?? $variant['Product_Id'] ?? '',
+                            'color_id' => $variant['color_id'] ?? $variant['Color_Id'] ?? null,
+                            'size_id' => $variant['size_id'] ?? $variant['Size_Id'] ?? null,
+                            'price' => (float)($variant['price'] ?? $variant['Price'] ?? 0),
+                            'stock' => $newStock,
+                            'sku' => $variant['sku'] ?? $variant['SKU'] ?? ''
+                        ]);
+                        $pid = $variant['product_id'] ?? $variant['Product_Id'] ?? ($d['product_id'] ?? null);
+                        if ($pid && !in_array($pid, $productsToUpdate, true)) {
+                            $productsToUpdate[] = $pid;
+                        }
+                    }
+                    foreach ($productsToUpdate as $pid) {
+                        $productModel->updateQuantityFromVariants($pid);
+                    }
+                } catch (\Exception $e) {
+                    error_log('restore stock on user cancel failed for order ' . $orderId . ': ' . $e->getMessage());
+                }
                 $_SESSION['message'] = 'Đã hủy đơn hàng thành công.';
             } else {
                 $_SESSION['error'] = 'Không thể hủy đơn hàng.';
