@@ -181,7 +181,12 @@ public function orders($action = null, $param = null) {
         $this->orderDetail($param);
         return;
     }
-    
+    // Chuyển tiếp cập nhật trạng thái sang AdminOrderController (API JSON)
+    if ($action === 'updateStatus') {
+        $oc = new AdminOrderController();
+        $oc->updateStatus();
+        return;
+    }
     // Delegate to AdminOrderController for full orders management
     $oc = new AdminOrderController();
     return $oc->index();

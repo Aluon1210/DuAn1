@@ -23,7 +23,7 @@
         "max_discount": 500000,
         "min_order": 50000,
         "expiry": "2025-12-20",
-        "active": true,
+        "active": false,
         "scope": "all",
         "categories": []
     },
