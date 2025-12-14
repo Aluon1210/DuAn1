@@ -507,7 +507,9 @@
                                     $noteTmp = trim($noteTmp);
                                     $noteDisplay = ($noteTmp === '' || $noteTmp === 'Đặt hàng' || $noteTmp === 'Thanh toán Online') ? 'Không có ghi chú' : $noteTmp;
                                     $pm = $order['PaymentMethod'] ?? '';
-                                    $paymentText = ($pm === 'online' || stripos($rawNote, 'Thanh toán Online') !== false) ? 'Online' : 'Tiền mặt';
+                                    $paymentText = ($status === 'refunded')
+                                        ? 'Đã hoàn tiền'
+                                        : (($pm === 'online' || stripos($rawNote, 'Thanh toán Online') !== false) ? 'Online' : 'Tiền mặt');
                                 ?>
                                 <tr data-pay="<?php echo ($paymentText === 'Online') ? 'online' : 'cash'; ?>">
                                     <td><strong><?php echo htmlspecialchars($order['Order_Id']); ?></strong></td>
@@ -675,7 +677,24 @@
                     headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
                     body: JSON.stringify({ order_id: d.order_id })
                   }).then(r => r.json()).then(x => {
-                    if (x && x.success) { alert('Đã cộng số dư khách: +' + (x.amount || 0).toLocaleString('vi-VN') + ' ₫'); closeRefundModal(); }
+                    if (x && x.success) {
+                      alert('Đã cộng số dư khách: +' + (x.amount || 0).toLocaleString('vi-VN') + ' ₫');
+                      const btn = document.querySelector('.refund-btn[data-order-id=\"' + d.order_id + '\"]');
+                      if (btn) {
+                        const row = btn.closest('tr');
+                        const paymentCell = btn.closest('td');
+                        const smallEl = paymentCell ? paymentCell.querySelector('small') : null;
+                        if (smallEl) { smallEl.textContent = 'Đã hoàn tiền'; }
+                        btn.remove();
+                        const sel = row ? row.querySelector('.status-select') : null;
+                        if (sel) {
+                          sel.innerHTML = '<option value=\"refunded\" selected>Đã hoàn tiền</option>';
+                          sel.disabled = true;
+                          sel.parentElement.style.opacity = '1';
+                        }
+                      }
+                      closeRefundModal();
+                    }
                     else { alert('Không thể xác nhận hoàn tiền: ' + (x.error || '')); }
                   }).catch(e => alert('Lỗi: ' + e.message));
                 };
@@ -685,7 +704,24 @@
                     headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
                     body: JSON.stringify({ order_id: d.order_id })
                   }).then(r => r.json()).then(x => {
-                    if (x && x.success) { alert('Đã xác nhận chuyển khoản online: -' + (x.amount || 0).toLocaleString('vi-VN') + ' ₫'); closeRefundModal(); }
+                    if (x && x.success) {
+                      alert('Đã xác nhận chuyển khoản online: -' + (x.amount || 0).toLocaleString('vi-VN') + ' ₫');
+                      const btn = document.querySelector('.refund-btn[data-order-id=\"' + d.order_id + '\"]');
+                      if (btn) {
+                        const row = btn.closest('tr');
+                        const paymentCell = btn.closest('td');
+                        const smallEl = paymentCell ? paymentCell.querySelector('small') : null;
+                        if (smallEl) { smallEl.textContent = 'Đã hoàn tiền'; }
+                        btn.remove();
+                        const sel = row ? row.querySelector('.status-select') : null;
+                        if (sel) {
+                          sel.innerHTML = '<option value=\"refunded\" selected>Đã hoàn tiền</option>';
+                          sel.disabled = true;
+                          sel.parentElement.style.opacity = '1';
+                        }
+                      }
+                      closeRefundModal();
+                    }
                     else { alert('Không thể xác nhận chuyển khoản: ' + (x.error || '')); }
                   }).catch(e => alert('Lỗi: ' + e.message));
                 };

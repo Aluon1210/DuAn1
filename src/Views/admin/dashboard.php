@@ -117,6 +117,10 @@
                     </div>
                 </div>
                 <?php if (!empty($data['topWorst'])): ?>
+                    <?php
+                        // SO cot can hien thi trong bang
+                        $longRow  = 5 ;
+                    ?>
                     <div class="card">
                         <h3>Top 5 sản phẩm bán ế (ít bán nhất)</h3>
                         <div class="table-container">
@@ -129,9 +133,9 @@
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    <?php $i=1; foreach ($data['topWorst'] as $w): ?>
+                                    <?php $i=1; foreach (array_slice($data['topWorst'], 0 , $longRow)  as $w): ?>
                                     <tr>
-                                        <td><?php echo $i++; ?></td>
+                                        <td><?php echo 'Top ' . $i++; ?></td>
                                         <td><?php echo htmlspecialchars($w['name'] ?? $w['id']); ?></td>
                                         <td><?php echo (int)($w['total_sold'] ?? 0); ?></td>
                                     </tr>
@@ -158,9 +162,9 @@
                             </tr>
                         </thead>
                         <tbody>
-                            <?php $i = 1; foreach ($data['topCustomers'] as $c): ?>
+                            <?php $i = 1; foreach (array_slice($data['topCustomers'], 0, $longRow) as $c): ?>
                                 <tr>
-                                    <td><?php echo $i++; ?></td>
+                                    <td><?php echo 'Top ' . $i++; ?></td>
                                     <td><?php echo htmlspecialchars($c['name'] ?? $c['id']); ?></td>
                                     <td><?php echo htmlspecialchars($c['email'] ?? ''); ?></td>
                                     <td><?php echo (int)($c['orders_count'] ?? 0); ?></td>
@@ -187,9 +191,9 @@
                             </tr>
                         </thead>
                         <tbody>
-                            <?php $i = 1; foreach ($data['topProducts'] as $p): ?>
+                            <?php $i = 1; foreach (array_slice($data['topProducts'], 0, $longRow) as $p): ?>
                                 <tr>
-                                    <td><?php echo $i++; ?></td>
+                                    <td><?php echo 'Top ' . $i++; ?></td>
                                     <td><?php echo htmlspecialchars($p['name'] ?? $p['id']); ?></td>
                                     <td><?php echo (int)($p['total_sold'] ?? 0); ?></td>
                                     <td><?php echo number_format($p['total_revenue'] ?? 0, 0, ',', '.'); ?> ₫</td>

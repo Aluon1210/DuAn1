@@ -57,7 +57,8 @@ class Order extends Model
             'shipping' => 'Vận chuyển',
             'delivered' => 'Hoàn thành',
             'cancelled' => 'Đã hủy',
-            'return' => 'Trả hàng'
+            'return' => 'Trả hàng',
+            'refunded' => 'Đã hoàn tiền'
         ];
     }
 
